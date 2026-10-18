@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>novel-universe · 风格测试画廊</title>
+<style>
+  :root { color-scheme: dark; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0b0810;
+    font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    color: #e6dcf0; padding: 36px 24px 64px;
+  }
+  header { max-width: 1180px; margin: 0 auto 28px; }
+  h1 { font-size: 24px; letter-spacing: .06em; margin-bottom: 8px; }
+  header p { color: #8f7fa3; font-size: 14px; line-height: 1.7; }
+  .grid {
+    max-width: 1180px; margin: 0 auto;
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 26px;
+  }
+  .card { display: flex; flex-direction: column; gap: 10px; }
+  .card .view {
+    width: 100%; aspect-ratio: 16 / 10; border-radius: 12px; overflow: hidden;
+    box-shadow: 0 18px 60px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.07);
+    background: #000;
+  }
+  iframe { width: 100%; height: 100%; border: 0; }
+  .card h2 { font-size: 16px; letter-spacing: .04em; }
+  .card h2 a { color: inherit; text-decoration: none; border-bottom: 1px dashed rgba(255,255,255,.25); }
+  .card p { color: #9a8aad; font-size: 13px; line-height: 1.65; }
+  footer { max-width: 1180px; margin: 30px auto 0; color: #6d5f80; font-size: 12.5px; line-height: 1.7; }
+</style>
+</head>
+<body>
+<header>
+  <h1>galgame 美术风格测试 · 四条路线</h1>
+  <p>全部为零依赖的纯 HTML / CSS / SVG，没有任何图片与字体资源。点标题可单独全屏打开某一页。</p>
+</header>
+
+<div class="grid">
+  <div class="card">
+    <div class="view"><iframe src="01-sunset-rooftop.html" loading="lazy"></iframe></div>
+    <h2><a href="01-sunset-rooftop.html" target="_blank">01 黄昏天台 —— 剪影 + 氛围（青春/恋爱向）</a></h2>
+    <p>人物不画脸，靠双马尾轮廓、逆光勾边、铁丝网前景与光尘粒子演出情绪。验证「回避脸 = 回避恐怖谷」。</p>
+  </div>
+
+  <div class="card">
+    <div class="view"><iframe src="02-rain-street.html" loading="lazy"></iframe></div>
+    <h2><a href="02-rain-street.html" target="_blank">02 雨夜街道 —— 悬疑 / 都市怪谈</a></h2>
+    <p>低饱和蓝黑 + 单点暖光 + CSS 雨幕 + 霓虹闪烁 + 故障字标题。远处灯下的人影是零成本制造的悬念。</p>
+  </div>
+
+  <div class="card">
+    <div class="view"><iframe src="03-character-sheets.html" loading="lazy"></iframe></div>
+    <h2><a href="03-character-sheets.html" target="_blank">03 立绘表情差分 —— 扁平符号化人脸（激进实验）</a></h2>
+    <p>四个表情共用同一份身体/发型组件，只换眉眼嘴。验证「组件化 = 角色绝对一致」以及符号脸的接受度。</p>
+  </div>
+
+  <div class="card">
+    <div class="view"><iframe src="04-terminal-ai.html" loading="lazy"></iframe></div>
+    <h2><a href="04-terminal-ai.html" target="_blank">04 终端与 AI —— 科幻 / 虚拟世界</a></h2>
+    <p>界面即美术：终端聊天 UI + 几何晶体「AI 少女」（会眨眼、会漂浮）+ CRT 扫描线与偶发闪烁。</p>
+  </div>
+
+  <div class="card">
+    <div class="view"><iframe src="05-chibi-scene.html" loading="lazy"></iframe></div>
+    <h2><a href="05-chibi-scene.html" target="_blank">05 Q 版角色 × 黄昏天台 —— 人物路线修正</a></h2>
+    <p>放弃写实比例，改 2 头身 Q 版立绘，直接合成进 01 号场景。大头小身天然规避恐怖谷。</p>
+  </div>
+
+  <div class="card">
+    <div class="view"><iframe src="06-chibi-cast.html" loading="lazy"></iframe></div>
+    <h2><a href="06-chibi-cast.html" target="_blank">06 Q 版角色阵容 + 六连表情</a></h2>
+    <p>同一套头身几何 × 发型/服装/瞳色组件 = 三个角色；表情矩阵只换脸部组件，验证组件化产能。</p>
+  </div>
+
+  <div class="card">
+    <div class="view"><iframe src="07-audio-demo.html" loading="lazy"></iframe></div>
+    <h2><a href="07-audio-demo.html" target="_blank">07 程序合成 BGM —— 配乐即代码</a></h2>
+    <p>三条场景曲由 Web Audio 实时合成（零音频文件），含台词打字机音效。Node 离线渲染版见 tools/render-bgm.mjs。</p>
+  </div>
+</div>
+
+<footer>
+  评审时建议自问：① 哪一页让你第一时间想点「继续」？② 03 的符号脸你会出戏吗？——这是四条路线里风险最高的赌注。
+  ② 剪影人物能否承载你对「角色魅力」的期待？③ 演出（雨/粒子/闪烁）弥补了多少美术信息量？
+</footer>
+</body>
+</html>

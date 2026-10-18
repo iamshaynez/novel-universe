@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>雾川市悬疑宇宙 · novel-universe</title>
+<style>
+  :root { color-scheme: dark; --accent: #ffb37a; --panel: rgba(18,10,34,.92); }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    background: #0b0810; color: #e6dcf0; overflow: hidden;
+    font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #stage {
+    position: relative; width: min(100vw, calc(100vh * 16 / 9)); aspect-ratio: 16 / 9;
+    overflow: hidden; background: #000; box-shadow: 0 0 80px rgba(0,0,0,.8);
+  }
+  #bg, #bg svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  #rain { position: absolute; inset: 0; pointer-events: none; display: none; }
+  #rain.on { display: block; }
+  .rainlayer {
+    position: absolute; inset: -10% 0; pointer-events: none;
+    background-image: linear-gradient(166deg, rgba(190,222,255,0) 42%, rgba(190,222,255,.6) 50%, rgba(190,222,255,0) 58%);
+    background-size: 34px 120px;
+  }
+  .rainlayer.a { animation: rfA .55s linear infinite; opacity: .8; }
+  .rainlayer.b { animation: rfB .9s linear infinite; opacity: .4; background-size: 46px 160px; background-position: 20px 0; }
+  @keyframes rfA { to { background-position: 0 120px; } }
+  @keyframes rfB { to { background-position: 20px 160px; } }
+
+  #chibi { position: absolute; left: 50%; bottom: 22%; transform: translateX(-50%); width: 30%; display: none; }
+  #chibi.on { display: block; animation: chibiIn .45s cubic-bezier(.2,1.4,.4,1); }
+  @keyframes chibiIn { from { transform: translateX(-50%) translateY(26px); opacity: 0; } }
+
+  #dialog {
+    position: absolute; left: 4%; right: 4%; bottom: 4.5%; height: 21%;
+    background: var(--panel); border: 1.5px solid rgba(255,179,122,.45); border-radius: 14px;
+    padding: 2.2% 2.6% 1.8%; display: flex; flex-direction: column; cursor: pointer;
+  }
+  #nameplate {
+    position: absolute; top: -13%; left: 3%; padding: .35em 1.1em; border-radius: 8px;
+    background: var(--accent); color: #2a1230; font-weight: 700; font-size: clamp(12px, 1.9vw, 20px);
+    display: none;
+  }
+  #text {
+    flex: 1; font-family: "Songti SC", "Noto Serif SC", serif; font-size: clamp(14px, 2.5vw, 27px);
+    line-height: 1.75; letter-spacing: .06em; color: #ffeede; overflow: hidden;
+  }
+  #nextHint { align-self: flex-end; color: var(--accent); font-size: clamp(10px, 1.4vw, 14px); opacity: .8; }
+  #nextHint::after { content: "▼"; animation: bounce 1.2s infinite; }
+  @keyframes bounce { 50% { transform: translateY(3px); } }
+
+  #choices {
+    position: absolute; left: 8%; right: 8%; bottom: 28%; display: none;
+    flex-direction: column; gap: 2.4%;
+  }
+  #choices.on { display: flex; }
+  .choice {
+    background: rgba(10,6,22,.88); border: 1.5px solid rgba(255,179,122,.5); border-radius: 10px;
+    color: #ffeede; font-family: "Songti SC","Noto Serif SC",serif; font-size: clamp(13px, 2.1vw, 23px);
+    padding: .55em 1.2em; cursor: pointer; text-align: left; letter-spacing: .05em;
+    transition: background .15s, transform .15s;
+  }
+  .choice:hover { background: rgba(70,36,60,.9); transform: translateX(8px); }
+
+  #topbar {
+    position: absolute; top: 0; left: 0; right: 0; display: flex; justify-content: space-between;
+    padding: 1% 2%; font-size: clamp(10px, 1.5vw, 15px); color: rgba(230,220,240,.75);
+    background: linear-gradient(rgba(5,3,10,.65), transparent); pointer-events: none;
+  }
+  #topbar .actions { pointer-events: auto; display: flex; gap: 10px; }
+  #topbar button {
+    background: rgba(18,10,34,.8); color: #e6dcf0; border: 1px solid rgba(255,255,255,.2);
+    border-radius: 7px; padding: 4px 12px; cursor: pointer; font-size: inherit;
+  }
+  #topbar button:hover { border-color: var(--accent); color: #ffd9ae; }
+
+  #ending {
+    position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center;
+    background: rgba(5,3,12,.86); text-align: center; gap: 4%;
+  }
+  #ending.on { display: flex; animation: fadeIn 1s; }
+  @keyframes fadeIn { from { opacity: 0; } }
+  #ending .label { color: var(--accent); letter-spacing: .5em; font-size: clamp(11px, 1.6vw, 16px); }
+  #ending h2 { font-family: "Songti SC","Noto Serif SC",serif; font-size: clamp(26px, 5vw, 54px); letter-spacing: .2em; }
+  #ending .collected { color: #9a8aad; font-size: clamp(11px, 1.6vw, 15px); line-height: 1.8; }
+  #ending button {
+    margin-top: 2%; background: var(--accent); color: #2a1230; border: 0; border-radius: 9px;
+    padding: .6em 2.2em; font-size: clamp(13px, 1.8vw, 18px); font-weight: 700; cursor: pointer;
+  }
+
+  #title {
+    position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: radial-gradient(ellipse at 50% 40%, #241536 0%, #0b0810 70%); gap: 3%;
+  }
+  #title h1 { font-family: "Songti SC","Noto Serif SC",serif; font-size: clamp(30px, 6vw, 64px); letter-spacing: .3em; }
+  #title .sub { color: #9a8aad; font-size: clamp(11px, 1.7vw, 16px); letter-spacing: .2em; }
+  #title .games { display: flex; flex-direction: column; gap: 12px; margin-top: 4%; }
+  #title .games button {
+    background: rgba(255,255,255,.05); border: 1.5px solid rgba(255,179,122,.5); border-radius: 12px;
+    color: #ffeede; padding: .8em 3em; font-size: clamp(15px, 2.2vw, 24px); cursor: pointer; letter-spacing: .15em;
+  }
+  #title .games button:hover { background: rgba(255,179,122,.15); }
+  #savesPanel {
+    position: absolute; right: 2%; top: 10%; width: 30%; max-height: 70%; overflow: auto; display: none;
+    background: var(--panel); border: 1px solid rgba(255,255,255,.15); border-radius: 12px; padding: 14px;
+  }
+  #savesPanel.on { display: block; }
+  #savesPanel h3 { font-size: 14px; color: #9a8aad; margin-bottom: 8px; }
+  #savesPanel .save { padding: 8px; border-radius: 8px; cursor: pointer; font-size: 13px; display: flex; justify-content: space-between; gap: 8px; }
+  #savesPanel .save:hover { background: rgba(255,255,255,.08); }
+  #toast {
+    position: absolute; top: 9%; left: 50%; transform: translateX(-50%);
+    background: rgba(18,10,34,.92); border: 1px solid rgba(255,179,122,.5); border-radius: 8px;
+    padding: 6px 18px; font-size: 13px; opacity: 0; transition: opacity .3s; pointer-events: none;
+  }
+  #toast.on { opacity: 1; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="bg"></div>
+  <div id="rain"><div class="rainlayer a"></div><div class="rainlayer b"></div></div>
+  <div id="chibi"></div>
+
+  <div id="topbar">
+    <span id="chapterLabel"></span>
+    <span class="actions">
+      <button id="btnSaves">存档</button>
+      <button id="btnRestart">重新开始</button>
+      <button id="btnBgm">♪ BGM</button>
+      <button id="btnTitle">标题</button>
+    </span>
+  </div>
+
+  <div id="title">
+    <div class="sub">雾川市悬疑宇宙</div>
+    <h1>雨夜来信</h1>
+    <div class="games" id="gameList"></div>
+  </div>
+
+  <div id="dialog" style="display:none">
+    <div id="nameplate"></div>
+    <div id="text"></div>
+    <div id="nextHint"></div>
+  </div>
+  <div id="choices"></div>
+
+  <div id="ending">
+    <div class="label">— 结局 —</div>
+    <h2 id="endingTitle"></h2>
+    <div class="collected" id="endingsCollected"></div>
+    <button id="btnAgain">再玩一次</button>
+  </div>
+
+  <div id="savesPanel"><h3>读取存档</h3><div id="savesList"></div></div>
+  <div id="toast"></div>
+</div>
+<script type="module" src="/app.mjs"></script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "id": "momo",
+  "name": "小桃",
+  "aliases": ["小桃", "桃"],
+  "first_appearance": "g00",
+  "voice_hz": 205,
+  "chibi": { "file": "momo", "iris": "#4a7fc1" },
+  "bio_public": "雾川二中二年级，放学后总待在旧校舍天台的水箱上。寄出匿名信的人。",
+  "bio_secret": [
+    { "fact": "十年前坠楼者是她的姐姐；她记得那晚在场每个人的脸。", "revealed_in": "g00" }
+  ],
+  "timeline_refs": ["ev-rooftop-2019", "ev-letter", "ev-button"]
+}

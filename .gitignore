@@ -1,0 +1,9 @@
+node_modules/
+data/
+dist/
+*.db
+.DS_Store
+
+# 可再生成的产物（style-tests 源文件入库，产物不入库）
+style-tests/screenshots/
+style-tests/audio-preview/

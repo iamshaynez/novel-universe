@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>测试07 · 程序合成 BGM — 配乐即代码</title>
+<style>
+  :root { color-scheme: dark; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0b0810;
+    font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    color: #e6dcf0; padding: 36px 24px 64px;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  header { max-width: 860px; margin: 0 auto 26px; text-align: center; }
+  h1 { font-size: 22px; letter-spacing: .06em; margin-bottom: 10px; }
+  header p { color: #8f7fa3; font-size: 13.5px; line-height: 1.7; }
+  .tracks { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; max-width: 860px; width: 100%; }
+  .card {
+    background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08);
+    border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 10px;
+    transition: border-color .3s;
+  }
+  .card.playing { border-color: rgba(110,243,224,.5); }
+  .thumb { height: 86px; border-radius: 10px; position: relative; overflow: hidden; }
+  .thumb.t1 { background: linear-gradient(160deg,#93407a,#e2795a 60%,#ffd9a3); }
+  .thumb.t2 { background: linear-gradient(160deg,#0b1424,#123152 70%,#1d4468); }
+  .thumb.t3 { background: linear-gradient(160deg,#04121a,#0a3a38 75%,#6ef3e0); }
+  .eq { position: absolute; right: 10px; bottom: 8px; display: flex; gap: 3px; align-items: flex-end; height: 22px; opacity: 0; }
+  .card.playing .eq { opacity: 1; }
+  .eq i { width: 4px; background: #fff; border-radius: 2px; animation: eq 0.8s ease-in-out infinite alternate; }
+  .eq i:nth-child(1){ height: 30%; } .eq i:nth-child(2){ height: 80%; animation-delay: .15s; }
+  .eq i:nth-child(3){ height: 55%; animation-delay: .3s; } .eq i:nth-child(4){ height: 90%; animation-delay: .1s; }
+  @keyframes eq { to { transform: scaleY(.35); } }
+  h2 { font-size: 15px; letter-spacing: .04em; }
+  .card p { color: #9a8aad; font-size: 12.5px; line-height: 1.6; }
+  button {
+    border: 0; border-radius: 9px; padding: 9px 0; font-size: 14px; font-weight: 600;
+    background: #2c2140; color: #e6dcf0; cursor: pointer; letter-spacing: .1em;
+  }
+  button:hover { background: #3a2c55; }
+  .card.playing button { background: #6ef3e0; color: #042220; }
+  .dialog {
+    max-width: 860px; width: 100%; margin-top: 22px;
+    background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08);
+    border-radius: 14px; padding: 18px;
+  }
+  .dialog .box {
+    margin-top: 12px; border-radius: 10px; padding: 14px 16px; min-height: 56px;
+    background: #120a22; border: 1px solid rgba(255,179,122,.45); font-size: 17px; color: #ffeede;
+    font-family: 'Songti SC','Noto Serif SC',serif; letter-spacing: 1px;
+  }
+  .vol { display: flex; align-items: center; gap: 10px; margin-top: 18px; color: #8f7fa3; font-size: 13px; }
+  footer { max-width: 860px; margin-top: 24px; color: #6d5f80; font-size: 12.5px; line-height: 1.8; text-align: center; }
+</style>
+</head>
+<body>
+<header>
+  <h1>测试 07 · 程序合成 BGM —— 配乐即代码</h1>
+  <p>三条曲子全部由 Web Audio 实时合成：没有音频文件、没有外部依赖、零版权风险。<br>
+  点卡片试听（浏览器要求交互后才能出声，所以是按钮触发）。</p>
+</header>
+
+<div class="tracks">
+  <div class="card" id="c-rooftop">
+    <div class="thumb t1"><div class="eq"><i></i><i></i><i></i><i></i></div></div>
+    <h2>01 黄昏天台</h2>
+    <p>暖色 pad（失谐锯齿 + 低通）＋ 八音盒五声音阶旋律，76 BPM。</p>
+    <button data-t="rooftop">▶ 播放</button>
+  </div>
+  <div class="card" id="c-rain">
+    <div class="thumb t2"><div class="eq"><i></i><i></i><i></i><i></i></div></div>
+    <h2>02 雨夜街道</h2>
+    <p>滤波白噪声雨声 ＋ D 小调低音持续音 ＋ 稀疏拨弦 ＋ 远处闷雷。</p>
+    <button data-t="rain">▶ 播放</button>
+  </div>
+  <div class="card" id="c-terminal">
+    <div class="thumb t3"><div class="eq"><i></i><i></i><i></i><i></i></div></div>
+    <h2>04 终端与 AI</h2>
+    <p>方波琶音（回声延迟）＋ 亚低音脉冲 ＋ 高频嘶声，100 BPM。</p>
+    <button data-t="terminal">▶ 播放</button>
+  </div>
+</div>
+
+<div class="dialog">
+  <h2>台词打字机音效（角色声线演示）</h2>
+  <div class="box" id="linebox">点下面按钮，台词会逐字打出，每个字带一次「说话音」——不同角色可用不同基频区分声线。</div>
+  <div class="vol"><button data-t="speech" style="width:160px">▶ 播放台词</button></div>
+</div>
+
+<div class="vol">总音量 <input type="range" id="vol" min="0" max="100" value="55"></div>
+
+<footer>
+  同一份「曲谱代码」也能在 Node 里离线渲染成 WAV（见 tools/render-bgm.mjs，已渲染 3 个样本到 audio-preview/），<br>
+  意味着配乐可以进构建流程、写测试、用种子确定性复现——和主仓库「内核纯函数」的哲学同构。
+</footer>
+
+<script type="module">
+const mulberry32 = a => () => {
+  a |= 0; a = a + 0x6D2B79F5 | 0;
+  let t = Math.imul(a ^ a >>> 15, 1 | a);
+  t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+  return ((t ^ t >>> 14) >>> 0) / 4294967296;
+};
+
+let ctx = null, master = null, reverb = null, current = null;
+const vol = document.getElementById('vol');
+
+function ensureCtx() {
+  if (ctx) { ctx.resume(); return; }
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  master = ctx.createGain();
+  master.gain.value = vol.value / 100 * 0.9;
+  master.connect(ctx.destination);
+  // 程序生成的混响冲激响应（噪声 × 指数衰减，零素材）
+  const len = ctx.sampleRate * 1.8;
+  const ir = ctx.createBuffer(2, len, ctx.sampleRate);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = ir.getChannelData(ch);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.4);
+  }
+  reverb = ctx.createConvolver();
+  reverb.buffer = ir;
+  const wet = ctx.createGain(); wet.gain.value = 0.4;
+  reverb.connect(wet); wet.connect(master);
+}
+vol.addEventListener('input', () => { if (master) master.gain.value = vol.value / 100 * 0.9; });
+
+function stopCurrent() {
+  if (!current) return;
+  current.stop();
+  current = null;
+  document.querySelectorAll('.card.playing').forEach(c => c.classList.remove('playing'));
+  document.querySelectorAll('button').forEach(b => { if (b.dataset.t !== 'speech') b.textContent = '▶ 播放'; });
+}
+
+// ---- 合成原语 ----
+function musicbox(f, t, dry, wet, volAmp = 0.16, dur = 1.5) {
+  [[1, volAmp], [2, volAmp * 0.35], [3, volAmp * 0.1]].forEach(([m, v]) => {
+    const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f * m;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(v, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur / m);
+    o.connect(g); g.connect(dry); if (wet) g.connect(wet);
+    o.start(t); o.stop(t + dur / m + 0.05);
+  });
+}
+function padChord(freqs, t, dur, dry, wet) {
+  freqs.forEach(f => [-7, 6].forEach(det => {
+    const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f; o.detune.value = det;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 850; lp.Q.value = 0.4;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.035, t + dur * 0.45);
+    g.gain.linearRampToValueAtTime(0, t + dur);
+    o.connect(lp); lp.connect(g); g.connect(dry); if (wet) g.connect(wet);
+    o.start(t); o.stop(t + dur + 0.05);
+  }));
+}
+function pluck(f, t, dry, wet, volAmp = 0.14) {
+  // 近似 Karplus：循环噪声缓冲 → 谐振低通 → 快速衰减
+  const N = Math.round(ctx.sampleRate / f);
+  const buf = ctx.createBuffer(1, N, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  const r = mulberry32((f * 1000) | 0);
+  for (let i = 0; i < N; i++) d[i] = r() * 2 - 1;
+  const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+  const bp = ctx.createBiquadFilter(); bp.type = 'lowpass'; bp.frequency.value = f * 5; bp.Q.value = 6;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(volAmp, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 1.8);
+  src.connect(bp); bp.connect(g); g.connect(dry); if (wet) g.connect(wet);
+  src.start(t); src.stop(t + 2);
+}
+function noiseSource(dur) {
+  const len = ctx.sampleRate * dur;
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+  return src;
+}
+
+// ---- 曲目 ----
+const Tracks = {
+  rooftop: {
+    seed: 7, bpm: 76,
+    chords: [[220, 277.18, 329.63], [185, 220, 277.18], [146.83, 185, 220], [164.81, 207.65, 246.94]],
+    scale: [440, 493.88, 554.37, 659.25, 739.99, 880],
+    start(dest, wet) {
+      const beat = 60 / this.bpm, barDur = beat * 4;
+      const rng = mulberry32(this.seed);
+      let bar = 0, next = ctx.currentTime + 0.08;
+      const timer = setInterval(() => {
+        while (next < ctx.currentTime + 1.2) {
+          padChord(this.chords[bar % 4], next, barDur * 1.02, dest, wet);
+          for (let i = 0; i < 8; i++) {
+            if (rng() < 0.6) {
+              const f = this.scale[(rng() * this.scale.length) | 0];
+              musicbox(f, next + i * beat / 2 + (rng() < 0.2 ? beat / 4 : 0), dest, wet);
+            }
+          }
+          next += barDur; bar++;
+        }
+      }, 250);
+      return { stop: () => { clearInterval(timer); } };
+    }
+  },
+  rain: {
+    seed: 21,
+    notes: [293.66, 329.63, 349.23, 440, 523.25],
+    start(dest, wet) {
+      const nodes = [];
+      const mk = (filterType, freq, gainV, Q = 0.7) => {
+        const src = noiseSource(2);
+        const f = ctx.createBiquadFilter(); f.type = filterType; f.frequency.value = freq; f.Q.value = Q;
+        const g = ctx.createGain(); g.gain.value = gainV;
+        src.connect(f); f.connect(g); g.connect(dest); src.start();
+        nodes.push(src); return g;
+      };
+      const hiss = mk('bandpass', 2400, 0.045, 0.35);   // 雨的主体
+      mk('lowpass', 320, 0.05);                          // 雨的底噪
+      // D 小调持续音
+      [73.42, 110].forEach(f => {
+        const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f;
+        const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 260;
+        const g = ctx.createGain(); g.gain.value = 0.05;
+        o.connect(lp); lp.connect(g); g.connect(dest); o.start();
+        nodes.push(o);
+      });
+      const rng = mulberry32(this.seed);
+      let next = ctx.currentTime + 0.5, thunderAt = ctx.currentTime + 8 + rng() * 6;
+      const thunder = (t) => {
+        const src = noiseSource(3);
+        const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 170;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.32, t + 0.08);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 3.2);
+        src.connect(lp); lp.connect(g); g.connect(dest); g.connect(wet);
+        src.start(t); src.stop(t + 3.4); nodes.push(src);
+      };
+      const timer = setInterval(() => {
+        const now = ctx.currentTime;
+        while (next < now + 1.5) {
+          if (rng() < 0.42) pluck(this.notes[(rng() * this.notes.length) | 0], next, dest, wet, 0.1);
+          next += 1.4 + rng() * 1.8;
+        }
+        if (now > thunderAt) { thunder(now + 0.05); thunderAt = now + 12 + rng() * 10; }
+      }, 250);
+      return { stop: () => { clearInterval(timer); nodes.forEach(n => { try { n.stop(); } catch (e) {} }); } };
+    }
+  },
+  terminal: {
+    seed: 42, bpm: 100,
+    arp: [164.81, 196, 246.94, 329.63, 293.66, 246.94, 196, 246.94],
+    start(dest, wet) {
+      const nodes = [];
+      const delay = ctx.createDelay(1); delay.delayTime.value = 0.225;
+      const fb = ctx.createGain(); fb.gain.value = 0.38;
+      delay.connect(fb); fb.connect(delay); delay.connect(dest);
+      const step = 60 / this.bpm / 4;
+      const rng = mulberry32(this.seed);
+      let n = 0, next = ctx.currentTime + 0.08;
+      const timer = setInterval(() => {
+        while (next < ctx.currentTime + 1.2) {
+          const f = this.arp[n % this.arp.length] * (rng() < 0.12 ? 2 : 1);
+          const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = f;
+          const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1400;
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(0.05, next);
+          g.gain.exponentialRampToValueAtTime(0.001, next + 0.14);
+          o.connect(lp); lp.connect(g); g.connect(dest); g.connect(delay);
+          o.start(next); o.stop(next + 0.2); nodes.push(o);
+          if (n % 16 === 0) { // 每小节的低音脉冲
+            const b = ctx.createOscillator(); b.type = 'sine';
+            b.frequency.setValueAtTime(82.41, next);
+            b.frequency.exponentialRampToValueAtTime(41.2, next + 0.4);
+            const bg = ctx.createGain();
+            bg.gain.setValueAtTime(0.16, next);
+            bg.gain.exponentialRampToValueAtTime(0.001, next + 0.5);
+            b.connect(bg); bg.connect(dest); b.start(next); b.stop(next + 0.55); nodes.push(b);
+          }
+          next += step; n++;
+        }
+      }, 250);
+      return { stop: () => { clearInterval(timer); fb.gain.value = 0; nodes.forEach(o => { try { o.stop(); } catch (e) {} }); } };
+    }
+  }
+};
+
+document.querySelectorAll('button[data-t]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    ensureCtx();
+    const name = btn.dataset.t;
+    if (name === 'speech') { playSpeech(); return; }
+    if (current && current.name === name) { stopCurrent(); return; }
+    stopCurrent();
+    current = { name, ...Tracks[name].start(master, reverb) };
+    document.getElementById('c-' + name)?.classList.add('playing');
+    btn.textContent = '■ 停止';
+  });
+});
+
+function playSpeech() {
+  const box = document.getElementById('linebox');
+  const line = '「今天放学……去天台等我，有话想对你说。」';
+  const base = 205; // 该角色的基频，换角色换数值
+  box.textContent = '';
+  let i = 0;
+  ensureCtx();
+  const t0 = ctx.currentTime + 0.05;
+  const timer = setInterval(() => {
+    if (i >= line.length) { clearInterval(timer); return; }
+    box.textContent += line[i];
+    if (line[i] !== ' ' && i % 2 === 0) {
+      const t = ctx.currentTime;
+      const o = ctx.createOscillator(); o.type = 'square';
+      o.frequency.value = base * (0.92 + Math.random() * 0.16);
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1300;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.05, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.055);
+      o.connect(lp); lp.connect(g); g.connect(master);
+      o.start(t); o.stop(t + 0.07);
+    }
+    i++;
+  }, 72);
+}
+</script>
+</body>
+</html>

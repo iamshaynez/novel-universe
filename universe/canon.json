@@ -1,0 +1,7 @@
+{
+  "name": "雾川市悬疑宇宙",
+  "version": "0.1.0",
+  "epoch": "g00",
+  "released_games": ["g00"],
+  "notes": "版本规则：新增条目/字段 = minor；改含义/删条目 = major。games 通过 manifest.canon 声明兼容区间。"
+}

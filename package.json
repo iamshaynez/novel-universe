@@ -1,0 +1,17 @@
+{
+  "name": "novel-universe",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "test:e2e": "node --test test/e2e.test.mjs",
+    "verify": "node tools/verify.mjs",
+    "migrate": "node server/migrate.mjs",
+    "migrate:status": "node server/migrate.mjs status",
+    "start": "node server/index.mjs",
+    "demo": "node server/index.mjs",
+    "new-game": "node tools/new-game.mjs"
+  }
+}

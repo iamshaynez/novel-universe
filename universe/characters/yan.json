@@ -1,0 +1,13 @@
+{
+  "id": "yan",
+  "name": "沈砚",
+  "aliases": ["沈砚"],
+  "first_appearance": "g00",
+  "voice_hz": 148,
+  "chibi": { "file": "yan", "iris": "#8a5fc9" },
+  "bio_public": "黑风衣的自由撰稿人，自称也在等同一个寄信人。目光总落在别人身后。",
+  "bio_secret": [
+    { "fact": "十年前她就在天台现场，是「把人逼上天台」的人之一。", "revealed_in": "g00" }
+  ],
+  "timeline_refs": ["ev-rooftop-2019", "ev-teahouse-regulars"]
+}

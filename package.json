@@ -3,7 +3,9 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "engines": { "node": ">=24" },
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "test": "node --test test/*.test.mjs",
     "test:e2e": "node --test test/e2e.test.mjs",
@@ -12,6 +14,7 @@
     "migrate:status": "node server/migrate.mjs status",
     "start": "node server/index.mjs",
     "demo": "node server/index.mjs",
-    "new-game": "node tools/new-game.mjs"
+    "new-game": "node tools/new-game.mjs",
+    "build:wiki": "node tools/build-wiki.mjs"
   }
 }

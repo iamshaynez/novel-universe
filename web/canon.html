@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>锦江悬疑宇宙 · 地点设定集</title>
+<style>
+  :root{--bg:#0b0810;--ink:#efe8f5;--dim:#9a8aad;--paper:#f2ecdc;--accent:#ffb37a;--cold:#7de3ff;--blood:#e0523f}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Songti SC","Noto Serif SC",serif;line-height:1.75}
+  .wrap{max-width:980px;margin:0 auto;padding:28px 20px 60px}
+  header h1{margin:0;font-size:26px;letter-spacing:6px}
+  header .sub{color:var(--dim);font-size:13px;margin:6px 0 0}
+  .phases{display:flex;gap:6px;flex-wrap:wrap;margin:20px 0 26px}
+  .phases span{flex:1;min-width:120px;text-align:center;font-size:12px;padding:7px 4px;border:1px solid rgba(239,232,245,.16);border-radius:6px;color:var(--dim)}
+  .phases b{color:var(--ink);font-weight:400}
+  .loc{border:1px solid rgba(239,232,245,.14);border-radius:8px;margin-bottom:28px;background:rgba(255,255,255,.028);overflow:hidden}
+  .stage{position:relative;height:150px;background:linear-gradient(155deg,var(--p0) 0%,var(--p1) 55%,var(--p2) 135%)}
+  .bigchar{position:absolute;left:12px;bottom:-16px;font-size:92px;line-height:1;font-weight:900;color:var(--p2);opacity:.9;text-shadow:0 2px 18px rgba(0,0,0,.45)}
+  .seal{position:absolute;top:10px;right:10px;writing-mode:vertical-rl;background:var(--blood);color:var(--paper);font-size:13px;letter-spacing:3px;padding:8px 4px;border-radius:2px;box-shadow:0 1px 6px rgba(0,0,0,.5)}
+  .rain{position:absolute;inset:0;background-image:repeating-linear-gradient(75deg,rgba(255,255,255,.07) 0 1px,transparent 1px 13px)}
+  .rain::after{content:"雨";position:absolute;top:8px;left:10px;font-size:12px;color:rgba(255,255,255,.55);letter-spacing:2px}
+  .badge{position:absolute;top:10px;left:10px;background:var(--accent);color:var(--bg);font-size:12px;padding:2px 10px;border-radius:10px;letter-spacing:2px}
+  .badge.private{background:var(--dim);top:44px}
+  .char{border:1px solid rgba(239,232,245,.14);border-left:4px solid var(--c);border-radius:8px;margin-bottom:22px;padding:14px 16px;background:rgba(255,255,255,.028)}
+  .char h3{margin:0 0 2px;font-size:18px;letter-spacing:1px}
+  .char .aka{color:var(--dim);font-size:13px}
+  .char .role{font-size:13px;color:var(--c);margin:6px 0 2px}
+  .char .anchors{margin:8px 0}
+  .char .anchors span{display:inline-block;border:1px solid rgba(239,232,245,.24);color:var(--ink);font-size:12px;padding:1px 9px;border-radius:999px;margin:0 4px 6px 0}
+  .char dl{display:grid;grid-template-columns:88px 1fr;gap:7px 10px;margin:8px 0}
+  .char .secret{color:var(--blood);font-size:13px}
+  .char .stages{color:var(--dim);font-size:13px}
+  .char .stages b{color:var(--ink);font-weight:400}
+  h2.sec{font-size:20px;letter-spacing:4px;border-bottom:1px solid rgba(239,232,245,.14);padding-bottom:8px;margin:38px 0 18px}
+  .body h2{margin:14px 16px 2px;font-size:20px;letter-spacing:1px}
+  .meta{color:var(--dim);font-size:13px;margin:0 16px}
+  .chips{margin:8px 16px 0}
+  .chips span{display:inline-block;border:1px solid rgba(239,232,245,.24);color:var(--dim);font-size:12px;padding:1px 9px;border-radius:999px;margin:0 4px 6px 0}
+  dl{display:grid;grid-template-columns:88px 1fr;gap:7px 10px;margin:10px 16px}
+  dt{color:var(--accent);font-size:13px;white-space:nowrap}
+  dd{margin:0;font-size:14px;color:rgba(239,232,245,.92)}
+  .hook{margin:6px 16px 18px;padding:9px 14px;border-left:3px solid var(--accent);background:rgba(255,179,122,.07);border-radius:0 6px 6px 0;font-size:14px}
+  footer{color:var(--dim);font-size:12px;margin-top:34px;border-top:1px solid rgba(239,232,245,.12);padding-top:14px}
+  @media print{.loc{break-inside:avoid}}</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>锦江悬疑宇宙 · 地点</h1>
+    <p class="sub">canon 0.6.0 · 主窗 1997–2023 · 15 个锚点地点（1 个私有）· 6 位宇宙级隐藏人物 · 图案为文字舞台演出词汇（ADR-004）</p>
+  </header>
+  <nav class="phases"><span>前传预留（≤1996）<br><b>6 锚点</b></span><span>转型阵痛（1997–2000）<br><b>19 锚点</b></span><span>入世年代（2001–2005）<br><b>11 锚点</b></span><span>巨变之年（2006–2010）<br><b>8 锚点</b></span><span>新一线时代（2011–2019）<br><b>9 锚点</b></span><span>疫情与重启（2020–2023）<br><b>3 锚点</b></span></nav>
+  
+  <section class="loc" id="paotongshu-primary">
+    <div class="stage" style="--p0:#0d0b12;--p1:#5a4a7a;--p2:#c9b8e8">
+      <span class="badge">情感核心</span>
+      
+      <span class="bigchar">桐</span>
+      <span class="seal">泡桐树小学</span>
+      
+    </div>
+    <div class="body">
+      <h2>泡桐树小学（本部）</h2>
+      <p class="meta">青羊区·泡桐树街（支矶石街侧，少城腹地） · 30.659, 104.052</p>
+      <div class="chips"><span>1961-06-03– · 正式建校，前身是省委子弟校；成都公办小学「五朵金花」里最年轻的一朵</span><span>1997–2023 · 少城本部贯穿整个宇宙窗口；九十年末的校门口，搅搅糖与干脆面按角卖</span></div>
+      <dl>
+        <div><dt>门面</dt><dd>校门开在少城的泡桐树街上，一墙之隔就是宽窄巷子的青砖。街面不宽，树影斑驳，放学钟点，校门口被家长和自行车围成一个漩涡。</dd></div>
+        <div><dt>走进去</dt><dd>不大的校园：一栋主教学楼，楼道里贴着评比栏和眼保健操挂图；操场在九十年代还是水泥地，跳皮筋和「斗鸡」各自划领地；绿树小景区是课间的秘密据点。</dd></div>
+        <div><dt>标志物件</dt><dd>校门与传达室 · 水泥操场（后来铺了塑胶） · 楼道的评比栏 · 红领巾与值日袖套 · 校门口的小卖部 · 眼保健操挂图</dd></div>
+        <div><dt>声音</dt><dd>上课铃与下课铃是两个世界 · 眼保健操音乐 · 广播操哨声 · 放学时校门口的呼唤声浪</dd></div>
+        <div><dt>气味</dt><dd>粉笔灰和扫地后洒的水汽 · 小卖部的搅搅糖与干脆面</dd></div>
+        <div><dt>光线</dt><dd>上午的教室亮得晃眼，下午树影慢慢爬上黑板。</dd></div>
+        <div><dt>人群</dt><dd>系红领巾的娃儿、举伞的家长、小卖部嬢嬢、门口维持秩序的老师。</dd></div>
+        <div><dt>年代道具</dt><dd><div>1997–2000：按角卖的搅搅糖和无花果丝／值日生擦黑板够不着顶上／磁卡电话传呼家长</div><div>2001–2010：小黄帽路队／校门口的磁带与小浣熊卡</div></dd></div>
+      </dl>
+      <blockquote class="hook">全校的时钟以上课铃为准，但课间十分钟属于操场上的另一个宇宙。</blockquote>
+    </div>
+  </section>
+
+  <section class="loc" id="shishi-middle">
+    <div class="stage" style="--p0:#120a08;--p1:#7a3a2a;--p2:#ffd9a3">
+      <span class="badge">情感核心</span>
+      
+      <span class="bigchar">文</span>
+      <span class="seal">文翁石室</span>
+      
+    </div>
+    <div class="body">
+      <h2>石室中学（文庙校区）</h2>
+      <p class="meta">青羊区·文庙前街93号 · 30.649, 104.057</p>
+      <div class="chips"><span>前141– · 蜀郡太守文翁创石室精舍，中国第一所地方官学；两千余年未中断、未迁址</span><span>1997–2023 · 文庙校区为主体，与七中、树德并称「四七九」；2011年北湖校区开办</span></div>
+      <dl>
+        <div><dt>门面</dt><dd>文庙前街93号，红墙绿瓦压着一条老街。东侧的石室巷是学校与文庙之间的高墙甬道：青砖阴冷，墙头蔓草，走过去像翻一页旧书。</dd></div>
+        <div><dt>走进去</dt><dd>六十七亩的老校园：红墙、壁画、老教学楼和成片的校树银杏。秋天银杏把红墙衬成金色，是成都最著名的校园秋色；晚自习的灯从老楼的窗格里透出来，下课时自行车铃串成一片。</dd></div>
+        <div><dt>标志物件</dt><dd>红墙与绿瓦 · 石室巷的青砖高墙 · 校树银杏 · 「爱国利民 因时应事 整齐严肃 德达材实」校训 · 晚自习的灯窗 · 老校门</dd></div>
+        <div><dt>声音</dt><dd>铃声在红墙间的回声 · 银杏叶落的沙沙 · 晚自习翻卷子 · 篮球撞地</dd></div>
+        <div><dt>气味</dt><dd>秋天银杏叶的微苦 · 老木头的味道 · 雨后青砖的潮气</dd></div>
+        <div><dt>光线</dt><dd>老树把整座校园的光过滤一遍；黄昏时红墙最红。</dd></div>
+        <div><dt>人群</dt><dd>穿校服的少年、抱讲义的老师、门口等娃儿的家长。</dd></div>
+        <div><dt>年代道具</dt><dd><div>1997–2005：晚自习下课推车出校门，车铃串成一片／校门口的小书摊</div><div>2011–：北湖校区开办，文庙依旧是老巢</div></dd></div>
+      </dl>
+      <blockquote class="hook">在全世界连续办学最久的教室里做三角函数——两千年前文翁的学生和你听同一种下课铃。</blockquote>
+    </div>
+  </section>
+
+  <section class="loc" id="chuan-da">
+    <div class="stage" style="--p0:#0c1008;--p1:#3a5a2a;--p2:#f2ecdc">
+      
+      
+      <span class="bigchar">学</span>
+      <span class="seal">川大</span>
+      
+    </div>
+    <div class="body">
+      <h2>四川大学·望江校区</h2>
+      <p class="meta">武侯区·一环路南一段24号 · 30.637, 104.092</p>
+      
+      <dl>
+        <div><dt>门面</dt><dd>一环路南一段24号，北大门朝着锦江的方向；银杏是这所学校的钟摆，深秋把主干道染成金色。</dd></div>
+        <div><dt>走进去</dt><dd>老校区的书卷气与市声互相漫过围墙：林荫主干道、老图书馆的深绿窗格、墙外科华北路的餐馆与打印店。扩招年之后，宿舍爆满，食堂排长队。</dd></div>
+        <div><dt>标志物件</dt><dd>北大门 · 银杏道 · 老图书馆 · 林荫主干道 · 自行车流</dd></div>
+        <div><dt>声音</dt><dd>上下课铃与校园广播 · 自行车流过减速带 · 墙外餐馆的吆喝</dd></div>
+        <div><dt>气味</dt><dd>秋天银杏落叶的味道 · 墙外飘进来的火锅味</dd></div>
+        <div><dt>光线</dt><dd>林荫道把光筛成斑点；老楼的窗玻璃是深绿色的。</dd></div>
+        <div><dt>人群</dt><dd>学生、教授、推车卖水果的、混进教室蹭课的。</dd></div>
+        <div><dt>年代道具</dt><dd><div>1997–2005：扩招后宿舍加铺／随身听与打口磁带</div><div>2006–：网吧与笔记本交替／校园卡时代</div></dd></div>
+      </dl>
+      <blockquote class="hook">围墙挡不住科华北路的香味——川大的晚自习和火锅摊共用同一个夜晚。</blockquote>
+    </div>
+  </section>
+
+  <section class="loc" id="chunxi-road">
+    <div class="stage" style="--p0:#120b06;--p1:#8a6a2f;--p2:#ffd9a3">
+      
+      
+      <span class="bigchar">熙</span>
+      <span class="seal">春熙路</span>
+      
+    </div>
+    <div class="body">
+      <h2>春熙路</h2>
+      <p class="meta">锦江区·春熙路（中山广场一带） · 30.6598, 104.081</p>
+      <div class="chips"><span>1997 · 外资百货进驻，橱窗里的世界换了一茬又一茬</span><span>2002– · 封路改造为步行街</span><span>2014–2015 · IFS 与远洋太古里相继开业，商圈完成新一轮换血</span></div>
+      <dl>
+        <div><dt>门面</dt><dd>1924年杨森修的路，因为一家拒不拆迁的药房，东西路和南北路在中山广场错开一个身位。广场上坐着1945年刘开渠塑的孙中山像：红砂石基座，长袍马褂，通高四米一。</dd></div>
+        <div><dt>走进去</dt><dd>霓虹招牌一层摞一层，橱窗从土产百货换到进口零食；龙抄手总店在南段八号，门前常年排队，三大炮的糯米团摔得砰砰响。</dd></div>
+        <div><dt>标志物件</dt><dd>中山广场的坐像 · 摞起来的霓虹招牌 · 百货橱窗 · 龙抄手总店 · 街心花园长椅</dd></div>
+        <div><dt>声音</dt><dd>人潮的嗡嗡 · 商店门口的音响战 · 三大炮的砰砰声</dd></div>
+        <div><dt>气味</dt><dd>油辣子与小吃的香气 · 新衣服和包装盒的味道</dd></div>
+        <div><dt>光线</dt><dd>白天被楼影切成条纹，晚上整条街泡在霓虹里。</dd></div>
+        <div><dt>人群</dt><dd>逛街的年轻人、外地客、票串串、橱窗玻璃前照镜子的。</dd></div>
+        <div><dt>年代道具</dt><dd><div>1997–2001：公交车还从街心穿过／外资百货的新橱窗</div><div>2002–2014：步行街的石板与人潮／老牌百货的全盛期</div><div>2015–：IFS 的爬墙熊猫／太古里的青瓦坡顶与水面</div></dd></div>
+      </dl>
+      <blockquote class="hook">铜像正对着错开的路口——当年药房老板的固执，成了百年后全城约会的坐标原点。</blockquote>
+    </div>
+  </section>
+
+  <section class="loc" id="factory-yard">
+    <div class="stage" style="--p0:#141014;--p1:#5a4a3a;--p2:#ffd9a3">
+      
+      
+      <span class="bigchar">院</span>
+      <span class="seal">厂家属院</span>
+      
+    </div>
+    <div class="body">
+      <h2>东郊厂家属院</h2>
+      <p class="meta">泛东郊（各厂家属院，具体院落由作品私有命名） · 30.68, 104.13</p>
+      <div class="chips"><span>1997–2000年代 · 下岗与再就业年代的舞台：楼道里的谈资、门口的招工广告</span></div>
+      <dl>
+        <div><dt>门面</dt><dd>没有招牌——红砖筒子楼围着院坝，自行车棚和公共水龙头就是它的门面；传达室大爷认识每一张脸。（泛东郊厂家属院的通用意象，具体院落由作品私有命名。）</dd></div>
+        <div><dt>走进去</dt><dd>楼道昏暗，每层一条长廊，炉子在走廊里，饭菜香互相串门；楼下石桌象棋常年开局，晾衣绳从这栋牵到那栋，黑板报更新着厂里的通知。</dd></div>
+        <div><dt>标志物件</dt><dd>红砖筒子楼 · 公共水龙头与水池 · 石桌象棋 · 自行车棚 · 楼道里的蜂窝煤炉 · 黑板报</dd></div>
+        <div><dt>声音</dt><dd>收音机里的川剧与评书 · 水龙头的哗哗 · 麻将声 · 哪家娃儿的哭</dd></div>
+        <div><dt>气味</dt><dd>走廊里的回锅肉与煤烟 · 潮湿楼道的石灰味</dd></div>
+        <div><dt>光线</dt><dd>楼道白天也要开灯；院坝的光属于晾晒的被褥。</dd></div>
+        <div><dt>人群</dt><dd>双职工家庭、下岗后的叔伯、放了学没人管的娃。</dd></div>
+        <div><dt>年代道具</dt><dd><div>1997–2005：电线杆上的招工广告／麻将局多起来／再就业培训的通知</div><div>2006–：搬走的搬走，老去的老去，院子安静了</div></dd></div>
+      </dl>
+      <blockquote class="hook">全院共用一个水龙头——所以全院的秘密，都要过一遍水房的耳朵。</blockquote>
+    </div>
+  </section>
+
+  <section class="loc" id="funanhe-bank">
+    <div class="stage" style="--p0:#0a1420;--p1:#1e4a6b;--p2:#7de3ff">
+      
+      <div class="rain"></div>
+      <span class="bigchar">河</span>
+      <span class="seal">锦江</span>
+      
+    </div>
+    <div class="body">
+      <h2>锦江·府南河滨江</h2>
+      <p class="meta">青羊区/锦江区·沿锦江带状（滨江东路一带） · 30.647, 104.084</p>
+      <div class="chips"><span>≤1996 · 棚户、吊脚楼与发黑的河水，整治前的旧河</span><span>1997– · 滨河路贯通，散步、钓鱼与夜跑的圣地</span></div>
+      <dl>
+        <div><dt>门面</dt><dd>没有门面——滨河路是城市给自己围的一条玉带：水泥栏杆、垂柳与步道，河风总是先于所有人到达。</dd></div>
+        <div><dt>走进去</dt><dd>沿河走，一边是水一边是城。钓鱼的人隔五十米一个，像河的标点；合江亭下两江汇流，水色分明。傍晚的河面是碎金，雾天的对岸只剩轮廓。</dd></div>
+        <div><dt>标志物件</dt><dd>水泥栏杆 · 垂柳 · 步道与长椅 · 钓鱼竿 · 合江亭 · 夜景灯带（后来）</dd></div>
+        <div><dt>声音</dt><dd>河水的汤汤 · 柳树里的风响 · 傍晚的广场舞音乐（后来）</dd></div>
+        <div><dt>气味</dt><dd>水汽与青苔 · 雨后的泥味</dd></div>
+        <div><dt>光线</dt><dd>傍晚河面碎金；雾天只剩对岸的轮廓。</dd></div>
+        <div><dt>人群</dt><dd>散步的、跑步的、钓鱼的、谈恋爱的、一个人走完整条河的。</dd></div>
+        <div><dt>年代道具</dt><dd><div>≤1996：对岸还是棚户，河水发黑</div><div>1997–：新滨河路：散步圣地与夜景</div><div>2010–：灯带与夜跑者／江边茶座</div></dd></div>
+      </dl>
+      <blockquote class="hook">河在1997年换了一次脸——老成都说「臭水沟」，年轻人只认识「锦江」。</blockquote>
+    </div>
+  </section>
+
+  <section class="loc" id="hehuachi">
+    <div class="stage" style="--p0:#140c0a;--p1:#7a4a2a;--p2:#ffb37a">
+      
+      
+      <span class="bigchar">市</span>
+      <span class="seal">荷花池</span>
+      
+    </div>
+    <div class="body">
+      <h2>荷花池批发市场</h2>
+      <p class="meta">金牛区·荷花池街道肖家村一带（北站东一路、肖家村三巷） · 30.69, 104.076</p>
+      <div class="chips"><span>1986– · 区属荷花池市场挂牌，片区从马路市场长成三十余座市场的小商品海洋</span><span>2012– · 老荷花池市场启动关闭改造，商圈换血，老板们搬进新楼或转行</span></div>
+      <dl>
+        <div><dt>门面</dt><dd>没有门面——它是一片市场群的海：三十余座市场沿肖家村铺开，招牌一个摞一个，三轮车在人流里见缝插针。</dd></div>
+        <div><dt>走进去</dt><dd>档口一间挨一间，服装、小商品各占一栋楼；纸箱堆到过道，讨价还价的四川话在楼道里回声。凌晨四点是进货的人潮，现金交易，腰包鼓鼓。</dd></div>
+        <div><dt>标志物件</dt><dd>摞起来的招牌 · 挂满样衣的档口 · 三轮车与板车 · 打包的纸箱与胶带 · 账本与计算器</dd></div>
+        <div><dt>声音</dt><dd>「批发好多？」 · 胶带撕拉的刺啦 · 三轮车铃与搬运工的号子</dd></div>
+        <div><dt>气味</dt><dd>新布料与塑料的味道 · 盒饭味 · 楼道里的烟味</dd></div>
+        <div><dt>光线</dt><dd>楼道灯昏白，档口的灯把衣料照得过分鲜艳。</dd></div>
+        <div><dt>人群</dt><dd>档口老板、拿货的县份客商、搬运工、管市场的、放学来搭手的女娃。</dd></div>
+        <div><dt>年代道具</dt><dd><div>1997–2005：凌晨四点的进货人潮／现金与腰包／算盘声此起彼伏</div><div>2012–：老市场陆续关闭改造／老板搬新楼或转行</div></dd></div>
+      </dl>
+      <blockquote class="hook">全四川的小商品价格，有一半是在这些昏白灯下讲定的。</blockquote>
+    </div>
+  </section>
+
+  <section class="loc" id="heming-teahouse">
+    <div class="stage" style="--p0:#101208;--p1:#4a5a2a;--p2:#f2ecdc">
+      
+      
+      <span class="bigchar">茶</span>
+      <span class="seal">鹤鸣</span>
+      
+    </div>
+    <div class="body">
+      <h2>鹤鸣茶社（人民公园）</h2>
+      <p class="meta">青羊区·祠堂街人民公园内 · 30.6557, 104.0555</p>
+      
+      <dl>
+        <div><dt>门面</dt><dd>人民公园里的百年茶铺，竹椅从棚下一直摆到水边，假山与廊檐是它的相框。</dd></div>
+        <div><dt>走进去</dt><dd>竹椅竹桌的方阵，盖碗三件套是标准装备；老虎灶上长嘴铜壶不离火，茶倌掺水划出一道抛物线；掏耳朵师傅的响夹「叮叮」穿过整个茶棚。</dd></div>
+        <div><dt>标志物件</dt><dd>竹椅竹桌 · 盖碗三件套 · 长嘴铜壶与老虎灶 · 掏耳朵的响夹与长镊 · 假山与人工湖 · 棚沿的鸟笼</dd></div>
+        <div><dt>声音</dt><dd>铜壶掺水声 · 响夹的叮叮 · 麻将与摆龙门阵的嗡嗡 · 笼里的鸟叫</dd></div>
+        <div><dt>气味</dt><dd>茉莉花茶香 · 老虎灶的烟火气 · 湖水的潮味</dd></div>
+        <div><dt>光线</dt><dd>白天树影筛下来，一桌一格；午后是最亮的懒。</dd></div>
+        <div><dt>人群</dt><dd>退休的老茶客、谈事的、遛鸟的、写生的学生、举相机的游客。</dd></div>
+        <div><dt>年代道具</dt><dd><div>1997–2010：一碗茶几块钱坐一下午／鸟笼挂满棚沿</div><div>2011–：茶价翻了，竹椅还是竹椅</div></dd></div>
+      </dl>
+      <blockquote class="hook">情报在茶碗里流动——少城的闲话，半数要过一遍假山旁这张桌子。</blockquote>
+    </div>
+  </section>
+
+  <section class="loc" id="hongguang-works">
+    <div class="stage" style="--p0:#160d08;--p1:#7a3d1a;--p2:#ffb37a">
+      
+      
+      <span class="bigchar">厂</span>
+      <span class="seal">红光厂</span>
+      
+    </div>
+    <div class="body">
+      <h2>红光电子管厂（773厂区）</h2>
+      <p class="meta">成华区·建设路一带（沙河东侧，东郊工业区腹地） · 30.6757, 104.147</p>
+      <div class="chips"><span>1997–2000年代 · 军转民与市场化夹击下日渐萧条</span><span>2000年代– · 「东调」搬迁后厂区静下来，旧址后来成为「东郊记忆」</span></div>
+      <dl>
+        <div><dt>门面</dt><dd>建设路一带的苏式红砖厂房，方窗对称，管道横在天上；厂门有门柱与传达室，进门先见标语墙——这里造出过新中国第一支黑白显像管。</dd></div>
+        <div><dt>走进去</dt><dd>车间里天车在头顶滑轨上滑行，显像管生产线曾亮到夜半；广播站的喇叭挂在杆子上，统管全厂的时刻表。东调搬空之后，只剩风穿过车间的声音。</dd></div>
+        <div><dt>标志物件</dt><dd>苏式红砖厂房 · 天车与滑轨 · 显像管生产线 · 广播喇叭 · 标语墙 · 厂徽与工作证</dd></div>
+        <div><dt>声音</dt><dd>下班铃与广播体操 · 机器的节拍（当年） · 搬空后的风声与野鸟（后来）</dd></div>
+        <div><dt>气味</dt><dd>机油与松香 · 红砖晒热的尘味 · 搬空后的铁锈味</dd></div>
+        <div><dt>光线</dt><dd>车间高窗的光是斜柱状的；傍晚标语墙的影子最重。</dd></div>
+        <div><dt>人群</dt><dd>三班倒的工人、厂医、广播员、门卫、子弟学校的娃。</dd></div>
+        <div><dt>年代道具</dt><dd><div>1997–2000年代：萧条中的生产：半开的车间／下班铃渐稀</div><div>2000年代–：东调搬空，红砖与管道变成「东郊记忆」的展品</div></dd></div>
+      </dl>
+      <blockquote class="hook">造出新中国第一支显像管的流水线，最后一批产品下线时，没人放鞭炮。</blockquote>
+    </div>
+  </section>
+
+  <section class="loc" id="jiuyanqiao">
+    <div class="stage" style="--p0:#0a1016;--p1:#2a4a5a;--p2:#7de3ff">
+      
+      <div class="rain"></div>
+      <span class="bigchar">桥</span>
+      <span class="seal">九眼桥</span>
+      
+    </div>
+    <div class="body">
+      <h2>九眼桥</h2>
+      <p class="meta">一环路东南段跨锦江处（望江楼侧） · 30.6429, 104.089</p>
+      <div class="chips"><span>1997–2000年代 · 早晨的桥头「人市」：棒棒与招工小老板的江湖</span><span>2000年代– · 酒吧街沿江兴起，夜色经济接管</span></div>
+      <dl>
+        <div><dt>门面</dt><dd>锦江上的九孔老桥，望江楼在下游守着江湾。桥这头连着川大，那头在九十年代是早晨的劳务市场。</dd></div>
+        <div><dt>走进去</dt><dd>白天是江景与车流，夜里两岸的灯亮成河上的一条街。人市的年代，清晨桥头蹲满找活路的人，小黑板写着工种与价钱。</dd></div>
+        <div><dt>标志物件</dt><dd>九孔桥身 · 望江楼的影子 · 江边石栏与柳树 · 劳务小黑板（当年） · 酒吧灯箱（后来）</dd></div>
+        <div><dt>声音</dt><dd>江水汤汤 · 清晨人市的讨价还价（当年） · 夜里的驻唱与碰杯（后来）</dd></div>
+        <div><dt>气味</dt><dd>江水的潮气 · 桥头早点摊的油气</dd></div>
+        <div><dt>光线</dt><dd>晨雾里的桥是水墨；夜里灯影落在江面，揉成碎金。</dd></div>
+        <div><dt>人群</dt><dd>找活路的棒棒与包工头（当年）、川大的学生、夜归的人（后来）。</dd></div>
+        <div><dt>年代道具</dt><dd><div>1997–2005：清晨人市：扁担、安全帽、讲价／桥头早点摊的蒸气</div><div>2006–：酒吧街：霓虹与驻唱接管夜晚</div></dd></div>
+      </dl>
+      <blockquote class="hook">同一座桥——早晨属于生计，夜晚属于故事。</blockquote>
+    </div>
+  </section>
+
+  <section class="loc" id="kuanzhai">
+    <div class="stage" style="--p0:#100e0c;--p1:#6a5a4a;--p2:#ffd9a3">
+      
+      
+      <span class="bigchar">巷</span>
+      <span class="seal">宽窄</span>
+      
+    </div>
+    <div class="body">
+      <h2>宽窄巷子</h2>
+      <p class="meta">青羊区·宽窄巷子（长顺街侧，少城腹地） · 30.6617, 104.054</p>
+      <div class="chips"><span>≤2008 · 老居民巷：院坝、茶水灶与晾衣绳</span><span>2008– · 修复开街，游人如织</span></div>
+      <dl>
+        <div><dt>门面</dt><dd>少城留下的青砖灰瓦老巷，宽巷子与窄巷子平行着走。修复之前，它是住家的院坝：晾衣绳横过天空，老虎灶的白汽从墙头冒出来。</dd></div>
+        <div><dt>走进去</dt><dd>2008年开街后是城市会客厅：门头、影壁被灯光打亮，茶馆与文创店住进老院子。清晨游人未至的那十分钟，还能看见巷子原来的样子。</dd></div>
+        <div><dt>标志物件</dt><dd>青砖墙与灰瓦坡顶 · 老门头与门墩 · 院坝与天井 · 老虎灶（修复前） · 灯笼与灯影（开街后）</dd></div>
+        <div><dt>声音</dt><dd>修复前：院坝里的麻将声与水开的声音 · 开街后：游人的脚步与快门</dd></div>
+        <div><dt>气味</dt><dd>老砖的潮味 · 茶香 · 开街后混进的咖啡香</dd></div>
+        <div><dt>光线</dt><dd>巷子窄，光是刀形的，一天只扫过墙头一圈。</dd></div>
+        <div><dt>人群</dt><dd>修复前：老住家、收荒匠；开街后：游客、拍婚纱的新人。</dd></div>
+        <div><dt>年代道具</dt><dd><div>≤2007：住家巷：晾衣绳、蜂窝煤、放学追跑的娃儿</div><div>2008–：会客厅：灯影、游人、文创摊</div></dd></div>
+      </dl>
+      <blockquote class="hook">修复把巷子擦亮了，可墙头那道勒痕，还是当年晾衣绳留下的。</blockquote>
+    </div>
+  </section>
+
+  <section class="loc" id="north-station">
+    <div class="stage" style="--p0:#0a0e14;--p1:#2a3a4a;--p2:#7de3ff">
+      
+      <div class="rain"></div>
+      <span class="bigchar">北</span>
+      <span class="seal">成都站</span>
+      
+    </div>
+    <div class="body">
+      <h2>火车北站（成都站）</h2>
+      <p class="meta">金牛区·二环路北三段（人民北路北端） · 30.694, 104.072</p>
+      <div class="chips"><span>1952– · 成渝铁路的起始站启用，绿皮车时代的大门</span><span>1997–2000年代 · 民工潮顶点，春运的战场</span><span>2022-10– · 停办客运、拆除重建的扩能改造；北广场安静下来，等一座上盖公园的新站</span></div>
+      <dl>
+        <div><dt>门面</dt><dd>二环路北三段。1952年随成渝铁路启用的苏式老站房，「成都」两个字钉在立面正中，站前广场被人民北路劈成两半。</dd></div>
+        <div><dt>走进去</dt><dd>站房与站台同层的旧格局，候车厅的长条椅永远不够坐；广场是扁担与蛇皮口袋的海洋，售票窗口的队伍排出几十米，通宵有人铺着报纸睡。</dd></div>
+        <div><dt>标志物件</dt><dd>苏式站房立面与「成都」二字 · 候车厅长椅 · 售票窗口的铁栅 · 扁担与编织袋 · 拉客的黑车师傅</dd></div>
+        <div><dt>声音</dt><dd>广播报车次 · 车轮压过道岔的哐当 · 「住宿不？」的吆喝</dd></div>
+        <div><dt>气味</dt><dd>便当与泡面味 · 站台的铁腥味 · 广场的尘土</dd></div>
+        <div><dt>光线</dt><dd>候车厅的灯亮成永昼；夜里广场像停泊的船坞。</dd></div>
+        <div><dt>人群</dt><dd>春运的返乡人、棒棒、票贩子、举牌接站的。</dd></div>
+        <div><dt>年代道具</dt><dd><div>1997–2005：春运战场：通宵排队，报纸铺地／绿皮车与硬座</div><div>2006–2019：高铁分流，广场渐静</div><div>2022-10–：停运拆建：吊车把「成都」二字取下那天，全城转发</div></dd></div>
+      </dl>
+      <blockquote class="hook">「成都」两个字在站顶挂了七十年——2022年被吊车摘下来的时候，像给一个时代退了货。</blockquote>
+    </div>
+  </section>
+
+  <section class="loc" id="tianfu-square">
+    <div class="stage" style="--p0:#0d0d12;--p1:#4a4a5a;--p2:#e8e8f0">
+      
+      
+      <span class="bigchar">广</span>
+      <span class="seal">天府广场</span>
+      
+    </div>
+    <div class="body">
+      <h2>天府广场</h2>
+      <p class="meta">青羊区·人民中路一段（人民南路北端，城市原点） · 30.6598, 104.065</p>
+      <div class="chips"><span>2010– · 地铁 1 号线通车成为地下枢纽</span></div>
+      <dl>
+        <div><dt>门面</dt><dd>城市原点：八万八千平方米的矩形广场，浅色花岗岩条石铺地，东西两半由中轴分开。北端是1969年建成的三十米立像——穿大衣、右手挥向正南的人民南路；像身后是万岁馆改成的省展览馆（后来的四川科技馆）。</dd></div>
+        <div><dt>走进去</dt><dd>广场比想象中大，站上轴线，人被风和广场鸽围住。2010年后地下是地铁枢纽的洪流，地面依旧是放风筝、拍照和「就到毛主席底下等」的成都。</dd></div>
+        <div><dt>标志物件</dt><dd>挥手的立像与展馆立面 · 广场鸽 · 花岗岩条石与旗杆 · 太阳神鸟地雕（2007改造后） · 地铁口玻璃罩</dd></div>
+        <div><dt>声音</dt><dd>鸽群扑翅 · 广场喇叭里的音乐 · 地铁口涌上来的风声与报站 · 合影人群互相招呼</dd></div>
+        <div><dt>气味</dt><dd>鸽子饲料的谷味 · 节日花坛的花香混着尘土</dd></div>
+        <div><dt>光线</dt><dd>白天坦荡无遮拦，夕阳把立像的影子拉过半个广场；夜里泛光灯打亮立面。</dd></div>
+        <div><dt>人群</dt><dd>等人的人、游客、放学的孩子、发传单的、地下通道里唱歌的。</dd></div>
+        <div><dt>年代道具</dt><dd><div>1997–2009：展馆立面的时代标语余迹／广场上滑滚轴溜冰的少年</div><div>2010–：地下枢纽的人潮／太阳神鸟地雕</div><div>2020–2023：口罩下的合影／空旷时期的鸽群接管广场</div></dd></div>
+      </dl>
+      <blockquote class="hook">在广场等人是成都的公共行为艺术——你站在像底下，全城都找得到你。</blockquote>
+    </div>
+  </section>
+
+  <section class="loc" id="xiaojiuguan">
+    <div class="stage" style="--p0:#140a08;--p1:#8a3a2a;--p2:#ffb37a">
+      
+      
+      <span class="bigchar">歌</span>
+      <span class="seal">小酒馆</span>
+      
+    </div>
+    <div class="body">
+      <h2>小酒馆（玉林西路55号）</h2>
+      <p class="meta">武侯区·玉林西路55号 · 30.633, 104.063</p>
+      <div class="chips"><span>1997– · 从艺术沙龙到摇滚现场</span><span>2017– · 《成都》爆红后门口多了拍照的游人</span></div>
+      <dl>
+        <div><dt>门面</dt><dd>玉林西路55号，红底黄字的「小酒馆」三个字。1997年1月18日唐蕾盘下的门面，窄得像巷子里的一个熟人。</dd></div>
+        <div><dt>走进去</dt><dd>二三十平米的堂子：一个小吧台，几张小桌，顶多挤下二三十人。墙上贴满乐队海报，音响比桌子重要；舞台其实只是一小块空地。</dd></div>
+        <div><dt>标志物件</dt><dd>红底招牌 · 小吧台与高脚凳 · 乐队海报墙 · 音箱 · 门口写演出信息的小黑板</dd></div>
+        <div><dt>声音</dt><dd>试音的「喂喂」与扫弦 · 唱片间隙的碰杯 · 散场后卷帘门的哗啦</dd></div>
+        <div><dt>气味</dt><dd>啤酒与烟 · 旧木头和音箱发热的味道</dd></div>
+        <div><dt>光线</dt><dd>灯光昏黄，演出时只剩台口一盏。</dd></div>
+        <div><dt>人群</dt><dd>乐队、诗人、画家、学生、下班来的老客、唐姐。</dd></div>
+        <div><dt>年代道具</dt><dd><div>1997–2004：翻台靠演出，门票写在小黑板上／打口碟在桌上传</div><div>2017–：门口的相机比酒杯多／老店保持当年的窄</div></dd></div>
+      </dl>
+      <blockquote class="hook">全成都的失意人都有一个共同点——都曾在这张吧台上，欠过一杯酒的钱。</blockquote>
+    </div>
+  </section>
+
+  <section class="loc" id="banye-noodles">
+    <div class="stage" style="--p0:#0d0a0f;--p1:#4a3a5a;--p2:#ffd9a3">
+      
+      
+      <span class="bigchar">面</span>
+      <span class="seal">半夜面</span>
+      <span class="badge private">私有 · g01 出道</span>
+    </div>
+    <div class="body">
+      <h2>半夜面（望哥的铺子）</h2>
+      <p class="meta">武侯区·玉林北巷深处（虚构门牌） · 30.633, 104.06</p>
+      
+      <dl>
+        <div><dt>门面</dt><dd>玉林一条窄巷的最里头，一盏灯箱只写一个「面」字，晚十点亮，凌晨四点熄。没有招牌菜，因为整面墙就是招牌——赊账单。</dd></div>
+        <div><dt>走进去</dt><dd>四张方桌，一口汤锅，望哥站在灶后像站在讲台后。散酒装在坛子里，故事装在他嘴里，两样都不断供。</dd></div>
+        <div><dt>标志物件</dt><dd>灯箱上一个「面」字 · 汤锅与竹漏 · 一整面墙的赊账单 · 散酒坛 · 四张方桌</dd></div>
+        <div><dt>声音</dt><dd>汤锅的滚沸 · 深夜摩托车由远及近 · 望哥的龙门阵比锅先开</dd></div>
+        <div><dt>气味</dt><dd>骨汤与猪油 · 酒气 · 巷子的潮味</dd></div>
+        <div><dt>光线</dt><dd>一盏白炽灯泡吊在桌子正上方——灯下是全成都最平等的一个圆。</dd></div>
+        <div><dt>人群</dt><dd>下夜班的、散场的乐队、谈事的、不想回家的。</dd></div>
+        <div><dt>年代道具</dt><dd><div>1997–2005：赊账单还是粉笔小黑板／散酒用玻璃罐头瓶装</div><div>2006–2015：乐队海报盖过赊账单／半夜来吃面的多了背琴的</div><div>2016–2023：拒绝外卖平台的二维码／墙上多了一张泛黄的老照片</div></dd></div>
+      </dl>
+      <blockquote class="hook">赊账单的下半张从来没换过——那几笔，望哥说「忘了」，眼睛却不看人。</blockquote>
+    </div>
+  </section>
+  <h2 class="sec">宇宙级隐藏人物（永不主角）</h2>
+  
+  <section class="char" style="--c:#e0523f">
+    <h3>蔡峰 <span class="aka">菜头 · 蔡医生</span></h3>
+    <p class="role">白大褂底下的「处理人」——街坊的兽医，江湖的传说。宇宙级隐藏人物，永不主角。</p>
+    <div class="anchors"><span>手极稳</span><span>临床式的冷静</span><span>笑面，说话轻</span><span>从不问为什么，只问几点</span></div>
+    <dl>
+      <div><dt>生年</dt><dd>1972（1997 年 25 岁 / 2023 年 51 岁）</dd></div>
+      <div><dt>声线</dt><dd>96 Hz · 右侧站位</dd></div>
+      <div><dt>公开人设</dt><dd>宠物诊所的兽医，专做猫狗牙科，手稳得能在睡着的猫嘴里做根管。白大褂、口罩、无影灯，收费便宜，街坊都爱他。夜里偶尔「出诊」——出的是什么诊，没人知道，也没人问。</dd></div>
+      <div><dt>年代阶段</dt><dd><div class="stages"><div><b>1997–2005</b> — 牙科技工所技师出身，转行兽医，诊所在老城开张</div><div><b>2006–2015</b> — 街坊名医：白天猫狗排队，夜里偶尔出诊</div><div><b>2016–2023</b> — 「出诊」的传闻渐多，他本人的笑容不变</div></div></dd></div>
+      <div><dt>事件织入</dt><dd><div class="anchors"><span>pub-2020-covid</span></div></dd></div>
+      <div><dt>秘密档案</dt><dd><div class="secret">★ 大秘密 · 诊所的铺面是「老师」留下的——九十年代技工所时代，他给那位老师当了三年助手；老师后来失踪了，去了哪里，只有他知道。</div><div class="secret">⊘ 江湖里真正接过他电话的人，一只手数得过来，且都守口如瓶。（披露作品未指派）</div><div class="secret">⊘ 他与王波（院长）的相识，早于本宇宙所有故事的起点。（披露作品未指派）</div></dd></div>
+    </dl>
+  </section>
+
+  <section class="char" style="--c:#ffd9a3">
+    <h3>崔涛 <span class="aka">师毛 · 崔老师</span></h3>
+    <p class="role">地下市场的字条经济——收荒站背后的操盘手。宇宙级隐藏人物，永不主角。</p>
+    <div class="anchors"><span>教书先生的做派：讲规矩，爱写字条</span><span>经营网络，从不现身台前</span><span>字条经济：不碰货，只签字</span><span>一半人敬他，一半人怕他</span></div>
+    <dl>
+      <div><dt>生年</dt><dd>1965（1997 年 32 岁 / 2023 年 58 岁）</dd></div>
+      <div><dt>声线</dt><dd>104 Hz · 左侧站位</dd></div>
+      <div><dt>公开人设</dt><dd>东郊厂子弟校的语文教员，九十年代末下岗，转行开收荒站。收荒的三轮车队成了他地下网络的运力：药、票、机器、消息，什么都过手——他本人只写字条。人称师毛，一半是敬他教过书，一半是怕他这张纸比货硬。</dd></div>
+      <div><dt>年代阶段</dt><dd><div class="stages"><div><b>1997–1998</b> — 子弟校教员，下岗前夜还在批最后一摞作文</div><div><b>1999–2008</b> — 收荒站开张，地下网络的运力与规矩同时成形</div><div><b>2009–2023</b> — 从收荒站做到「仓库」，物流换了三茬，字条经济不变</div></div></dd></div>
+      <div><dt>事件织入</dt><dd><div class="anchors"><span>pub-1997-soe</span><span>pub-2003-custody</span><span>pub-2012-wechat</span></div></dd></div>
+      <div><dt>秘密档案</dt><dd><div class="secret">★ 大秘密 · 收荒站的第一桶金不是废品——1998 年冬，他经手过一批从东郊某厂「退休」的精密设备；那批设备真正的去向，连他自己的字条里都没有写。</div><div class="secret">⊘ 他至今保留着写教案的习惯：所有字条都有编号，一套只有他自己懂的暗语账本。（披露作品未指派）</div><div class="secret">⊘ 他与向启（老向）在红庙子时代就认识。（披露作品未指派）</div></dd></div>
+    </dl>
+  </section>
+
+  <section class="char" style="--c:#8ce0c0">
+    <h3>王波 <span class="aka">院长 · 波哥</span></h3>
+    <p class="role">泳池与黑夜之间的「手」——救生员、清场人、终生考证的「院长」。宇宙级隐藏人物，永不主角。</p>
+    <div class="anchors"><span>瘦得像根旗杆，肩比头宽</span><span>游泳健将级的体能与水性</span><span>看场子、接人、清场的「手」</span><span>一辈子的理想：考进设计院，当院长</span></div>
+    <dl>
+      <div><dt>生年</dt><dd>1979（1997 年 18 岁 / 2023 年 44 岁）</dd></div>
+      <div><dt>声线</dt><dd>150 Hz · 左侧站位</dd></div>
+      <div><dt>公开人设</dt><dd>白天是游泳馆的救生员兼少儿泳队教练，体工队退役，精瘦，水里快过岸上所有人。夜里做「看场子」与「接人」的活。床头贴着一辈子的计划：考一级注册结构工程师，进设计院，当院长——每年报名，每年差几分。外号由此而来，两道里都传。</dd></div>
+      <div><dt>年代阶段</dt><dd><div class="stages"><div><b>1997–2005</b> — 体工队退役进游泳馆，夜里开始有人找他「看场子」</div><div><b>2006–2015</b> — 夜里的活渐多，「院长」的外号在两道都传开</div><div><b>2016–2023</b> — 考证第 N 次差几分；泳队带出了省冠军</div></div></dd></div>
+      <div><dt>事件织入</dt><dd><div class="anchors"><span>pub-2001-olympic</span><span>pub-2008-olympics</span><span>pub-2023-universiade</span></div></dd></div>
+      <div><dt>秘密档案</dt><dd><div class="secret">★ 大秘密 · 他这辈子只失过一次手——2005 年的一个雨夜，活没办完，他在雨里追丢了一个人；那张脸他记了十几年，泳队训练日志的最后一页，画的就是它。</div><div class="secret">⊘ 他救起过的人比他打倒的多——泳池里捞起过七个；江湖里「接」过的，他不数。（披露作品未指派）</div><div class="secret">⊘ 他与蔡峰（菜头）的相识，早于本宇宙所有故事的起点。（披露作品未指派）</div></dd></div>
+    </dl>
+  </section>
+
+  <section class="char" style="--c:#ffb37a">
+    <h3>王磊 <span class="aka">街机 · 磊哥</span></h3>
+    <p class="role">厅馆江湖的活地图——修板匠、二手贩子、黑白两道的接头人之一。宇宙级隐藏人物，永不主角。</p>
+    <div class="anchors"><span>市井怪胎</span><span>知识面极广的杂学家：从 ROM 版本到电线颜色到治安联防的排班</span><span>人脉与手段兼备</span><span>台球厅与游戏厅的原住民</span></div>
+    <dl>
+      <div><dt>生年</dt><dd>1976（1997 年 21 岁 / 2023 年 47 岁）</dd></div>
+      <div><dt>声线</dt><dd>112 Hz · 左侧站位</dd></div>
+      <div><dt>公开人设</dt><dd>街机主板与摇杆的修理匠起家，后来做二手厅馆设备的贩子。修得好一块九十年代的老基板，也认得出哪个老板的姐夫在派出所。全成都开过游戏厅的人，一半欠过他人情；网吧时代他转手显示器，电玩城时代他铺设备，怀旧机厅时代他成了活化石。</dd></div>
+      <div><dt>年代阶段</dt><dd><div class="stages"><div><b>1997–2000</b> — 游戏厅黄金期的修板匠，一块基板换三个老板的人情</div><div><b>2001–2010</b> — 网吧与电玩城转型期的二手贩子，人脉网从厅馆铺到网吧</div><div><b>2011–2023</b> — 怀旧机厅与电竞馆的活化石，年轻人的磊哥</div></div></dd></div>
+      <div><dt>事件织入</dt><dd><div class="anchors"><span>pub-1995-arcade</span><span>pub-2000-cafe</span><span>pub-2010-smartphone</span></div></dd></div>
+      <div><dt>秘密档案</dt><dd><div class="secret">★ 大秘密 · 2001 年冬，他替一个再没出现过的老板搬过一批连夜撤空的网吧机器，按约定全部销毁——他烧掉了全部，只留下一块硬盘，等一个没来取的人；一等二十多年。</div><div class="secret">⊘ 他手里有一本从没写完的《成都厅馆名录》：哪条街哪年开了哪家厅、谁的保护费交给谁。据说完整版连他自己也背不全。（披露作品未指派）</div></dd></div>
+    </dl>
+  </section>
+
+  <section class="char" style="--c:#7de3ff">
+    <h3>向启 <span class="aka">老向 · 向老师 · 向爷</span></h3>
+    <p class="role">行情的活档案——太升南路的修理匠兼茶馆分析师。宇宙级隐藏人物，永不主角。</p>
+    <div class="anchors"><span>智力极高</span><span>身体差（哮喘，四季都咳）</span><span>潦倒，但把自己收拾得体面</span><span>极高的洞察力——能从茶馆闲话里读出资金的流向</span></div>
+    <dl>
+      <div><dt>生年</dt><dd>1967（1997 年 30 岁 / 2023 年 56 岁）</dd></div>
+      <div><dt>声线</dt><dd>128 Hz · 右侧站位</dd></div>
+      <div><dt>公开人设</dt><dd>太升南路一间两平米柜台的修理匠，修股票寻呼机、行情机，后来修老股机和旧手机。柜台下午收摊，人挪去茶馆——茶馆就是他的营业部，分析不收钱，收茶钱。1992 年在红庙子亲历过疯狂，从此看盘成瘾；一生几起几落，2007 年人人喊他向老师，2008 年之后没人记得。</dd></div>
+      <div><dt>年代阶段</dt><dd><div class="stages"><div><b>1997–2000</b> — 三十而立在太升南路修 BP 机与行情机，茶馆固定座位成形</div><div><b>2001–2010</b> — 营业部门口的「黑板分析师」：牛市封神，熊市消失</div><div><b>2011–2023</b> — 修旧手机与老股机为生，年轻人改口叫向爷；洞察力没老</div></div></dd></div>
+      <div><dt>事件织入</dt><dd><div class="anchors"><span>pub-1993-hongmiaozi</span><span>pub-1999-pager</span><span>pub-2007-bull</span><span>pub-2015-stock</span></div></dd></div>
+      <div><dt>秘密档案</dt><dd><div class="secret">★ 大秘密 · 1993 年红庙子最疯的时候，他赚过一票大的；那笔钱的下落，全成都只有他自己知道。</div><div class="secret">⊘ 他修过的每台机器的主人的号码，他都记得。（披露作品未指派）</div></dd></div>
+    </dl>
+  </section>
+
+  <section class="char" style="--c:#c9b8e8">
+    <h3>潇文 <span class="aka">望哥 · 老板</span></h3>
+    <p class="role">深夜的一盏灯——「半夜面」掌柜，宇宙的深夜食堂与情报集散地。宇宙级隐藏人物，永不主角。</p>
+    <div class="anchors"><span>百科全书式的话痨</span><span>酗酒，三杯之后必误事</span><span>负责搞笑，也负责误事</span><span>夜里才开张的铺子，凌晨最暖的灯</span></div>
+    <dl>
+      <div><dt>生年</dt><dd>1970（1997 年 27 岁 / 2023 年 53 岁）</dd></div>
+      <div><dt>声线</dt><dd>172 Hz · 右侧站位</dd></div>
+      <div><dt>公开人设</dt><dd>「半夜面」的掌柜：玉林一条窄巷里只在晚十点后开门的面馆，四张桌，卖面、卖散酒、卖故事。知识面从球星转会一路聊到康德（他说康德是半个成都人——别信）。三杯下肚，答应的事忘，忘了的事瞎答应；但全成都凌晨还亮着的灯里，他这盏最暖。</dd></div>
+      <div><dt>年代阶段</dt><dd><div class="stages"><div><b>1997–2005</b> — 面馆开张，深夜食堂的成色成形：下夜班的、跑夜场的</div><div><b>2006–2015</b> — 玉林文艺圈的深夜据点，小酒馆散场后的食堂</div><div><b>2016–2023</b> — 拒绝外卖平台：「我的店没有五星，只有赊账。」</div></div></dd></div>
+      <div><dt>事件织入</dt><dd><div class="anchors"><span>pub-1997-xiaojiuguan</span><span>pub-2002-forget</span><span>pub-2017-song</span></div></dd></div>
+      <div><dt>秘密档案</dt><dd><div class="secret">★ 大秘密 · 赊账单下半张的九笔账是同一夜留下的——那晚店里来过九个互不相识的客人，共用了同一句话；那句话是什么，他三杯之后也只肯说半句。</div><div class="secret">⊘ 他其实记得每一笔账，包括所有人以为他忘了的那些话。（披露作品未指派）</div></dd></div>
+    </dl>
+  </section>
+  <footer>数据源 universe/（内容即数据）· 构建：npm run build:wiki · 印章与氛围层由 tokens.json 舞台令牌对齐 · 人物卡片含秘密档案，仅限创作内部使用</footer>
+</div>
+</body>
+</html>

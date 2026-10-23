@@ -23,10 +23,53 @@ const locations = Object.fromEntries(locationFiles.map(f => {
 }));
 const orgFiles = readdirSync(join(uni, 'orgs')).filter(f => f.endsWith('.json'));
 const orgs = orgFiles.map(f => read(join(uni, 'orgs', f)));
+const charFiles = readdirSync(join(uni, 'characters')).filter(f => f.endsWith('.json'));
+const chars = charFiles.map(f => read(join(uni, 'characters', f)));
 const timeline = read(join(uni, 'timeline.json'));
 const atlas = read(join(uni, 'atlas.json'));
 const eventIds = new Set(timeline.events.map(e => e.id));
 const locationIds = new Set(Object.keys(locations));
+
+describe('正典完整性：原型人物（宇宙级隐藏人物）', () => {
+  it('六位原型人物全部在典', () => {
+    assert.ok(chars.length >= 6, `当前仅 ${chars.length} 位宇宙级人物`);
+  });
+
+  it('档案齐全：称呼/出生年/声线站位/特征锚/年代阶段/宇宙定位', () => {
+    const seen = new Set();
+    for (const c of chars) {
+      assert.ok(!seen.has(c.id), `人物 id 重复: ${c.id}`);
+      seen.add(c.id);
+      assert.ok(c.name && (c.aliases ?? []).length >= 1, `${c.id} 缺称呼别名`);
+      assert.ok(Number.isInteger(c.birth_year) && c.birth_year >= 1930 && c.birth_year <= 2010, `${c.id} 出生年非法`);
+      assert.ok(typeof c.voice_hz === 'number' && c.voice_hz >= 80 && c.voice_hz <= 400, `${c.id} 声线非法`);
+      assert.ok(['left', 'right'].includes(c.stage?.side), `${c.id} 站位非法`);
+      assert.ok((c.persona_anchors ?? []).length >= 2, `${c.id} 特征锚至少两条`);
+      assert.ok((c.stages ?? []).length >= 2, `${c.id} 年代阶段至少两段`);
+      assert.ok(c.universe_role && /永不主角|永不.{0,4}主角/.test(c.universe_role), `${c.id} 宇宙定位须声明「永不主角」`);
+      assert.ok(c.first_appearance, `${c.id} 缺 first_appearance`);
+      assert.ok(typeof c.bio_public === 'string' && c.bio_public.length > 10, `${c.id} 缺公开人设`);
+      for (const s of c.bio_secret ?? []) {
+        assert.ok(s.revealed_in === null || typeof s.revealed_in === 'string',
+          `${c.id} 秘密 ${s.fact?.slice(0, 8)}… 的 revealed_in 须为作品代码或 null（未指派）`);
+      }
+    }
+  });
+
+  it('每人至少一条大秘密（big），大秘密只许一条', () => {
+    for (const c of chars) {
+      const bigs = (c.bio_secret ?? []).filter(s => s.big);
+      assert.equal(bigs.length, 1, `${c.id} 应恰有一条大秘密（big:true）`);
+    }
+  });
+
+  it('人物的 timeline_hooks 都指向真实事件', () => {
+    const bad = [];
+    for (const c of chars)
+      for (const r of c.timeline_hooks ?? []) if (!eventIds.has(r)) bad.push(`${c.id}→${r}`);
+    assert.deepEqual(bad, []);
+  });
+});
 
 describe('正典完整性：地点坐标', () => {
   it('每个地点都有 geo{lat,lng}，且落在成都市区框内', () => {
@@ -34,6 +77,23 @@ describe('正典完整性：地点坐标', () => {
       assert.ok(l.geo && typeof l.geo.lat === 'number' && typeof l.geo.lng === 'number',
         `${l.id} 缺 geo 坐标`);
       assert.ok(inChengdu(l.geo.lat, l.geo.lng), `${l.id} 坐标 ${l.geo.lat},${l.geo.lng} 不在成都框内`);
+    }
+  });
+});
+
+describe('正典完整性：背景卡片', () => {
+  const CARD_FIELDS = ['facade', 'inside', 'objects', 'sounds', 'smells', 'light', 'people', 'era_props', 'hook'];
+  it('每个地点都有完整背景卡片（复刻真实场景的感官素材）', () => {
+    for (const l of Object.values(locations)) {
+      assert.ok(l.card, `${l.id} 缺背景卡片 card`);
+      for (const f of CARD_FIELDS) assert.ok(l.card[f], `${l.id} 卡片缺字段 ${f}`);
+      for (const f of ['objects', 'sounds', 'smells']) {
+        assert.ok(Array.isArray(l.card[f]) && l.card[f].length >= 2, `${l.id} 卡片 ${f} 至少两项`);
+      }
+      for (const ep of l.card.era_props) {
+        assert.ok(ep.era && Array.isArray(ep.props) && ep.props.length >= 1,
+          `${l.id} 卡片 era_props 条目不完整`);
+      }
     }
   });
 });

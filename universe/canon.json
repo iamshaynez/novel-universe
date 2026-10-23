@@ -1,7 +1,7 @@
 {
   "name": "锦江悬疑宇宙",
   "world": "成都",
-  "version": "0.4.0",
+  "version": "0.6.0",
   "epoch": "pre",
   "released_games": [],
   "era": {
@@ -13,11 +13,11 @@
     "background_reserve": "2024–"
   },
   "layers": {
-    "timeline": "universe/timeline.json · 53 个公共锚点 × 6 个叙事阶段（phases）",
+    "timeline": "universe/timeline.json · 56 个公共锚点 × 6 个叙事阶段（phases）",
     "atlas": "universe/atlas.json · 水系/片区/走廊与变迁（含 geo 坐标）",
-    "locations": "universe/locations/*.json · 14 个真实锚点地点（layer=public 免纪元，含 address/mood/era_notes；泡桐树小学与石室中学为情感核心锚点）",
+    "locations": "universe/locations/*.json · 14 个真实锚点地点（layer=public 免纪元;address/geo/mood/era_notes + card 背景卡片:门面/内里/物件/声味光/人群/年代道具/戏剧钩子;泡桐树小学与石室中学为情感核心锚点）",
     "orgs": "universe/orgs/*.json · 9 个真实机构企业（信息层，暂无 DSL 引用通道）",
-    "characters": "universe/characters/*.json · 空——人物是作品的事，地基不造人",
+    "characters": "universe/characters/*.json · 6 位宇宙级原型人物（姓名与性格特征保留，职业年龄虚构；永不主角；persona_anchors/stages/timeline_hooks；秘密池 revealed_in=null 待指派）",
     "map": "universe/map.json · 年代地图册：定位层(中轴/环线/POI) + 六阶段城市快照（WGS-84 街区级精度）"
   },
   "notes": "宇宙名为暂名，终名待定（见 docs/宇宙-成都-v0.md 待决清单）。真实城市+真实年代；无超自然为当前创作约束。公共层（真实历史/真实地点）免剧透纪元；私有层（虚构事件/虚构地点/人物秘密）须 disclosed_in/first_appearance ∈ assumes ∪ {本作}。"

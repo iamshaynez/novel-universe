@@ -60,6 +60,12 @@ export function buildWikiHtml(universeDir) {
   .char .stages{color:var(--dim);font-size:13px}
   .char .stages b{color:var(--ink);font-weight:400}
   h2.sec{font-size:20px;letter-spacing:4px;border-bottom:1px solid rgba(239,232,245,.14);padding-bottom:8px;margin:38px 0 18px}
+  .heart{border:1px solid rgba(239,232,245,.14);border-radius:8px;margin-bottom:18px;padding:12px 16px;background:rgba(255,179,122,.04)}
+  .heart.primary{border-left:4px solid var(--accent)}
+  .heart h3{margin:0 0 2px;font-size:17px}
+  .heart .status{font-size:12px;color:var(--accent);letter-spacing:1px}
+  .heart .cycle{color:var(--dim);font-size:13px;margin:4px 0}
+  .heart .cf{display:inline-block;border:1px solid var(--accent);color:var(--accent);font-size:12px;padding:1px 9px;border-radius:999px;margin:4px 4px 0 0}
   .body h2{margin:14px 16px 2px;font-size:20px;letter-spacing:1px}
   .meta{color:var(--dim);font-size:13px;margin:0 16px}
   .chips{margin:8px 16px 0}
@@ -110,6 +116,16 @@ export function buildWikiHtml(universeDir) {
   const phaseHtml = timeline.phases.map(p =>
     `<span>${esc(p.name)}<br><b>${phaseCount.get(p.id)} 锚点</b></span>`).join('');
 
+  const hearts = JSON.parse(readFileSync(join(universeDir, 'hearts.json'), 'utf8')).hearts;
+  const heartHtml = h => `
+  <section class="heart${h.status.includes('主心脏') ? ' primary' : ''}">
+    <h3>${esc(h.name)} <span class="status">${esc(h.status)}</span></h3>
+    <p class="cycle">${esc(h.cycle)}</p>
+    <p style="font-size:14px;margin:4px 0">${esc(h.consensus)}</p>
+    <div>${(h.choice_fields ?? []).map(c => `<span class="cf">${esc(c)}</span>`).join('')}</div>
+    <p style="font-size:12px;color:var(--dim);margin:6px 0 0">${esc(h.or_rule ?? '')}</p>
+  </section>`;
+
   const charHtml = c => {
     const field = (dt, dd) => `<div><dt>${esc(dt)}</dt><dd>${dd}</dd></div>`;
     const anchors = (c.persona_anchors ?? []).map(a => `<span>${esc(a)}</span>`).join('');
@@ -148,6 +164,9 @@ export function buildWikiHtml(universeDir) {
     <p class="sub">canon ${esc(canon.version)} · 主窗 ${esc(canon.era.main.join('–'))} · ${locations.length} 个锚点地点（${locations.filter(l => l.layer !== 'public').length} 个私有）· ${chars.length} 位宇宙级隐藏人物 · 图案为文字舞台演出词汇（ADR-004）</p>
   </header>
   <nav class="phases">${phaseHtml}</nav>
+  <h2 class="sec">心脏事件（或然结局载体 · 历史不动，人心分支）</h2>
+  ${hearts.map(heartHtml).join('\n')}
+  <h2 class="sec">地点</h2>
   ${locations.map(locHtml).join('\n')}
   <h2 class="sec">宇宙级隐藏人物（永不主角）</h2>
   ${chars.map(charHtml).join('\n')}

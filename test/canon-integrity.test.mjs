@@ -27,8 +27,28 @@ const charFiles = readdirSync(join(uni, 'characters')).filter(f => f.endsWith('.
 const chars = charFiles.map(f => read(join(uni, 'characters', f)));
 const timeline = read(join(uni, 'timeline.json'));
 const atlas = read(join(uni, 'atlas.json'));
+const hearts = read(join(uni, 'hearts.json')).hearts;
 const eventIds = new Set(timeline.events.map(e => e.id));
 const locationIds = new Set(Object.keys(locations));
+
+describe('正典完整性：心脏事件池（或然结局载体）', () => {
+  it('三颗心脏在典：六千点（主）/ 非典之春 / 足球纪元（储备）', () => {
+    assert.ok(hearts.length >= 3, `当前仅 ${hearts.length} 颗心脏`);
+    assert.ok(hearts.some(h => h.status.includes('主心脏')), '缺主心脏');
+  });
+
+  it('每颗心脏：事件引用可解析、选择面至少两组、或然规则齐备', () => {
+    for (const h of hearts) {
+      assert.ok(h.name && h.status, `${h.id} 缺名称/状态`);
+      assert.ok((h.events ?? []).length >= 1, `${h.id} 缺事件引用`);
+      for (const r of h.events ?? []) {
+        assert.ok(eventIds.has(r), `${h.id} 引用了不存在的事件 ${r}`);
+      }
+      assert.ok((h.choice_fields ?? []).length >= 2, `${h.id} 选择面至少两组`);
+      assert.ok((h.or_rule ?? '').includes('不可改写'), `${h.id} 缺「历史不可改写」的或然规则`);
+    }
+  });
+});
 
 describe('正典完整性：原型人物（宇宙级隐藏人物）', () => {
   it('六位原型人物全部在典', () => {

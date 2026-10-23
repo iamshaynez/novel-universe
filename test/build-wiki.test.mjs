@@ -47,6 +47,12 @@ describe('build-wiki：设定集页面', () => {
     assert.ok(html.includes('私有 · g01 出道'), '私有地点缺出道徽标');
   });
 
+  it('心脏事件区：三颗心脏与或然规则出现', () => {
+    for (const n of ['六千点', '非典之春', '足球纪元', '主心脏', '历史不可改写']) {
+      assert.ok(html.includes(n), `设定集缺心脏要素 ${n}`);
+    }
+  });
+
   it('漂移守卫：已提交的 web/canon.html 与当前正典构建一致', () => {
     const committed = readFileSync(join(root, 'web/canon.html'), 'utf8');
     assert.equal(committed, html, 'canon.html 过期：请运行 npm run build:wiki 重新构建');

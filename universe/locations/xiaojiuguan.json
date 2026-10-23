@@ -30,5 +30,10 @@
     "pub-1997-xiaojiuguan",
     "pub-2017-song"
   ],
-  "address": "武侯区·玉林西路55号"
+  "address": "武侯区·玉林西路55号",
+  "geo": {
+    "lat": 30.633,
+    "lng": 104.063,
+    "kind": "point"
+  }
 }

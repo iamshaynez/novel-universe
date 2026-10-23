@@ -20,5 +20,10 @@
   "refs": [
     "pub-1999-expansion"
   ],
-  "address": "武侯区·一环路南一段24号"
+  "address": "武侯区·一环路南一段24号",
+  "geo": {
+    "lat": 30.637,
+    "lng": 104.092,
+    "kind": "area"
+  }
 }

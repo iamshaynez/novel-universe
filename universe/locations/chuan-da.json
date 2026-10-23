@@ -1,0 +1,24 @@
+{
+  "id": "chuan-da",
+  "name": "四川大学·望江校区",
+  "aliases": [
+    "川大",
+    "望江"
+  ],
+  "layer": "public",
+  "mood": {
+    "palette": [
+      "#0c1008",
+      "#3a5a2a",
+      "#f2ecdc"
+    ],
+    "rain": false,
+    "sign": "川大",
+    "bigchar": "学"
+  },
+  "notes": "银杏道、老图书馆与墙外的科华北路；扩招年代里，校园与街区互相漫过边界。",
+  "refs": [
+    "pub-1999-expansion"
+  ],
+  "address": "武侯区·一环路南一段24号"
+}

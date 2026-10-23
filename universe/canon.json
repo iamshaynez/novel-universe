@@ -1,8 +1,23 @@
 {
-  "name": "雾川市悬疑宇宙",
-  "world": "雾川市",
-  "version": "0.2.0",
-  "epoch": "g00",
-  "released_games": ["g00"],
-  "notes": "版本规则：新增条目/字段 = minor；改含义/删条目 = major。0.x 阶段破坏性变更按 minor 走（semver 许可）。games 通过 manifest.canon 声明兼容区间。"
+  "name": "锦江悬疑宇宙",
+  "world": "成都",
+  "version": "0.3.0",
+  "epoch": "pre",
+  "released_games": [],
+  "era": {
+    "main": [
+      "1997",
+      "2023"
+    ],
+    "prequel_reserve": "≤1996",
+    "background_reserve": "2024–"
+  },
+  "layers": {
+    "timeline": "universe/timeline.json · 53 个公共锚点 × 6 个叙事阶段（phases）",
+    "atlas": "universe/atlas.json · 水系/片区/走廊与变迁（信息层）",
+    "locations": "universe/locations/*.json · 14 个真实锚点地点（layer=public 免纪元，含 address/mood/era_notes；泡桐树小学与石室中学为情感核心锚点）",
+    "orgs": "universe/orgs/*.json · 9 个真实机构企业（信息层，暂无 DSL 引用通道）",
+    "characters": "universe/characters/*.json · 空——人物是作品的事，地基不造人"
+  },
+  "notes": "宇宙名为暂名，终名待定（见 docs/宇宙-成都-v0.md 待决清单）。真实城市+真实年代；无超自然为当前创作约束。公共层（真实历史/真实地点）免剧透纪元；私有层（虚构事件/虚构地点/人物秘密）须 disclosed_in/first_appearance ∈ assumes ∪ {本作}。"
 }

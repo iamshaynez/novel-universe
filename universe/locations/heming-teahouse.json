@@ -1,0 +1,21 @@
+{
+  "id": "heming-teahouse",
+  "name": "鹤鸣茶社（人民公园）",
+  "aliases": [
+    "鹤鸣",
+    "人民公园茶铺"
+  ],
+  "layer": "public",
+  "mood": {
+    "palette": [
+      "#101208",
+      "#4a5a2a",
+      "#f2ecdc"
+    ],
+    "rain": false,
+    "sign": "鹤鸣",
+    "bigchar": "茶"
+  },
+  "notes": "百年茶铺：竹椅、盖碗、铜壶与掏耳朵的响夹；一碗茶坐一个下午，信息在牌桌间流动。",
+  "address": "青羊区·祠堂街人民公园内"
+}

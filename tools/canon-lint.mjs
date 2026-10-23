@@ -39,8 +39,9 @@ export function lintGame(gameDir, universeDir) {
     const v = n.aview ?? {};
     if (v.bg) {
       const loc = U.locations[v.bg.id];
+      // 公共地点（真实城市锚点）免纪元；虚构地点须 first_appearance 解锁
       if (!loc) issues.push(`${n.id}: 未知地点 ${v.bg.id}`);
-      else if (!allowed.has(loc.first_appearance)) issues.push(`${n.id}: 地点 ${v.bg.id} 披露于 ${loc.first_appearance}，越前引用（本作 ${manifest.code}，assumes=[${manifest.assumes}]）`);
+      else if (loc.layer !== 'public' && !allowed.has(loc.first_appearance)) issues.push(`${n.id}: 地点 ${v.bg.id} 披露于 ${loc.first_appearance}，越前引用（本作 ${manifest.code}，assumes=[${manifest.assumes}]）`);
     }
     if (n.type === 'line' && n.speaker && !checkedSpeakers.has(n.speaker)) {
       checkedSpeakers.add(n.speaker);
@@ -53,7 +54,8 @@ export function lintGame(gameDir, universeDir) {
       if (op.op === 'flag' && op.name.startsWith('fact.')) {
         const ev = U.events[op.name.slice(5)];
         if (!ev) issues.push(`${n.id}: 正典事件不存在 ${op.name.slice(5)}`);
-        else if (!allowed.has(ev.disclosed_in)) issues.push(`${n.id}: 事件 ${ev.id} 披露于 ${ev.disclosed_in}，越前引用`);
+        // 公共背景事件（真实历史）是全宇宙公共知识，免剧透纪元；私有事件须 disclosed_in 解锁
+        else if (ev.layer !== 'public' && !allowed.has(ev.disclosed_in)) issues.push(`${n.id}: 事件 ${ev.id} 披露于 ${ev.disclosed_in}，越前引用`);
       }
     }
   }

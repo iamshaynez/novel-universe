@@ -1,18 +1,20 @@
 // canon-lint 测试：剧透纪元（背景/说话者）、canon 版本范围。
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, rmSync, cpSync, readFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdtempSync, writeFileSync, rmSync, cpSync, readFileSync } from 'node:fs';import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { lintGame, satisfiesRange } from '../tools/canon-lint.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+// g00《雨夜来信》与雾川正典已整体迁入 test/fixtures，专职测试载具，不属于宇宙正典。
+const fixtureGame = join(root, 'test/fixtures/games/g00-demo');
+const fixtureUniverse = join(root, 'test/fixtures/universe');
 
 function cloneGameDir() {
   const dir = mkdtempSync(join(tmpdir(), 'nu-lint-'));
-  cpSync(join(root, 'games/g00-demo'), join(dir, 'game'), { recursive: true });
-  cpSync(join(root, 'universe'), join(dir, 'universe'), { recursive: true });
+  cpSync(fixtureGame, join(dir, 'game'), { recursive: true });
+  cpSync(fixtureUniverse, join(dir, 'universe'), { recursive: true });
   return dir;
 }
 function rewrite(file, from, to) {
@@ -21,7 +23,58 @@ function rewrite(file, from, to) {
 
 describe('canon-lint：g00 干净通过', () => {
   it('无任何 issue', () => {
-    assert.deepEqual(lintGame(join(root, 'games/g00-demo'), join(root, 'universe')), []);
+    assert.deepEqual(lintGame(fixtureGame, fixtureUniverse), []);
+  });
+});
+
+describe('canon-lint：公共背景事件层（真实历史免纪元）', () => {
+  // 向夹具注入一个公共事件 + 剧本 @fact 引用，验证双层制
+  const injectEvent = (dir, ev) =>
+    rewrite(join(dir, 'universe/timeline.json'), '"events": [', `"events": [\n    ${JSON.stringify(ev)},`);
+  const injectFact = dir =>
+    rewrite(join(dir, 'game/chapters/ch1.md'), '@bg rooftop time=dusk', '@bg rooftop time=dusk\n@fact ev-public-test');
+
+  it('layer=public 的真实历史锚点：无 disclosed_in，任意作品引用不报越前', () => {
+    const dir = cloneGameDir();
+    injectEvent(dir, { id: 'ev-public-test', date: '1997-07-01', title: '公共锚点', summary: 'x', layer: 'public' });
+    injectFact(dir);
+    const issues = lintGame(join(dir, 'game'), join(dir, 'universe'));
+    assert.deepEqual(issues, []);
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('非 public 事件缺 disclosed_in → 仍按越前引用拦截（不得冒充公共事件绕过纪元）', () => {
+    const dir = cloneGameDir();
+    injectEvent(dir, { id: 'ev-public-test', date: '1997-07-01', title: '冒充公共', summary: 'x' });
+    injectFact(dir);
+    const issues = lintGame(join(dir, 'game'), join(dir, 'universe'));
+    assert.ok(issues.some(i => /越前引用/.test(i)), issues.join('; '));
+    rmSync(dir, { recursive: true, force: true });
+  });
+});
+
+describe('canon-lint：地点公共层（真实地点免纪元）', () => {
+  const injectLocation = (dir, loc) =>
+    writeFileSync(join(dir, 'universe/locations', `${loc.id}.json`), JSON.stringify(loc));
+  const useLocation = (dir, id) =>
+    rewrite(join(dir, 'game/chapters/ch1.md'), '@bg rooftop time=dusk', `@bg ${id}`);
+
+  it('layer=public 的真实地点：无 first_appearance，任意作品取景不报越前引用', () => {
+    const dir = cloneGameDir();
+    injectLocation(dir, { id: 'loc-public-test', name: '春熙路', layer: 'public', mood: { palette: ['#111', '#222', '#333'] } });
+    useLocation(dir, 'loc-public-test');
+    const issues = lintGame(join(dir, 'game'), join(dir, 'universe'));
+    assert.deepEqual(issues, []);
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('非 public 地点缺 first_appearance → 仍按越前引用拦截', () => {
+    const dir = cloneGameDir();
+    injectLocation(dir, { id: 'loc-public-test', name: '虚构秘所', mood: {} });
+    useLocation(dir, 'loc-public-test');
+    const issues = lintGame(join(dir, 'game'), join(dir, 'universe'));
+    assert.ok(issues.some(i => /越前引用/.test(i)), issues.join('; '));
+    rmSync(dir, { recursive: true, force: true });
   });
 });
 

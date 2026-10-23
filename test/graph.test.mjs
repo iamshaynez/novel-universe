@@ -7,7 +7,7 @@ import { compileGame } from '../tools/compile-scenario.mjs';
 import { validateGraph, enumerateRoutes } from '../engine/graph.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const { ir } = compileGame(join(root, 'games/g00-demo'), join(root, 'universe'));
+const { ir } = compileGame(join(root, 'test/fixtures/games/g00-demo'), join(root, 'test/fixtures/universe'));
 
 describe('图校验：g00', () => {
   it('结构零错误', () => assert.deepEqual(validateGraph(ir), []));

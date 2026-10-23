@@ -1,0 +1,36 @@
+{
+  "events": [
+    {
+      "id": "ev-rooftop-2019",
+      "date": "2009-04",
+      "title": "雾川二中天台坠楼事件",
+      "summary": "十年前春夜，一名女生从旧校舍天台坠落。校方以意外结案，但那晚在场者不止一人。",
+      "disclosed_in": "g00",
+      "depends_on": []
+    },
+    {
+      "id": "ev-letter",
+      "date": "2026-10",
+      "title": "匿名信",
+      "summary": "寄给「一定会来的人」的匿名邀约，指名黄昏天台与雨夜长街两处地点。",
+      "disclosed_in": "g00",
+      "depends_on": ["ev-rooftop-2019"]
+    },
+    {
+      "id": "ev-teahouse-regulars",
+      "date": "2026-10",
+      "title": "夜半茶寮的常客名单",
+      "summary": "茶寮玻璃上的雾字与常客登记簿，暗示寄信人数过「三个人」。",
+      "disclosed_in": "g00",
+      "depends_on": ["ev-letter"]
+    },
+    {
+      "id": "ev-button",
+      "date": "2009-04",
+      "title": "刻着茶寮名字的旧纽扣",
+      "summary": "坠楼者遗物中遗失的一枚纽扣，十年后回到天台目击者手中。",
+      "disclosed_in": "g00",
+      "depends_on": ["ev-rooftop-2019"]
+    }
+  ]
+}

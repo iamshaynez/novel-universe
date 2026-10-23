@@ -1,0 +1,31 @@
+{
+  "id": "tianfu-square",
+  "name": "天府广场",
+  "aliases": [
+    "广场",
+    "皇城坝"
+  ],
+  "layer": "public",
+  "mood": {
+    "palette": [
+      "#0d0d12",
+      "#4a4a5a",
+      "#e8e8f0"
+    ],
+    "rain": false,
+    "sign": "天府广场",
+    "bigchar": "广"
+  },
+  "notes": "城市原点：广场、雕塑与四周的博物馆百货；申奥之夜、大运会之夜的人潮都往这里涌。",
+  "era_notes": [
+    {
+      "era": "2010–",
+      "note": "地铁 1 号线通车成为地下枢纽"
+    }
+  ],
+  "refs": [
+    "pub-2001-olympic",
+    "pub-2010-metro"
+  ],
+  "address": "青羊区·人民中路一段（人民南路北端，城市原点）"
+}

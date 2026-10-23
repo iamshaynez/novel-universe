@@ -1,0 +1,34 @@
+{
+  "id": "chunxi-road",
+  "name": "春熙路",
+  "aliases": [
+    "春熙"
+  ],
+  "layer": "public",
+  "mood": {
+    "palette": [
+      "#120b06",
+      "#8a6a2f",
+      "#ffd9a3"
+    ],
+    "rain": false,
+    "sign": "春熙路",
+    "bigchar": "熙"
+  },
+  "notes": "中山像与霓虹招牌、百货橱窗与人潮；成都商业的心脏。",
+  "era_notes": [
+    {
+      "era": "1997",
+      "note": "外资百货进驻，橱窗里的世界换了一茬又一茬"
+    },
+    {
+      "era": "2002–",
+      "note": "封路改造为步行街"
+    }
+  ],
+  "refs": [
+    "pub-1997-itoyokado",
+    "pub-2002-chunxi"
+  ],
+  "address": "锦江区·春熙路（中山广场一带）"
+}

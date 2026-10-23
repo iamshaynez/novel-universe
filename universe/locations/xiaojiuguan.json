@@ -1,0 +1,34 @@
+{
+  "id": "xiaojiuguan",
+  "name": "小酒馆（玉林西路55号）",
+  "aliases": [
+    "小酒馆"
+  ],
+  "layer": "public",
+  "mood": {
+    "palette": [
+      "#140a08",
+      "#8a3a2a",
+      "#ffb37a"
+    ],
+    "rain": false,
+    "sign": "小酒馆",
+    "bigchar": "歌"
+  },
+  "notes": "吧台、演出海报与永远不够坐的椅子；成都原创音乐的堂口，1997 年由唐蕾创办。",
+  "era_notes": [
+    {
+      "era": "1997–",
+      "note": "从艺术沙龙到摇滚现场"
+    },
+    {
+      "era": "2017–",
+      "note": "《成都》爆红后门口多了拍照的游人"
+    }
+  ],
+  "refs": [
+    "pub-1997-xiaojiuguan",
+    "pub-2017-song"
+  ],
+  "address": "武侯区·玉林西路55号"
+}

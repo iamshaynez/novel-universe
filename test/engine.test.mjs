@@ -10,7 +10,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { ir } = compileGame(join(root, 'games/g00-demo'), join(root, 'universe'));
 
 describe('场景：黄昏的天台开场', () => {
-  it('开局即第一章第一条旁白，背景与配乐已就位', () => {
+  it('开局即第一章第一条旁白，地点已就位（文字舞台：view 只含 bg）', () => {
     const run = createRun(ir);
     const s = stateOf(ir, run);
     assert.equal(s.kind, 'line');
@@ -18,7 +18,8 @@ describe('场景：黄昏的天台开场', () => {
     assert.equal(s.speaker, null);
     assert.match(s.text, /黄昏时分/);
     assert.equal(s.view.bg.id, 'rooftop');
-    assert.equal(s.view.bgm, 'rooftop');
+    assert.equal(s.view.bg.params.time, 'dusk');
+    assert.equal('bgm' in s.view, false);
   });
 
   it('推进到第一个选择点，出现两个选项', () => {

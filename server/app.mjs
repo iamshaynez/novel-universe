@@ -30,10 +30,9 @@ const MIME = {
   '.js': 'text/javascript; charset=utf-8',
   '.mjs': 'text/javascript; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
-  '.svg': 'image/svg+xml',
   '.css': 'text/css; charset=utf-8',
   '.png': 'image/png',
-  '.wav': 'audio/wav',
+  '.svg': 'image/svg+xml',
 };
 
 function json(res, status, body) {
@@ -55,15 +54,11 @@ async function readBody(req) {
   try { return JSON.parse(text); } catch { throw httpError(400, '请求体不是合法 JSON'); }
 }
 
-export function createApp({ db, games, webDir, assetsDir }) {
+export function createApp({ db, games, webDir }) {
   async function serveStatic(res, pathname) {
     let file = null;
     if (pathname === '/') file = join(webDir, 'index.html');
-    else if (pathname.startsWith('/assets/')) {
-      const rel = pathname.slice('/assets/'.length);
-      file = resolvePath(join(assetsDir, rel));
-      if (!file.startsWith(resolvePath(assetsDir))) throw httpError(403, '路径越界');
-    } else {
+    else {
       file = resolvePath(join(webDir, pathname.slice(1)));
       if (!file.startsWith(resolvePath(webDir))) throw httpError(403, '路径越界');
     }

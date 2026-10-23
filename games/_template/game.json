@@ -3,7 +3,7 @@
   "id": "__SLUG__",
   "title": "__TITLE__",
   "subtitle": "雾川市悬疑宇宙",
-  "canon": ">=0.1 <1",
+  "canon": ">=0.2 <1",
   "assumes": [],
   "player": { "name": "你", "voice_hz": 185 },
   "chapters": [

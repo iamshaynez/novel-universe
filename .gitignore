@@ -7,3 +7,7 @@ dist/
 # 可再生成的产物（style-tests 源文件入库，产物不入库）
 style-tests/screenshots/
 style-tests/audio-preview/
+
+# 会话工具产物
+.video_agent/
+.zcode/

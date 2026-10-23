@@ -2,8 +2,6 @@
   "id": "rooftop",
   "name": "雾川二中·旧校舍天台",
   "first_appearance": "g00",
-  "scene_file": "rooftop",
-  "score": "rooftop",
-  "mood": { "palette": ["#3b2560", "#e2795a", "#ffd9a3"] },
+  "mood": { "palette": ["#3b2560", "#e2795a", "#ffd9a3"], "rain": false },
   "notes": "时间参数 time=dusk|night 可派生；铁丝网与水箱是标志性物件。"
 }

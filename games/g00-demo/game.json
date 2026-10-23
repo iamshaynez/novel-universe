@@ -3,7 +3,7 @@
   "id": "g00-demo",
   "title": "雨夜来信",
   "subtitle": "雾川市悬疑宇宙 · 第〇号档案（脚手架验证用）",
-  "canon": ">=0.1 <1",
+  "canon": ">=0.2 <1",
   "assumes": [],
   "player": { "name": "你", "voice_hz": 185 },
   "chapters": [

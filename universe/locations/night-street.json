@@ -2,8 +2,6 @@
   "id": "night-street",
   "name": "长街·夜半茶寮",
   "first_appearance": "g00",
-  "scene_file": "night-street",
-  "score": "rain",
-  "mood": { "palette": ["#0b1424", "#123152", "#7de3ff"] },
+  "mood": { "palette": ["#0b1424", "#123152", "#7de3ff"], "rain": true, "sign": "夜半茶寮", "bigchar": "雨" },
   "notes": "雨夜限定场景；霓虹灯牌、路灯与后巷是标志物件。"
 }

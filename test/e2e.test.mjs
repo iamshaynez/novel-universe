@@ -18,7 +18,7 @@ const base = {};
 before(async () => {
   const db = openDb(':memory:');
   migrate(db, join(root, 'server/migrations'));
-  const server = createApp({ db, games, webDir: join(root, 'web'), assetsDir: join(root, 'assets') });
+  const server = createApp({ db, games, webDir: join(root, 'web') });
   await new Promise(r => server.listen(0, r));
   base.url = `http://127.0.0.1:${server.address().port}`;
   base.server = server; base.db = db;

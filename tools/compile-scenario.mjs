@@ -190,11 +190,11 @@ export function compileGame(gameDir, universeDir) {
       .filter(c => allowedCanon.has(c.first_appearance))
       .map(c => ({ id: c.id, name: c.name, voice_hz: c.voice_hz, stage: c.stage ?? null, bio_public: c.bio_public ?? '' })),
     locations: Object.values(U.locations)
-      .filter(l => allowedCanon.has(l.first_appearance))
+      .filter(l => l.layer === 'public' || allowedCanon.has(l.first_appearance))
       .map(l => ({ id: l.id, name: l.name, mood: l.mood ?? {} })),
     events: Object.values(U.events)
-      .filter(e => allowedCanon.has(e.disclosed_in))
-      .map(e => ({ id: e.id, date: e.date, title: e.title, disclosed_in: e.disclosed_in })),
+      .filter(e => e.layer === 'public' || allowedCanon.has(e.disclosed_in))
+      .map(e => ({ id: e.id, date: e.date, title: e.title, ...(e.disclosed_in ? { disclosed_in: e.disclosed_in } : {}) })),
   };
 
   // 结局去重登记

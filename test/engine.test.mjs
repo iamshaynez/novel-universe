@@ -7,7 +7,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const { ir } = compileGame(join(root, 'games/g00-demo'), join(root, 'universe'));
+const { ir } = compileGame(join(root, 'test/fixtures/games/g00-demo'), join(root, 'test/fixtures/universe'));
 
 describe('场景：黄昏的天台开场', () => {
   it('开局即第一章第一条旁白，地点已就位（文字舞台：view 只含 bg）', () => {

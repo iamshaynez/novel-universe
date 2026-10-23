@@ -11,7 +11,7 @@ import { enumerateRoutes } from '../engine/graph.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 // 编译与路由枚举是同步纯函数：在收集阶段完成，it() 块据此静态生成
-const games = loadGames(join(root, 'games'), join(root, 'universe'));
+const games = loadGames(join(root, 'test/fixtures/games'), join(root, 'test/fixtures/universe'));
 const routes = enumerateRoutes(games['g00-demo'].ir);
 const base = {};
 

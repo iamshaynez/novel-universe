@@ -1,6 +1,6 @@
 canon.html 设定集页面（地点氛围层图案 + 背景卡片 + 宇宙级隐藏人物区）
 构建: npm run build:wiki
-md5: 392fa43a33a2afaa6362bcb7c9d59e38
-产物: web/canon.html (29.5 KB)
+md5: fe57ba06cf6083ea37a78478c37b1940
+产物: web/canon.html (31.5 KB)
 漂移守卫: test/build-wiki.test.mjs —— 正典变更未重建则测试变红
 历史: a511d173…(0.5.0 地点版) → 2e4e9a0d…(0.6.0 人物区)

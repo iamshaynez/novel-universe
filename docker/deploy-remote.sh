@@ -18,7 +18,7 @@ done
 docker compose up -d
 
 for i in $(seq 15); do
-  C=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:18084/ || true)
+  C=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:18090/ || true)
   case "$C" in
     200|302|401) echo "novel-universe 就绪($C,第 $i 轮)"; exit 0;;
   esac

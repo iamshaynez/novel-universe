@@ -101,6 +101,31 @@ export class Stage {
     });
   }
 
+  /** 转写交互（g01 原语）：呼入方报话，玩家把留言打进呼机。错两次亮出底单参照。 */
+  async transcribe({ caller, target, misses = 0 }) {
+    this._append('', `【转写】${caller ?? '呼入'} 报话——请把留言打进呼机。`);
+    return new Promise(res => {
+      const c = this._append('choice', '');
+      c.innerHTML = `<div class="tr">
+        <div class="tr-caller">${misses >= 1 ? `（第 ${misses + 1} 次尝试）` : ''}呼入 · ${caller ?? '未知'}</div>
+        <input class="tr-in" type="text" placeholder="留言内容…" autocomplete="off">
+        <button class="tr-send">发送 ↵</button>
+        ${misses >= 2 ? `<div class="tr-hint">底单参照——${target}</div>` : ''}
+      </div>`;
+      const inp = c.querySelector('.tr-in'), btn = c.querySelector('.tr-send');
+      const done = () => {
+        const v = inp.value.trim();
+        if (!v) return;
+        c.innerHTML = `<div class="tr-done">已入机——「${v}」</div>`;
+        res(v);
+      };
+      btn.addEventListener('pointerdown', ev => { ev.stopPropagation(); done(); });
+      inp.addEventListener('keydown', ev => { ev.stopPropagation(); if (ev.isComposing || ev.keyCode === 229) return; if (ev.key === 'Enter') done(); });
+      setTimeout(() => { inp.classList.add('in'); if (!this.auto) inp.focus(); }, 400);
+      if (this.auto) setTimeout(() => { inp.value = target; done(); }, this.fast ? 50 : 1200);
+    });
+  }
+
   async wipe() {
     this.flow.style.opacity = '0';
     await sleep(this.auto ? 60 : 900);

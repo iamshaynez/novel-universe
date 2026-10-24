@@ -1,0 +1,18 @@
+{
+  "id": "qinjie",
+  "name": "秦姐",
+  "aliases": [
+    "老板娘"
+  ],
+  "class": "cast",
+  "birth_year": 1962,
+  "voice_hz": 196,
+  "stage": {
+    "side": "right",
+    "theme": "#ffb37a"
+  },
+  "first_appearance": "g01",
+  "universe_role": "g01 河音音像店老板娘——贺青禾的转述者之一。",
+  "bio_public": "河音音像店老板娘，柜面玻璃下压着青禾的字条。",
+  "bio_secret": []
+}

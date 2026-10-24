@@ -50,40 +50,44 @@ describe('正典完整性：心脏事件池（或然结局载体）', () => {
   });
 });
 
-describe('正典完整性：原型人物（宇宙级隐藏人物）', () => {
-  it('六位原型人物全部在典', () => {
-    assert.ok(chars.length >= 6, `当前仅 ${chars.length} 位宇宙级人物`);
+describe('正典完整性：人物档案（universe 原型 / cast 剧集双层）', () => {
+  const universeChars = chars.filter(c => c.class === 'universe');
+  const castChars = chars.filter(c => c.class !== 'universe');
+
+  it('六位宇宙级原型人物在典（class: universe）', () => {
+    assert.ok(universeChars.length >= 6, `当前仅 ${universeChars.length} 位宇宙级人物`);
   });
 
-  it('档案齐全：称呼/出生年/声线站位/特征锚/年代阶段/宇宙定位', () => {
+  it('全员基础档案：姓名/声线/站位/出道作/公开人设/出生年', () => {
     const seen = new Set();
     for (const c of chars) {
       assert.ok(!seen.has(c.id), `人物 id 重复: ${c.id}`);
       seen.add(c.id);
-      assert.ok(c.name && (c.aliases ?? []).length >= 1, `${c.id} 缺称呼别名`);
-      assert.ok(Number.isInteger(c.birth_year) && c.birth_year >= 1930 && c.birth_year <= 2010, `${c.id} 出生年非法`);
+      assert.ok(c.name, `${c.id} 缺姓名`);
       assert.ok(typeof c.voice_hz === 'number' && c.voice_hz >= 80 && c.voice_hz <= 400, `${c.id} 声线非法`);
       assert.ok(['left', 'right'].includes(c.stage?.side), `${c.id} 站位非法`);
-      assert.ok((c.persona_anchors ?? []).length >= 2, `${c.id} 特征锚至少两条`);
-      assert.ok((c.stages ?? []).length >= 2, `${c.id} 年代阶段至少两段`);
-      assert.ok(c.universe_role && /永不主角|永不.{0,4}主角/.test(c.universe_role), `${c.id} 宇宙定位须声明「永不主角」`);
       assert.ok(c.first_appearance, `${c.id} 缺 first_appearance`);
       assert.ok(typeof c.bio_public === 'string' && c.bio_public.length > 10, `${c.id} 缺公开人设`);
+      assert.ok(Number.isInteger(c.birth_year) && c.birth_year >= 1930 && c.birth_year <= 2010, `${c.id} 出生年非法`);
       for (const s of c.bio_secret ?? []) {
         assert.ok(s.revealed_in === null || typeof s.revealed_in === 'string',
-          `${c.id} 秘密 ${s.fact?.slice(0, 8)}… 的 revealed_in 须为作品代码或 null（未指派）`);
+          `${c.id} 秘密的 revealed_in 须为作品代码或 null`);
       }
     }
   });
 
-  it('每人至少一条大秘密（big），大秘密只许一条', () => {
-    for (const c of chars) {
+  it('宇宙级原型：称呼/特征锚/年代阶段/永不主角/恰一条大秘密', () => {
+    for (const c of universeChars) {
+      assert.ok((c.aliases ?? []).length >= 1, `${c.id} 缺称呼别名`);
+      assert.ok((c.persona_anchors ?? []).length >= 2, `${c.id} 特征锚至少两条`);
+      assert.ok((c.stages ?? []).length >= 2, `${c.id} 年代阶段至少两段`);
+      assert.ok(c.universe_role && /永不主角|永不.{0,4}主角/.test(c.universe_role), `${c.id} 宇宙定位须声明「永不主角」`);
       const bigs = (c.bio_secret ?? []).filter(s => s.big);
       assert.equal(bigs.length, 1, `${c.id} 应恰有一条大秘密（big:true）`);
     }
   });
 
-  it('人物的 timeline_hooks 都指向真实事件', () => {
+  it('人物 timeline_hooks 都指向真实事件', () => {
     const bad = [];
     for (const c of chars)
       for (const r of c.timeline_hooks ?? []) if (!eventIds.has(r)) bad.push(`${c.id}→${r}`);

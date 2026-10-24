@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>雾川市悬疑宇宙 · 文字舞台</title>
+<title>锦江悬疑宇宙 · 文字舞台</title>
 <style>
   /* 文字舞台播放器 —— 排版即运镜。
      调色板与 universe/tokens.json 的 stage 令牌对齐(单一事实源,改一处同步一处)。 */
@@ -190,6 +190,22 @@
   @media (prefers-reduced-motion:reduce){
     .drop,.mote,#stage.shake{animation:none!important}
   }
+
+/* 转写交互（g01 原语） */
+.tr{display:flex;flex-direction:column;gap:8px;padding:14px 18px;border:1px solid rgba(125,227,255,.35);border-radius:8px;background:rgba(18,49,82,.18);max-width:560px;margin:6px auto 0;opacity:0;transform:translateY(8px);transition:all .5s}
+.tr.in{opacity:1;transform:none}
+.tr-caller{font-size:12px;color:var(--cold,#7de3ff);letter-spacing:2px}
+.tr-in{font:inherit;font-size:15px;color:var(--ink,#efe8f5);background:rgba(11,8,16,.7);border:1px solid rgba(239,232,245,.25);border-radius:6px;padding:9px 12px;outline:none}
+.tr-in:focus{border-color:var(--cold,#7de3ff)}
+.tr-send{align-self:flex-end;font:inherit;font-size:14px;color:#0b0810;background:var(--cold,#7de3ff);border:none;border-radius:6px;padding:7px 16px;cursor:pointer;letter-spacing:2px}
+.tr-hint{font-size:12px;color:rgba(239,232,245,.55)}
+.tr-done{font-size:14px;color:rgba(239,232,245,.8);padding:10px 4px;letter-spacing:1px}
+
+  /* 窄面板：HUD 缩小，避开正文滚动区 */
+  @media (max-width:520px){
+    #hud button{font-size:11px;padding:3px 7px;letter-spacing:1px}
+    #hud{gap:6px}
+  }
 </style>
 </head>
 <body>
@@ -222,7 +238,7 @@
   <div id="hint">点击 · 空格 —— 继续 ▸</div>
 
   <div id="title">
-    <div class="sub">雾川市悬疑宇宙 · 文字舞台</div>
+    <div class="sub">锦江悬疑宇宙 · 文字舞台</div>
     <h1>档案库</h1>
     <div id="gameList"></div>
   </div>

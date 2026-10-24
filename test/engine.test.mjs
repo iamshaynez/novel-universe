@@ -1,7 +1,7 @@
 // 引擎内核场景测试：推进、选择、守卫、flag、确定性、存档回放。
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { createRun, advance, choose, stateOf, serializeRun, loadRun } from '../engine/state.mjs';
+import { createRun, advance, choose, stateOf, serializeRun, loadRun, submit } from '../engine/state.mjs';
 import { compileGame } from '../tools/compile-scenario.mjs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -127,5 +127,54 @@ describe('场景：结局与存档', () => {
       return [s.endingId, JSON.stringify(run.flags), log.join(',')].join('|');
     };
     assert.equal(play(), play());
+  });
+});
+
+// ---- 转写交互（g01 接线员原语）：submit + 停点 + 错误计数 ----
+describe('场景：转写交互（g01）', () => {
+  let g01 = null, why = '';
+  try { g01 = compileGame(join(root, 'games/g01-jiexianyuan'), join(root, 'universe')).ir; }
+  catch (e) { why = e.message; }
+
+  it('g01 可编译：含转写节点与「她/他」声纹解析', () => {
+    assert.ok(g01, `g01 编译失败: ${why}`);
+    const trs = Object.values(g01.nodes).filter(n => n.type === 'transcribe');
+    assert.ok(trs.length >= 8, `转写节点应≥8，实际 ${trs.length}`);
+    assert.equal(g01.speakers['她']?.char, 'suwan', '「她」应解析到苏晚');
+    assert.equal(g01.speakers['他']?.char, 'liaozhikun', '「他」应解析到廖志坤');
+  });
+
+  it('advance 不得越过转写节点（转写是停点）', () => {
+    assert.ok(g01);
+    let r = createRun(g01), guard = 0, hit = null;
+    while (guard++ < 800) {
+      const st = stateOf(g01, r);
+      if (st.kind === 'transcribe') { hit = st; break; }
+      if (st.kind === 'ending') break;
+      if (st.kind === 'choice') { r = choose(r, g01, 0); continue; }
+      r = advance(r, g01);
+    }
+    assert.ok(hit, '应遇到转写停点');
+    assert.equal(advance(r, g01).nodeId, r.nodeId, 'advance 越过了转写节点');
+  });
+
+  it('submit：正确→tr.* 点亮并推进；错误→原地计数', () => {
+    assert.ok(g01);
+    let r = createRun(g01), guard = 0;
+    while (guard++ < 800) {
+      const st = stateOf(g01, r);
+      if (st.kind === 'ending') assert.fail('未遇到转写停点');
+      if (st.kind === 'choice') { r = choose(r, g01, 0); continue; }
+      if (st.kind === 'transcribe') {
+        const wrong = submit(r, g01, '完全不相干的话');
+        assert.equal(wrong.nodeId, r.nodeId, '错误提交不得推进');
+        assert.ok((wrong.trMisses[st.tid] ?? 0) >= 1, '错误应计数');
+        const ok = submit(wrong, g01, st.target);
+        assert.ok(ok.flags[`tr.${st.tid}`], '成功应点亮 tr.* flag');
+        assert.notEqual(ok.nodeId, r.nodeId, '成功后应推进');
+        return;
+      }
+      r = advance(r, g01);
+    }
   });
 });

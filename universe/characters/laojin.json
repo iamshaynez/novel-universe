@@ -1,0 +1,18 @@
+{
+  "id": "laojin",
+  "name": "金台长",
+  "aliases": [
+    "老金"
+  ],
+  "class": "cast",
+  "birth_year": 1953,
+  "voice_hz": 128,
+  "stage": {
+    "side": "left",
+    "theme": "#9a8aad"
+  },
+  "first_appearance": "g01",
+  "universe_role": "g01 传呼台台长——制度性冷漠化身，失窃隐报。",
+  "bio_public": "怕麻烦的小台之主。红笔圈过 6688-7，只当「频呼」。",
+  "bio_secret": []
+}

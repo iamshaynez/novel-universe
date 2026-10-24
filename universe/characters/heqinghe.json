@@ -1,0 +1,21 @@
+{
+  "id": "heqinghe",
+  "name": "贺青禾",
+  "aliases": [],
+  "class": "cast",
+  "birth_year": 1975,
+  "voice_hz": 206,
+  "stage": {
+    "side": "right",
+    "theme": "#c9b8e8"
+  },
+  "first_appearance": "g01",
+  "universe_role": "g01《接线员》坠河者——永不 POV，由生者转述构成。",
+  "bio_public": "河音音像店店员，传呼号 6688-7。给人荐碟有自己的字条体。父债女签，替父挡话。",
+  "bio_secret": [
+    {
+      "fact": "她不会走河对岸——对岸在修路，黑。除非有人喊她过去。",
+      "revealed_in": "g01"
+    }
+  ]
+}

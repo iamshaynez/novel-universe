@@ -1,6 +1,6 @@
 // 剧本 DSL → IR 编译器。纯函数式：同输入 → 同输出（可快照测试）。
 // 语法见 docs/ADR/003-剧本DSL与IR合同.md
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 export function loadUniverse(universeDir) {
@@ -17,10 +17,19 @@ export function loadUniverse(universeDir) {
     const l = JSON.parse(readFileSync(join(universeDir, 'locations', f), 'utf8'));
     locations[l.id] = l;
   }
+  // 组织目录可缺省（脚手架宇宙不一定有）
+  const orgs = {};
+  const orgsDir = join(universeDir, 'orgs');
+  if (existsSync(orgsDir)) {
+    for (const f of readdirSync(orgsDir).filter(f => f.endsWith('.json'))) {
+      const o = JSON.parse(readFileSync(join(orgsDir, f), 'utf8'));
+      orgs[o.id] = o;
+    }
+  }
   const events = {};
   for (const ev of JSON.parse(readFileSync(join(universeDir, 'timeline.json'), 'utf8')).events) events[ev.id] = ev;
   const canon = JSON.parse(readFileSync(join(universeDir, 'canon.json'), 'utf8'));
-  return { chars, aliasToChar, locations, events, canon };
+  return { chars, aliasToChar, locations, orgs, events, canon };
 }
 
 function parseKV(toks) {
@@ -191,15 +200,19 @@ export function compileGame(gameDir, universeDir) {
   }
 
   // 舞台合同 v0：IR 携带纪元过滤后的 canon 摘要块（演出层数据一次到位，不泄未来正典）
+  // ADR-005：人物/地点/组织附 aliases，供演出层行内实体签名；别名只做匹配，不做展示
   const allowedCanon = new Set([...(manifest.assumes ?? []), manifest.code]);
   const canonBlock = {
     world: U.canon.world ?? '',
     characters: Object.values(U.chars)
       .filter(c => allowedCanon.has(c.first_appearance))
-      .map(c => ({ id: c.id, name: c.name, voice_hz: c.voice_hz, stage: c.stage ?? null, bio_public: c.bio_public ?? '' })),
+      .map(c => ({ id: c.id, name: c.name, aliases: c.aliases ?? [], voice_hz: c.voice_hz, stage: c.stage ?? null, bio_public: c.bio_public ?? '' })),
     locations: Object.values(U.locations)
       .filter(l => l.layer === 'public' || allowedCanon.has(l.first_appearance))
-      .map(l => ({ id: l.id, name: l.name, mood: l.mood ?? {} })),
+      .map(l => ({ id: l.id, name: l.name, aliases: l.aliases ?? [], mood: l.mood ?? {} })),
+    orgs: Object.values(U.orgs)
+      .filter(o => o.layer === 'public' || allowedCanon.has(o.first_appearance))
+      .map(o => ({ id: o.id, name: o.name, aliases: o.aliases ?? [] })),
     events: Object.values(U.events)
       .filter(e => e.layer === 'public' || allowedCanon.has(e.disclosed_in))
       .map(e => ({ id: e.id, date: e.date, title: e.title, ...(e.disclosed_in ? { disclosed_in: e.disclosed_in } : {}) })),

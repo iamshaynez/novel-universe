@@ -39,7 +39,7 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     needs: gates
-    timeout-minutes: 15
+    timeout-minutes: 30   # 跨境推 ACR 偶发滞涨：与 app41 同预算，留足重试余量
     steps:
       - uses: actions/checkout@v4
 
@@ -71,7 +71,7 @@ jobs:
             ${{ secrets.ACR_REGISTRY }}/xiaowenz/novel-universe:${{ github.sha }}
             ${{ secrets.ACR_REGISTRY }}/xiaowenz/novel-universe:main
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-to: type=gha,mode=min
           # 阿里云 ACR 个人版不认 buildx 默认的 provenance 认证清单（vnd.oci.empty）——关掉
           provenance: false
 

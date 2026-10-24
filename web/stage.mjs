@@ -5,6 +5,21 @@ const reflow = el => { void el.offsetWidth; };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const raf = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
+// 纸上墨化:人物主题色为暗底亮色(正典 stage.theme),印到案卷纸上时向浓墨收敛保证可读。
+// 与 tokens.json 的 paper_ink(#332e21)保持同步。
+const INK_RGB = [51, 46, 33];
+function inkify(color, amt = .62) {
+  if (!color || !color.startsWith('#')) return color;
+  if (color.startsWith('var(')) return color.includes('accent') ? '#7d6226' : color;
+  const m = /^#([0-9a-f]{6})$/i.exec(color.trim());
+  if (!m) return color;
+  const out = m[1].match(/../g).map((h, i) => {
+    const v = parseInt(h, 16);
+    return Math.round(v * (1 - amt) + INK_RGB[i] * amt);
+  });
+  return '#' + out.map(v => v.toString(16).padStart(2, '0')).join('');
+}
+
 export class Stage {
   constructor(audio, { auto = false } = {}) {
     this.audio = audio;
@@ -77,9 +92,10 @@ export class Stage {
   }
   async say(name, text, { theme = 'var(--accent)', hz = 185, dir = 'r' } = {}) {
     this.revealing = true;
+    const who = inkify(theme);
     for (const p of Stage.phrases(text)) {
       this._append('dlg' + (dir === 'l' ? ' lslide' : ''),
-        `<span class="who" style="color:${theme}">${name}</span>${p}`);
+        `<span class="who" style="color:${who}">${name}</span>${p}`);
       this.audio.blip(hz);
       await this.pause(/[。!?…]/.test(p) ? 860 : 560);
     }
@@ -161,10 +177,12 @@ export class Stage {
     return d;
   }
   async charCard({ name, hz, side, theme, bio }) {
+    const ink = inkify(theme);
     const card = document.createElement('div');
     card.className = `charcard ${side === 'l' ? 'l' : 'r'}`;
-    card.innerHTML = `<div class="cc-name" style="color:${theme}">${name}</div>
-      <svg class="cc-wave" viewBox="0 0 180 36"><path d="${Stage.voiceprint(hz)}" style="stroke:${theme}" pathLength="1000"/></svg>
+    card.innerHTML = `<div class="cc-kicker">人物档案 · 声纹登记</div>
+      <div class="cc-name" style="color:${ink}">${name}</div>
+      <svg class="cc-wave" viewBox="0 0 180 36"><path d="${Stage.voiceprint(hz)}" style="stroke:${ink}" pathLength="1000"/></svg>
       <div class="cc-bio">${bio}<br>声线 ${hz} Hz · ${side === 'l' ? '左' : '右'}侧站位</div>`;
     this.root.appendChild(card);
     reflow(card); card.classList.add('on');
@@ -268,12 +286,9 @@ export class Stage {
   clearClues() { $('#clues').innerHTML = ''; }
   async chapterCard(numText, title) {
     const w = document.createElement('div');
-    w.className = 'sealwrap';
-    w.style.transition = 'opacity 1.1s ease';
-    w.innerHTML = `<div style="display:flex;align-items:center;gap:2.6em">
-      <div style="width:3px;height:26vh;border-radius:2px;background:linear-gradient(#3b2560,#93407a,#e2795a,#ffd9a3)"></div>
-      <div style="writing-mode:vertical-rl;font-size:clamp(34px,6vh,58px);letter-spacing:.5em;font-weight:700">${numText}</div>
-      <div style="writing-mode:vertical-rl;font-size:clamp(18px,3vh,28px);letter-spacing:.6em;color:var(--ink-dim)">${title}</div></div>`;
+    w.className = 'chcard';
+    w.innerHTML = `<div class="ch-num">${numText}</div><div class="ch-bar"></div>
+      <div class="ch-title">${title}</div><div class="ch-seal">章</div>`;
     this.root.appendChild(w);
     await sleep(this.auto ? 60 : 400);
     w.style.opacity = '1';
@@ -294,23 +309,24 @@ export class Stage {
 }
 
 // ---------- 氛围配方(场景配方降级为氛围层;新增地点在此登记或走 fallback) ----------
+// 案卷画风:窗外夜色印在档案室墙上 —— 剪影为暖墨,灯火为金/朱,全部低饱和。
 const SKYLINE = `
-  <g fill="#1c1130" opacity=".9">
+  <g fill="#191410" opacity=".9">
     <path d="M0 548 L0 430 L64 430 L64 412 L92 412 L92 430 L120 430 L120 468 L188 468 L188 440 L262 440 L262 486 L330 486 L330 462 L392 462 L392 496 L1280 496 L1280 548 Z"/>
     <path d="M936 548 L936 448 L1002 448 L1002 470 L1080 470 L1080 442 L1160 442 L1160 474 L1280 474 L1280 548 Z"/>
   </g>
-  <g fill="#ffcf96" opacity=".35">
+  <g fill="#d8b878" opacity=".32">
     <rect x="20" y="452" width="6" height="8"/><rect x="140" y="480" width="6" height="8"/>
     <rect x="300" y="474" width="6" height="8"/><rect x="960" y="466" width="6" height="8"/>
     <rect x="1120" y="458" width="6" height="8"/><rect x="1230" y="486" width="6" height="8"/>
   </g>
-  <g stroke="#241536" stroke-width="1.2" opacity=".5">
+  <g stroke="#211a12" stroke-width="1.2" opacity=".5">
     <line x1="0" y1="352" x2="1280" y2="352"/><line x1="0" y1="428" x2="1280" y2="428"/>
     <line x1="90" y1="348" x2="90" y2="432"/><line x1="340" y1="348" x2="340" y2="432"/>
     <line x1="590" y1="348" x2="590" y2="432"/><line x1="840" y1="348" x2="840" y2="432"/>
     <line x1="1090" y1="348" x2="1090" y2="432"/>
   </g>
-  <g fill="#ffdcae">
+  <g fill="#d9c290">
     <circle class="mote" cx="300" cy="200" r="2.4"/><circle class="mote" cx="520" cy="150" r="2"/>
     <circle class="mote" cx="760" cy="120" r="2.2"/><circle class="mote" cx="1000" cy="170" r="2"/>
     <circle class="mote" cx="880" cy="230" r="1.8"/><circle class="mote" cx="420" cy="260" r="2.6"/>
@@ -320,20 +336,20 @@ const SKYLINE = `
 const AMBIENT = {
   rooftop(mood, params) {
     const night = params.time === 'night';
-    const [top, mid, low] = night ? ['#151030', '#2c2458', '#3a3570'] : ['#3b2560', '#93407a', '#e2795a'];
-    const bot = night ? '#4a4484' : '#ffd9a3';
+    const [top, mid, low] = night ? ['#151210', '#2a241b', '#3a3226'] : ['#332417', '#5e3b26', '#96603a'];
+    const bot = night ? '#3e3626' : '#d8a869';
     return `<svg viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="a-sky" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stop-color="${top}"/><stop offset=".38" stop-color="${mid}"/>
           <stop offset=".66" stop-color="${low}"/><stop offset="1" stop-color="${bot}"/></linearGradient>
         <linearGradient id="a-fade" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="#0b0810" stop-opacity=".96"/>
-          <stop offset=".55" stop-color="#0b0810" stop-opacity=".6"/>
-          <stop offset="1" stop-color="#0b0810" stop-opacity=".08"/></linearGradient>
+          <stop offset="0" stop-color="#17130d" stop-opacity=".96"/>
+          <stop offset=".55" stop-color="#17130d" stop-opacity=".6"/>
+          <stop offset="1" stop-color="#17130d" stop-opacity=".08"/></linearGradient>
       </defs>
       <rect x="0" y="330" width="1280" height="390" fill="url(#a-sky)" opacity=".5"/>
-      <circle cx="960" cy="560" r="120" fill="#ffd9a0" opacity=".1"/>
+      <circle cx="960" cy="560" r="120" fill="#e8c890" opacity=".1"/>
       ${SKYLINE}
       <rect width="1280" height="720" fill="url(#a-fade)"/>
     </svg>`;
@@ -342,31 +358,31 @@ const AMBIENT = {
     return `<svg viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="a-sky" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="#0d0a1e"/><stop offset=".5" stop-color="#171238"/>
-          <stop offset=".8" stop-color="#221d52"/><stop offset="1" stop-color="#2b2665"/></linearGradient>
+          <stop offset="0" stop-color="#141110"/><stop offset=".5" stop-color="#1d1914"/>
+          <stop offset=".8" stop-color="#282218"/><stop offset="1" stop-color="#322a1d"/></linearGradient>
         <linearGradient id="a-fade" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="#0b0810" stop-opacity=".97"/>
-          <stop offset=".5" stop-color="#0b0810" stop-opacity=".55"/>
-          <stop offset="1" stop-color="#0b0810" stop-opacity=".05"/></linearGradient>
+          <stop offset="0" stop-color="#17130d" stop-opacity=".97"/>
+          <stop offset=".5" stop-color="#17130d" stop-opacity=".55"/>
+          <stop offset="1" stop-color="#17130d" stop-opacity=".05"/></linearGradient>
       </defs>
       <rect width="1280" height="720" fill="url(#a-sky)"/>
-      <circle cx="1050" cy="150" r="42" fill="#e8ecff" opacity=".4"/>
-      <circle cx="1050" cy="150" r="90" fill="#cdd6ff" opacity=".08"/>
-      <g fill="#090614" opacity=".96">
+      <circle cx="1050" cy="150" r="42" fill="#ddd6c2" opacity=".38"/>
+      <circle cx="1050" cy="150" r="90" fill="#c8c2ae" opacity=".08"/>
+      <g fill="#0d0b08" opacity=".96">
         <path d="M0 548 L0 430 L64 430 L64 412 L92 412 L92 430 L120 430 L120 468 L188 468 L188 440 L262 440 L262 486 L330 486 L330 462 L392 462 L392 496 L1280 496 L1280 548 Z"/>
         <path d="M936 548 L936 448 L1002 448 L1002 470 L1080 470 L1080 442 L1160 442 L1160 474 L1280 474 L1280 548 Z"/>
       </g>
-      <g fill="#7de3ff" opacity=".3">
+      <g fill="#8fb4ba" opacity=".26">
         <rect x="24" y="452" width="6" height="8"/><rect x="142" y="480" width="6" height="8"/>
         <rect x="306" y="474" width="6" height="8"/><rect x="962" y="464" width="6" height="8"/>
         <rect x="1124" y="458" width="6" height="8"/><rect x="1236" y="486" width="6" height="8"/>
       </g>
-      <g fill="#ff9d9d" opacity=".3">
+      <g fill="#c98a72" opacity=".26">
         <rect x="200" y="456" width="6" height="8"/><rect x="640" y="472" width="6" height="8"/>
       </g>
-      <ellipse cx="320" cy="600" rx="150" ry="9" fill="#7de3ff" opacity=".07"/>
-      <ellipse cx="820" cy="640" rx="180" ry="10" fill="#ff9d9d" opacity=".06"/>
-      <ellipse cx="1100" cy="610" rx="120" ry="8" fill="#7de3ff" opacity=".06"/>
+      <ellipse cx="320" cy="600" rx="150" ry="9" fill="#8fb4ba" opacity=".06"/>
+      <ellipse cx="820" cy="640" rx="180" ry="10" fill="#c98a72" opacity=".05"/>
+      <ellipse cx="1100" cy="610" rx="120" ry="8" fill="#8fb4ba" opacity=".05"/>
       <rect width="1280" height="720" fill="url(#a-fade)"/>
     </svg>`;
   },

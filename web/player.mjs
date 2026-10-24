@@ -167,11 +167,11 @@ async function loadSave(saveId) {
 async function openSaves() {
   if (!app.gameId) { stage.toast('先开始游戏'); return; }
   const list = await api.j(`/api/saves?gameId=${app.gameId}`);
-  $('#savesList').innerHTML = list.length ? '' : '<div style="color:#6d5f80;font-size:12px">暂无存档</div>';
+  $('#savesList').innerHTML = list.length ? '' : '<div style="color:var(--ink-dim);font-size:12px">暂无存档</div>';
   for (const sv of list) {
     const div = document.createElement('div');
     div.className = 'save';
-    div.innerHTML = `<span>#${sv.id} 存档</span><span style="color:#6d5f80">${sv.ended ? `已通关(${sv.ended})` : '进行中'}</span>`;
+    div.innerHTML = `<span>#${sv.id} 存档</span><span style="color:var(--ink-dim)">${sv.ended ? `已通关(${sv.ended})` : '进行中'}</span>`;
     div.onclick = () => loadSave(sv.id);
     $('#savesList').appendChild(div);
   }

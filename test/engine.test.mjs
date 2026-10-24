@@ -177,4 +177,29 @@ describe('场景：转写交互（g01）', () => {
       r = advance(r, g01);
     }
   });
+
+  it('submit 判定容错：照呼入原话全文可过，去标点可过，漏关键字不过（打字跟人声走）', () => {
+    assert.ok(g01);
+    let r = createRun(g01), guard = 0;
+    while (guard++ < 800) {
+      const st = stateOf(g01, r);
+      if (st.kind === 'ending') assert.fail('未遇到 t1 转写停点');
+      if (st.kind === 'choice') { r = choose(r, g01, 0); continue; }
+      if (st.kind === 'transcribe' && st.tid === 't1') {
+        // 张嬢嬢的呼入原话全文照打（含语气词，标点不同）→ 应通过
+        const full = submit(r, g01, '呼我儿——降温了哈，被子换成厚的，莫要嘴硬。你老汉儿风湿又犯了，念你。');
+        assert.notEqual(full.nodeId, r.nodeId, '照呼入原话全文打应通过');
+        assert.ok(full.flags['tr.t1'], '全文照打应点亮 tr.t1');
+        // 目标裸文去标点 → 应通过
+        const bare = submit(r, g01, '降温了被子换成厚的念你');
+        assert.notEqual(bare.nodeId, r.nodeId, '去标点裸文应通过');
+        // 漏掉「念你」 → 不得推进
+        const miss = submit(r, g01, '降温了，被子换成厚的。');
+        assert.equal(miss.nodeId, r.nodeId, '漏掉关键字不得推进');
+        assert.ok((miss.trMisses['t1'] ?? 0) >= 1, '漏关键字应计数');
+        return;
+      }
+      r = advance(r, g01);
+    }
+  });
 });

@@ -25,9 +25,14 @@ const api = {
 
 const app = {
   ir: null, saveId: null, gameId: null,
-  prev: { chapter: null, bgId: null },
+  prev: { chapter: null, bgKey: null },
   met: new Set(), facts: new Set(), timelineBuilt: false, running: false,
+  sheet: new Map(), // 转写底单：tid -> {caller, target}（本局回看）
 };
+
+// 代词说话者是剧本刻意匿名（g01 叙诡合同）：声纹卡/锚点只显声线，不揭名——
+// 「我姓廖」那一拍之前的任何姓名都是剧透。
+const MASKED_SPEAKERS = new Set(['他', '她', '它']);
 
 const charOf = name => {
   const sp = app.ir.speakers[name];
@@ -35,11 +40,12 @@ const charOf = name => {
 };
 
 function resetRun() {
-  app.prev = { chapter: null, bgId: null };
-  app.met = new Set(); app.facts = new Set(); app.timelineBuilt = false;
+  app.prev = { chapter: null, bgKey: null };
+  app.met = new Set(); app.facts = new Set(); app.timelineBuilt = false; app.sheet.clear();
   stage.reset(); stage.clearClues(); stage.clearAnchors();
   $('#timeline').classList.remove('on');
   $('#chapterLabel').classList.remove('on');
+  $('#sheetPanel').classList.remove('on');
 }
 
 /** 渲染一个停点;返回下一停点状态(结局/选择后返回其状态),终局返回 null。 */
@@ -53,16 +59,18 @@ async function renderBeat(s) {
     await stage.chapterCard(`第${num}章`, ch.title);
     stage.setChapterLabel(`第${num}章 · ${ch.title}`);
     app.prev.chapter = s.chapter;
-    app.prev.bgId = null;
+    app.prev.bgKey = null;
   }
-  // 地点切换 → 氛围层 + 印章
+  // 地点或昼夜切换 → 氛围层 + 印章（白日/夜翻面本身是场景信号，同地点也要换）
   const bgId = s.view?.bg?.id ?? null;
-  if (bgId && bgId !== app.prev.bgId) {
+  const bgTime = s.view?.bg?.params?.time ?? null;
+  const bgKey = bgId ? `${bgId}|${bgTime}` : null;
+  if (bgKey && bgKey !== app.prev.bgKey) {
     const loc = app.ir.canon.locations.find(l => l.id === bgId);
-    const time = ({ dusk: '黄昏', night: '夜' })[s.view.bg.params?.time];
+    const time = ({ day: '白日', dusk: '黄昏', night: '夜' })[bgTime];
     stage.setAmbient(bgId, loc?.mood ?? {}, s.view.bg.params ?? {});
     if (loc) await stage.seal(loc.name, app.ir.canon.world + (time ? ` · ${time}` : ''));
-    app.prev.bgId = bgId;
+    app.prev.bgKey = bgKey;
   }
   // 正典事实差分 → 时间轴点亮 + 线索解锁
   for (const k of Object.keys(s.flags ?? {})) {
@@ -70,7 +78,12 @@ async function renderBeat(s) {
     app.facts.add(k);
     const ev = app.ir.canon.events.find(e => e.id === k.slice(5));
     if (!ev) continue;
-    if (!app.timelineBuilt) { stage.buildTimeline(app.ir.canon.events); app.timelineBuilt = true; }
+    if (!app.timelineBuilt) {
+      // 时间轴带只摆本作私有事件（宇宙编年史归 canon.html）
+      const own = app.ir.canon.events.filter(e => e.disclosed_in === app.ir.code);
+      stage.buildTimeline(own.length ? own : app.ir.canon.events);
+      app.timelineBuilt = true;
+    }
     stage.showTimeline(); stage.lightEvent(ev); stage.addClue(ev.title); audio.chime();
   }
 
@@ -78,14 +91,17 @@ async function renderBeat(s) {
     let card = null;
     if (s.speaker) {
       const c = charOf(s.speaker);
-      const side = c?.stage?.side === 'l' ? 'l' : 'r';
+      const masked = MASKED_SPEAKERS.has(s.speaker);
+      // 正典 side 为 left|right（ADR-004），这里归一化为 l/r
+      const sideRaw = c?.stage?.side;
+      const side = sideRaw === 'l' || sideRaw === 'left' ? 'l' : 'r';
       const theme = c?.stage?.theme ?? 'var(--accent)';
-      const hz = c?.voice_hz ?? 185;
+      const hz = c?.voice_hz ?? 218;
       if (c && !app.met.has(c.id)) {
         app.met.add(c.id);
-        card = await stage.charCard({ name: c.name, hz, side, theme, bio: c.bio_public });
+        card = await stage.charCard({ name: masked ? s.speaker : c.name, hz, side, theme, bio: masked ? '' : c.bio_public });
       }
-      if (c) stage.setAnchor(c.name, side, theme);
+      if (c) stage.setAnchor(masked ? s.speaker : c.name, side, theme);
       await stage.say(s.speaker, s.text, { theme, hz, dir: side });
     } else {
       await stage.tell(s.text);
@@ -110,7 +126,7 @@ async function renderBeat(s) {
       const r = await api.post(`/api/saves/${app.saveId}/advance`, { text });
       if (r.state.kind === 'transcribe' && r.state.id === cur.id) { stage.toast('听岔了——再听一遍'); cur = r.state; }
       // tid 用于底单/flag 追踪；同节点判定用 id
-      else return r.state;
+      else { app.sheet.set(cur.tid, { caller: cur.caller, target: cur.target }); return r.state; }
     }
   }
 
@@ -180,6 +196,19 @@ async function openSaves() {
 
 // ---- HUD 按钮 ----
 $('#btnSaves').onclick = openSaves;
+// 底单回看：本局转写记录（悬疑玩家要翻回去对时间戳与号码）
+$('#btnSheet').onclick = () => {
+  const panel = $('#sheetPanel'), list = $('#sheetList');
+  const items = [...app.sheet.values()];
+  list.innerHTML = items.length ? '' : '<div style="color:#6e6549;font-size:12px">还没有转写记录</div>';
+  for (const it of items) {
+    const div = document.createElement('div');
+    div.className = 'tr-row';
+    div.innerHTML = `<span class="tr-row-caller">${it.caller ?? '呼入'}</span><span class="tr-row-text">${it.target}</span>`;
+    list.appendChild(div);
+  }
+  panel.classList.toggle('on');
+};
 // 破坏性操作二次确认：第一次点击只亮「确认？」，2.5s 内再点才执行——防误触毁档
 function armConfirm(btn, fn) {
   btn.onclick = () => {

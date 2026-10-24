@@ -8,7 +8,7 @@ import { compileGame } from '../tools/compile-scenario.mjs';
 import { createRun, advance, choose, stateOf, loadRun, submit } from '../engine/state.mjs';
 import { validateGraph } from '../engine/graph.mjs';
 import {
-  createSave, getSave, listSaves, updateSave, recordEnding, listEndings,
+  createSave, getSave, listSaves, updateSave, recordEnding, listEndingsByGame,
 } from './db.mjs';
 
 export function loadGames(gamesRoot, universeDir) {
@@ -140,7 +140,7 @@ export function createApp({ db, games, webDir }) {
     }
     if (req.method === 'GET' && a === 'saves' && b && c === 'endings') {
       const { row } = loadRunOf(Number(b));
-      return json(res, 200, listEndings(db, row.id));
+      return json(res, 200, listEndingsByGame(db, row.game_id));
     }
     throw httpError(404, `无此路由 ${req.method} ${pathname}`);
   }

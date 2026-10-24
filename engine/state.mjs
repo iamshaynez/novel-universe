@@ -37,8 +37,21 @@ export function stateOf(ir, run) {
   return { ...base, kind: 'beat' };
 }
 
-/** 转写文本规整：去空白后精确比较。 */
-const norm = s => String(s).replace(/\s+/g, '');
+/** 转写文本规整：去空白与全部中英标点符号，只留内容字。 */
+const norm = s => String(s).replace(/[\s\p{P}\p{S}]/gu, '');
+
+/** 转写判定：目标内容字须按序包含于玩家输入——照呼入原话全文可过，漏关键字不过。
+ *  打字跟人声走：人可以多打，不可以漏（g01 接线员合同）。导出给内容 lint 复用同一把尺。 */
+export function transcribeOk(input, target) {
+  const t = norm(target);
+  if (!t) return true;
+  let i = 0;
+  for (const ch of norm(input)) {
+    if (ch === t[i]) i++;
+    if (i >= t.length) return true;
+  }
+  return false;
+}
 
 /** 推进到下一个「停点」（台词/选项/转写/结局）；自动穿过 jump 等过渡节点。 */
 export function advance(run, ir) {
@@ -64,13 +77,13 @@ export function advance(run, ir) {
   return nr;
 }
 
-/** 转写提交：文本与目标一致（去空白比较）→ 记录、点亮 tr.<id>、推进到下一停点；
- *  不一致 → 原地计一次 miss（不推进）。转写是带提交语义的停点。 */
+/** 转写提交：目标内容字按序含于提交文本（可多打不漏字）→ 记录、点亮 tr.<id>、推进；
+ *  不通过 → 原地计一次 miss（不推进）。转写是带提交语义的停点。 */
 export function submit(run, ir, text) {
   const cur = ir.nodes[run.nodeId];
   if (!cur || cur.type !== 'transcribe') throw new Error('submit: 当前节点不是转写');
   const nr = cloneRun(run);
-  if (norm(text) !== norm(cur.target)) {
+  if (!transcribeOk(text, cur.target)) {
     nr.trMisses[cur.transId] = (nr.trMisses[cur.transId] ?? 0) + 1;
     return nr;
   }

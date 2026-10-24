@@ -5,7 +5,7 @@ import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { openDb, migrate, listEndings } from '../server/db.mjs';
+import { openDb, migrate } from '../server/db.mjs';
 import { loadGames, createApp } from '../server/app.mjs';
 import { enumerateRoutes } from '../engine/graph.mjs';
 import { createRun, advance, choose, stateOf } from '../engine/state.mjs';

@@ -25,7 +25,8 @@ export class StageAudio {
     } catch (e) {}
   }
   blip(hz) { this.tone(hz, .07, 'sine', .5); this.tone(hz * 2, .04, 'sine', .1); }
-  narr() { this.blip(165); }
+  /** 旁白 tick；detune 为音分级微差（舞台种子驱动），去掉节拍器感。 */
+  narr(detune = 0) { const hz = 165 * (1 + detune); this.tone(hz, .07, 'sine', .5); this.tone(hz * 2, .04, 'sine', .1); }
   chime() { this.tone(660, .14, 'triangle', .4); this.tone(990, .2, 'triangle', .28, .09); }
   thud() {
     if (!this.ctx || this.muted) return;

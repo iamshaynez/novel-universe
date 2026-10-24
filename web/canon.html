@@ -5,56 +5,70 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>锦江悬疑宇宙 · 地点设定集</title>
 <style>
-  :root{--bg:#0b0810;--ink:#efe8f5;--dim:#9a8aad;--paper:#f2ecdc;--accent:#ffb37a;--cold:#7de3ff;--blood:#e0523f}
+  :root{--bg:#17130d;--ink:#e6dabb;--dim:#8f8567;--paper:#e4d6b3;--p-ink:#332e21;--accent:#c9a15f;--cold:#4e7d87;--blood:#9e3a2b;
+    --kai:"Kaiti SC","STKaiti","KaiTi","Songti SC","Noto Serif SC",serif}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);font-family:"Songti SC","Noto Serif SC",serif;line-height:1.75}
+  body::before{content:"";position:fixed;inset:0;z-index:99;pointer-events:none;opacity:.06;mix-blend-mode:soft-light;
+    background:repeating-linear-gradient(93deg,transparent 0 3px,#fff 3px 4px,transparent 4px 11px),repeating-linear-gradient(2deg,#000 0 1px,transparent 1px 5px)}
   .wrap{max-width:980px;margin:0 auto;padding:28px 20px 60px}
-  header h1{margin:0;font-size:26px;letter-spacing:6px}
-  header .sub{color:var(--dim);font-size:13px;margin:6px 0 0}
+  header{position:relative;padding:22px 26px;border:1px solid #a8946a;box-shadow:inset 0 0 0 4px rgba(23,19,13,.1);
+    background:linear-gradient(150deg,#e9dcbd,#ddd0a9);color:#2e2818}
+  header::before{content:"档";position:absolute;top:16px;right:18px;display:flex;align-items:center;justify-content:center;
+    width:44px;height:58px;border:2px solid var(--blood);border-radius:4px;color:var(--blood);
+    font:26px var(--kai);transform:rotate(-6deg);opacity:.85;box-shadow:inset 0 0 0 1px rgba(158,58,43,.3)}
+  header h1{margin:0;font-size:26px;letter-spacing:8px;font-family:var(--kai)}
+  header .sub{color:#7c704f;font-size:13px;margin:8px 0 0}
   .phases{display:flex;gap:6px;flex-wrap:wrap;margin:20px 0 26px}
-  .phases span{flex:1;min-width:120px;text-align:center;font-size:12px;padding:7px 4px;border:1px solid rgba(239,232,245,.16);border-radius:6px;color:var(--dim)}
+  .phases span{flex:1;min-width:120px;text-align:center;font-size:12px;padding:7px 4px;border:1px solid #6d5d3b;color:var(--dim)}
   .phases b{color:var(--ink);font-weight:400}
-  .loc{border:1px solid rgba(239,232,245,.14);border-radius:8px;margin-bottom:28px;background:rgba(255,255,255,.028);overflow:hidden}
-  .stage{position:relative;height:150px;background:linear-gradient(155deg,var(--p0) 0%,var(--p1) 55%,var(--p2) 135%)}
-  .bigchar{position:absolute;left:12px;bottom:-16px;font-size:92px;line-height:1;font-weight:900;color:var(--p2);opacity:.9;text-shadow:0 2px 18px rgba(0,0,0,.45)}
-  .seal{position:absolute;top:10px;right:10px;writing-mode:vertical-rl;background:var(--blood);color:var(--paper);font-size:13px;letter-spacing:3px;padding:8px 4px;border-radius:2px;box-shadow:0 1px 6px rgba(0,0,0,.5)}
-  .rain{position:absolute;inset:0;background-image:repeating-linear-gradient(75deg,rgba(255,255,255,.07) 0 1px,transparent 1px 13px)}
-  .rain::after{content:"雨";position:absolute;top:8px;left:10px;font-size:12px;color:rgba(255,255,255,.55);letter-spacing:2px}
-  .badge{position:absolute;top:10px;left:10px;background:var(--accent);color:var(--bg);font-size:12px;padding:2px 10px;border-radius:10px;letter-spacing:2px}
-  .badge.private{background:var(--dim);top:44px}
-  .char{border:1px solid rgba(239,232,245,.14);border-left:4px solid var(--c);border-radius:8px;margin-bottom:22px;padding:14px 16px;background:rgba(255,255,255,.028)}
-  .char h3{margin:0 0 2px;font-size:18px;letter-spacing:1px}
-  .char .aka{color:var(--dim);font-size:13px}
-  .char .role{font-size:13px;color:var(--c);margin:6px 0 2px}
+  .loc{border:1px solid #a8946a;margin-bottom:28px;background:linear-gradient(150deg,#e9dcbd,#ddd0a9);
+    box-shadow:inset 0 0 0 4px rgba(23,19,13,.1),0 10px 30px rgba(0,0,0,.35);overflow:hidden;color:#2e2818}
+  .stage{position:relative;height:150px;background:linear-gradient(155deg,var(--p0) 0%,var(--p1) 55%,var(--p2) 135%);
+    border-bottom:1px solid #a8946a}
+  .bigchar{position:absolute;left:12px;bottom:-16px;font-size:92px;line-height:1;font-weight:900;font-family:var(--kai);color:var(--p2);opacity:.9;text-shadow:0 2px 18px rgba(0,0,0,.45)}
+  .seal{position:absolute;top:10px;right:10px;writing-mode:vertical-rl;background:var(--blood);color:#e9dcbd;font-size:13px;letter-spacing:3px;padding:8px 4px;border-radius:2px;box-shadow:0 1px 6px rgba(0,0,0,.5)}
+  .rain{position:absolute;inset:0;background-image:repeating-linear-gradient(75deg,rgba(232,220,189,.14) 0 1px,transparent 1px 13px)}
+  .rain::after{content:"雨";position:absolute;top:8px;left:10px;font-size:12px;color:rgba(233,220,189,.75);letter-spacing:2px}
+  .badge{position:absolute;top:10px;left:10px;background:var(--bg);color:var(--accent);font-size:12px;padding:2px 10px;letter-spacing:2px;border:1px solid #6d5d3b}
+  .badge.private{background:var(--bg);color:var(--dim);top:44px}
+  .char{border:1px solid #a8946a;border-left:4px solid var(--c);margin-bottom:22px;padding:14px 16px;
+    background:linear-gradient(150deg,#e9dcbd,#ddd0a9);box-shadow:inset 0 0 0 4px rgba(23,19,13,.1);color:#2e2818}
+  .char h3{margin:0 0 2px;font-size:19px;letter-spacing:2px;font-family:var(--kai)}
+  .char .aka{color:#7c704f;font-size:13px}
+  .char .role{font-size:13px;color:var(--blood);margin:6px 0 2px;letter-spacing:1px}
   .char .anchors{margin:8px 0}
-  .char .anchors span{display:inline-block;border:1px solid rgba(239,232,245,.24);color:var(--ink);font-size:12px;padding:1px 9px;border-radius:999px;margin:0 4px 6px 0}
+  .char .anchors span{display:inline-block;border:1px solid #a8946a;color:#4a4232;font-size:12px;padding:1px 9px;margin:0 4px 6px 0;background:rgba(255,252,242,.4)}
   .char dl{display:grid;grid-template-columns:88px 1fr;gap:7px 10px;margin:8px 0}
   .char .secret{color:var(--blood);font-size:13px}
-  .char .stages{color:var(--dim);font-size:13px}
-  .char .stages b{color:var(--ink);font-weight:400}
-  h2.sec{font-size:20px;letter-spacing:4px;border-bottom:1px solid rgba(239,232,245,.14);padding-bottom:8px;margin:38px 0 18px}
-  .heart{border:1px solid rgba(239,232,245,.14);border-radius:8px;margin-bottom:18px;padding:12px 16px;background:rgba(255,179,122,.04)}
-  .heart.primary{border-left:4px solid var(--accent)}
-  .heart h3{margin:0 0 2px;font-size:17px}
-  .heart .status{font-size:12px;color:var(--accent);letter-spacing:1px}
-  .heart .cycle{color:var(--dim);font-size:13px;margin:4px 0}
-  .heart .cf{display:inline-block;border:1px solid var(--accent);color:var(--accent);font-size:12px;padding:1px 9px;border-radius:999px;margin:4px 4px 0 0}
-  .body h2{margin:14px 16px 2px;font-size:20px;letter-spacing:1px}
-  .meta{color:var(--dim);font-size:13px;margin:0 16px}
+  .char .stages{color:#6e6549;font-size:13px}
+  .char .stages b{color:#2e2818;font-weight:400}
+  h2.sec{display:flex;align-items:center;gap:14px;font-size:21px;letter-spacing:6px;font-family:var(--kai);color:var(--accent);margin:44px 0 18px}
+  h2.sec::before,h2.sec::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,transparent,#6d5d3b)}
+  h2.sec::after{background:linear-gradient(90deg,#6d5d3b,transparent)}
+  .heart{border:1px solid #a8946a;margin-bottom:18px;padding:12px 16px;background:linear-gradient(150deg,#e9dcbd,#ddd0a9);
+    box-shadow:inset 0 0 0 4px rgba(23,19,13,.1);color:#2e2818}
+  .heart.primary{border-left:4px solid var(--blood)}
+  .heart h3{margin:0 0 2px;font-size:17px;font-family:var(--kai);letter-spacing:2px}
+  .heart .status{font-size:12px;color:var(--blood);letter-spacing:1px}
+  .heart .cycle{color:#6e6549;font-size:13px;margin:4px 0}
+  .heart .cf{display:inline-block;border:1px solid #a8946a;color:#4a4232;font-size:12px;padding:1px 9px;margin:4px 4px 0 0;background:rgba(255,252,242,.4)}
+  .body h2{margin:14px 16px 2px;font-size:20px;letter-spacing:2px;font-family:var(--kai)}
+  .meta{color:#7c704f;font-size:13px;margin:0 16px}
   .chips{margin:8px 16px 0}
-  .chips span{display:inline-block;border:1px solid rgba(239,232,245,.24);color:var(--dim);font-size:12px;padding:1px 9px;border-radius:999px;margin:0 4px 6px 0}
+  .chips span{display:inline-block;border:1px solid #a8946a;color:#4a4232;font-size:12px;padding:1px 9px;margin:0 4px 6px 0;background:rgba(255,252,242,.4)}
   dl{display:grid;grid-template-columns:88px 1fr;gap:7px 10px;margin:10px 16px}
-  dt{color:var(--accent);font-size:13px;white-space:nowrap}
-  dd{margin:0;font-size:14px;color:rgba(239,232,245,.92)}
-  .hook{margin:6px 16px 18px;padding:9px 14px;border-left:3px solid var(--accent);background:rgba(255,179,122,.07);border-radius:0 6px 6px 0;font-size:14px}
-  footer{color:var(--dim);font-size:12px;margin-top:34px;border-top:1px solid rgba(239,232,245,.12);padding-top:14px}
-  @media print{.loc{break-inside:avoid}}</style>
+  dt{color:var(--blood);font-size:13px;white-space:nowrap;letter-spacing:2px;font-family:var(--kai)}
+  dd{margin:0;font-size:14px;color:#332e21}
+  .hook{margin:6px 16px 18px;padding:9px 14px;border-left:3px solid var(--blood);background:rgba(158,58,43,.06);font-size:14px;color:#4a4232}
+  footer{color:var(--dim);font-size:12px;margin-top:34px;border-top:1px solid #6d5d3b;padding-top:14px}
+  @media print{.loc,.char,.heart,header{break-inside:avoid}}</style>
 </head>
 <body>
 <div class="wrap">
   <header>
     <h1>锦江悬疑宇宙 · 地点</h1>
-    <p class="sub">canon 0.8.0 · 主窗 1997–2023 · 17 个锚点地点（3 个私有）· 14 位宇宙级隐藏人物 · 图案为文字舞台演出词汇（ADR-004）</p>
+    <p class="sub">canon 0.9.0 · 主窗 1997–2023 · 17 个锚点地点（3 个私有）· 14 位宇宙级隐藏人物 · 图案为文字舞台演出词汇（ADR-004）</p>
   </header>
   <nav class="phases"><span>前传预留（≤1996）<br><b>6 锚点</b></span><span>转型阵痛（1997–2000）<br><b>19 锚点</b></span><span>入世年代（2001–2005）<br><b>13 锚点</b></span><span>巨变之年（2006–2010）<br><b>9 锚点</b></span><span>新一线时代（2011–2019）<br><b>9 锚点</b></span><span>疫情与重启（2020–2023）<br><b>3 锚点</b></span></nav>
   <h2 class="sec">心脏事件（或然结局载体 · 历史不动，人心分支）</h2>
@@ -85,7 +99,7 @@
   <h2 class="sec">地点</h2>
   
   <section class="loc" id="paotongshu-primary">
-    <div class="stage" style="--p0:#0d0b12;--p1:#5a4a7a;--p2:#c9b8e8">
+    <div class="stage" style="--p0:#110f14;--p1:#504a5e;--p2:#9785b7">
       <span class="badge">情感核心</span>
       
       <span class="bigchar">桐</span>
@@ -111,7 +125,7 @@
   </section>
 
   <section class="loc" id="shishi-middle">
-    <div class="stage" style="--p0:#120a08;--p1:#7a3a2a;--p2:#ffd9a3">
+    <div class="stage" style="--p0:#130e0d;--p1:#5a3e37;--p2:#cfa76e">
       <span class="badge">情感核心</span>
       
       <span class="bigchar">文</span>
@@ -137,7 +151,7 @@
   </section>
 
   <section class="loc" id="chuan-da">
-    <div class="stage" style="--p0:#0c1008;--p1:#3a5a2a;--p2:#f2ecdc">
+    <div class="stage" style="--p0:#0f120d;--p1:#3a4932;--p2:#b4a888">
       
       
       <span class="bigchar">学</span>
@@ -163,7 +177,7 @@
   </section>
 
   <section class="loc" id="chunxi-road">
-    <div class="stage" style="--p0:#120b06;--p1:#8a6a2f;--p2:#ffd9a3">
+    <div class="stage" style="--p0:#130f0b;--p1:#64563c;--p2:#cfa76e">
       
       
       <span class="bigchar">熙</span>
@@ -189,7 +203,7 @@
   </section>
 
   <section class="loc" id="factory-yard">
-    <div class="stage" style="--p0:#141014;--p1:#5a4a3a;--p2:#ffd9a3">
+    <div class="stage" style="--p0:#161316;--p1:#4a433c;--p2:#cfa76e">
       
       
       <span class="bigchar">院</span>
@@ -215,7 +229,7 @@
   </section>
 
   <section class="loc" id="funanhe-bank">
-    <div class="stage" style="--p0:#0a1420;--p1:#1e4a6b;--p2:#7de3ff">
+    <div class="stage" style="--p0:#11161d;--p1:#2d4251;--p2:#69b8cd">
       
       <div class="rain"></div>
       <span class="bigchar">河</span>
@@ -241,7 +255,7 @@
   </section>
 
   <section class="loc" id="hehuachi">
-    <div class="stage" style="--p0:#140c0a;--p1:#7a4a2a;--p2:#ffb37a">
+    <div class="stage" style="--p0:#15100f;--p1:#5a4537;--p2:#cd9368">
       
       
       <span class="bigchar">市</span>
@@ -267,7 +281,7 @@
   </section>
 
   <section class="loc" id="heming-teahouse">
-    <div class="stage" style="--p0:#101208;--p1:#4a5a2a;--p2:#f2ecdc">
+    <div class="stage" style="--p0:#12130d;--p1:#414932;--p2:#b4a888">
       
       
       <span class="bigchar">茶</span>
@@ -293,7 +307,7 @@
   </section>
 
   <section class="loc" id="hongguang-works">
-    <div class="stage" style="--p0:#160d08;--p1:#7a3d1a;--p2:#ffb37a">
+    <div class="stage" style="--p0:#16110e;--p1:#593d2d;--p2:#cd9368">
       
       
       <span class="bigchar">厂</span>
@@ -319,7 +333,7 @@
   </section>
 
   <section class="loc" id="jiuyanqiao">
-    <div class="stage" style="--p0:#0a1016;--p1:#2a4a5a;--p2:#7de3ff">
+    <div class="stage" style="--p0:#0f1316;--p1:#324149;--p2:#69b8cd">
       
       <div class="rain"></div>
       <span class="bigchar">桥</span>
@@ -345,7 +359,7 @@
   </section>
 
   <section class="loc" id="kuanzhai">
-    <div class="stage" style="--p0:#100e0c;--p1:#6a5a4a;--p2:#ffd9a3">
+    <div class="stage" style="--p0:#121110;--p1:#554e47;--p2:#cfa76e">
       
       
       <span class="bigchar">巷</span>
@@ -371,7 +385,7 @@
   </section>
 
   <section class="loc" id="north-station">
-    <div class="stage" style="--p0:#0a0e14;--p1:#2a3a4a;--p2:#7de3ff">
+    <div class="stage" style="--p0:#0f1115;--p1:#303840;--p2:#69b8cd">
       
       <div class="rain"></div>
       <span class="bigchar">北</span>
@@ -397,7 +411,7 @@
   </section>
 
   <section class="loc" id="tianfu-square">
-    <div class="stage" style="--p0:#0d0d12;--p1:#4a4a5a;--p2:#e8e8f0">
+    <div class="stage" style="--p0:#111114;--p1:#45454c;--p2:#9494a8">
       
       
       <span class="bigchar">广</span>
@@ -423,7 +437,7 @@
   </section>
 
   <section class="loc" id="xiaojiuguan">
-    <div class="stage" style="--p0:#140a08;--p1:#8a3a2a;--p2:#ffb37a">
+    <div class="stage" style="--p0:#150f0d;--p1:#634039;--p2:#cd9368">
       
       
       <span class="bigchar">歌</span>
@@ -449,7 +463,7 @@
   </section>
 
   <section class="loc" id="banye-noodles">
-    <div class="stage" style="--p0:#0d0a0f;--p1:#4a3a5a;--p2:#ffd9a3">
+    <div class="stage" style="--p0:#100e11;--p1:#433c4a;--p2:#cfa76e">
       
       
       <span class="bigchar">面</span>
@@ -475,7 +489,7 @@
   </section>
 
   <section class="loc" id="chuantai">
-    <div class="stage" style="--p0:#0a0f1a;--p1:#123152;--p2:#7de3ff">
+    <div class="stage" style="--p0:#101319;--p1:#223242;--p2:#69b8cd">
       
       
       <span class="bigchar">夜</span>
@@ -501,7 +515,7 @@
   </section>
 
   <section class="loc" id="heyin">
-    <div class="stage" style="--p0:#120e08;--p1:#7a5a2f;--p2:#ffd9a3">
+    <div class="stage" style="--p0:#13110d;--p1:#5b4d3a;--p2:#cfa76e">
       
       
       <span class="bigchar">碟</span>

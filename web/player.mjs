@@ -2,7 +2,7 @@
 // 舞台合同 v0(ADR-004):chapter 变→章节卡;bg 变→氛围+印章;新说话者→声纹卡+锚点;
 // fact.* 新增→时间轴点亮+线索;台词→呼吸节奏;选择→分支;结局→收集。
 import { StageAudio } from '/audio.mjs';
-import { Stage } from '/stage.mjs';
+import { Stage, callerHz } from '/stage.mjs';
 
 const $ = s => document.querySelector(s);
 const AUTO = new URLSearchParams(location.search).has('auto');
@@ -127,12 +127,17 @@ async function renderBeat(s) {
   if (s.kind === 'transcribe') {
     let cur = s;
     while (cur.kind === 'transcribe') {
-      const text = await stage.transcribe({ caller: cur.caller, target: cur.target, misses: cur.misses });
+      // 呼入者声纹：登典者用正典 voice_hz（陈先生/刘先生=96Hz 同形——公平线索埋在界面里），
+      // 未登典者用名字哈希伪声纹（无「有档/无档」元泄漏）
+      const hz = cur.caller_char
+        ? (app.ir.characters[cur.caller_char]?.voice_hz ?? callerHz(cur.caller))
+        : callerHz(cur.caller);
+      const text = await stage.transcribe({ caller: cur.caller, target: cur.target, misses: cur.misses, hz });
       if (gen !== app.gen) return null;
       const r = await api.post(`/api/saves/${app.saveId}/advance`, { text });
       if (r.state.kind === 'transcribe' && r.state.id === cur.id) { stage.toast('听岔了——再听一遍'); cur = r.state; }
       // tid 用于底单/flag 追踪；同节点判定用 id
-      else { app.sheet.set(cur.tid, { caller: cur.caller, target: cur.target }); return r.state; }
+      else { app.sheet.set(cur.tid, { caller: cur.caller, target: cur.target, hz }); return r.state; }
     }
   }
 
@@ -216,7 +221,7 @@ $('#btnSheet').onclick = () => {
   for (const it of items) {
     const div = document.createElement('div');
     div.className = 'tr-row';
-    div.innerHTML = `<span class="tr-row-caller">${it.caller ?? '呼入'}</span><span class="tr-row-text">${stage.mark(it.target)}</span>`;
+    div.innerHTML = `<span class="tr-row-caller">${it.caller ?? '呼入'}${it.hz ? Stage.waveChip(it.hz) : ''}</span><span class="tr-row-text">${stage.mark(it.target)}</span>`;
     list.appendChild(div);
   }
   panel.classList.toggle('on');

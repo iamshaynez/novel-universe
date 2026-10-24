@@ -1,0 +1,7 @@
+{
+  "id": "org-demo",
+  "name": "雾川报社",
+  "aliases": ["报社"],
+  "layer": "public",
+  "summary": "fixture 公开组织：验证 canon 摘要块组织通道。"
+}

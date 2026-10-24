@@ -168,6 +168,7 @@ async function showEnding(s) {
 async function startGame(gameId) {
   const info = await api.j(`/api/games/${gameId}`);
   app.ir = info.ir; app.gameId = gameId;
+  stage.setLexicon(app.ir); // 行内签名词典随 IR 重建（ADR-005）
   const r = await api.post(`/api/games/${gameId}/saves`, { player: '玩家' });
   app.saveId = r.saveId;
   $('#title').style.display = 'none';
@@ -182,6 +183,7 @@ async function loadSave(saveId) {
   const r = await api.j(`/api/saves/${saveId}`);
   const info = await api.j(`/api/games/${r.save.gameId}`);
   app.ir = info.ir; app.gameId = r.save.gameId; app.saveId = saveId;
+  stage.setLexicon(app.ir);
   $('#title').style.display = 'none';
   $('#savesPanel').classList.remove('on');
   $('#endcard').classList.remove('on');
@@ -214,7 +216,7 @@ $('#btnSheet').onclick = () => {
   for (const it of items) {
     const div = document.createElement('div');
     div.className = 'tr-row';
-    div.innerHTML = `<span class="tr-row-caller">${it.caller ?? '呼入'}</span><span class="tr-row-text">${it.target}</span>`;
+    div.innerHTML = `<span class="tr-row-caller">${it.caller ?? '呼入'}</span><span class="tr-row-text">${stage.mark(it.target)}</span>`;
     list.appendChild(div);
   }
   panel.classList.toggle('on');

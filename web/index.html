@@ -11,7 +11,8 @@
   :root{
     --bg:#17130d; --ink:#e6dabb; --ink-dim:#8f8567;
     --paper:#e4d6b3; --paper-ink:#332e21;
-    --accent:#c9a15f; --accent-cold:#4e7d87; --blood:#9e3a2b;
+    --ink-deep:#241f14; --accent:#c9a15f; --accent-ink:#7d6226;
+    --accent-cold:#4e7d87; --blood:#9e3a2b;
     --serif:"Songti SC","Noto Serif SC","Noto Serif CJK SC",serif;
     --kai:"Kaiti SC","STKaiti","KaiTi","Songti SC","Noto Serif SC",serif;
     --sans:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
@@ -86,12 +87,46 @@
     transition:transform .95s cubic-bezier(.22,.8,.24,1),opacity .85s ease}
   .ln{font-size:clamp(17px,1.05vw + 1.1vh,26px);line-height:2.05;letter-spacing:.06em;
     color:var(--paper-ink);
-    opacity:0;transform:translateY(14px) translateX(var(--dx,0));
-    transition:opacity .7s ease,transform .7s ease}
-  .ln.in{opacity:1;transform:none}
+    opacity:0;transform:translateY(14px) translateX(var(--dx,0));filter:blur(3px);
+    transition:opacity .7s ease,transform .7s ease,filter .7s ease}
+  .ln.in{opacity:1;transform:none;filter:none}
   .ln.old1{opacity:.55}.ln.old2{opacity:.3}.ln.old3{opacity:.14}
-  .ln .who{display:inline-block;font-weight:700;margin-right:1.05em;letter-spacing:.14em;font-family:var(--kai)}
-  .ln.dlg{color:#241f14}
+  /* 段落导语：每段首拍略放大加重——杂志排版的节奏头 */
+  .ln.lead{font-size:1.08em;font-weight:600;letter-spacing:.12em;color:var(--ink-deep)}
+  /* 跨拍引语块：纸上引文——楷体 + 朱线，连续拍连成一整段引文栏 */
+  .ln.qb{font-family:var(--kai);color:rgba(36,31,20,.92);
+    border-left:2px solid rgba(158,58,43,.42);padding-left:.55em}
+
+  /* —— 行内实体签名（ADR-005：全部由 canon 摘要块自动推导，剧本零标注）—— */
+  /* 人物：中性墨账本划线——统一签名，绝不携带个体主题色（防别名串联泄底） */
+  .ep{font-family:var(--kai);font-weight:700;color:var(--ink-deep);
+    background:linear-gradient(transparent 68%,rgba(51,46,33,.17) 0)}
+  /* 地名：行内小印章——朱砂细框，落章式入场 */
+  .ex{font-family:var(--kai);font-weight:700;color:var(--blood);font-size:.94em;
+    letter-spacing:.08em;padding:0 .2em;margin:0 .05em;
+    border:1px solid rgba(158,58,43,.5);border-radius:2px;background:rgba(158,58,43,.05);
+    animation:sealInline .42s cubic-bezier(.2,1.5,.4,1) .12s both}
+  @keyframes sealInline{from{opacity:0;transform:scale(1.3) rotate(-4deg)}to{opacity:1;transform:none}}
+  /* 组织：骑缝方档——上下金线，字距拉开 */
+  .eo{font-family:var(--kai);font-weight:600;color:var(--accent-ink);font-size:.94em;
+    letter-spacing:.12em;padding:.02em .16em;margin:0 .05em;
+    border-block:1px solid rgba(125,98,38,.55)}
+  /* 关键信息（日期/时刻/号码）：dateline 数字块——无衬线 + 表格数字，字落后再着墨 */
+  .ek{font-family:var(--sans);font-weight:700;color:var(--accent-ink);font-size:.92em;
+    letter-spacing:.05em;font-variant-numeric:tabular-nums;
+    animation:ekInk .55s ease .22s both}
+  @keyframes ekInk{from{opacity:0;filter:blur(1.5px)}to{opacity:1;filter:none}}
+  /* 短引语 / 『』嵌套引语 = 朱批关键词：朱砂楷体 + 笔锋下划线渐次拖出 */
+  .qk{font-family:var(--kai);font-weight:700;color:var(--blood);letter-spacing:.06em;
+    background:linear-gradient(transparent 78%,rgba(158,58,43,.4) 0) no-repeat 0 100%/0 100%;
+    animation:qkBrush .7s ease .32s forwards}
+  @keyframes qkBrush{to{background-size:100% 100%}}
+  /* 单拍内完整长引语：楷体引文（跨拍引语走 .ln.qb 块样式） */
+  .lq{font-family:var(--kai);color:rgba(36,31,20,.9)}
+
+  .ln .who{display:inline-block;font-weight:700;margin-right:1.05em;letter-spacing:.14em;font-family:var(--kai);
+    border-left:3px solid currentColor;padding-left:.5em}
+  .ln.dlg{color:var(--ink-deep)}
   .ln.dlg.lslide{--dx:-16px}
   .ln.choice{display:flex;flex-direction:column;gap:.5em;padding:.5em 0 .2em;pointer-events:auto}
   .opt{display:flex;align-items:center;gap:.9em;cursor:pointer;padding:.32em .2em;
@@ -162,7 +197,7 @@
   .charcard.r{right:3vw;transform:translateY(-50%) translateX(26px)}
   .charcard.r.on{transform:translateY(-50%)}
   .cc-kicker{font-family:var(--sans);font-size:10px;color:#8f8567;letter-spacing:.34em;margin-bottom:.55em}
-  .cc-name{font-size:28px;letter-spacing:.28em;font-weight:700;font-family:var(--kai);color:#241f14}
+  .cc-name{font-size:28px;letter-spacing:.28em;font-weight:700;font-family:var(--kai);color:var(--ink-deep)}
   .cc-wave{display:block;margin:.85em 0 .55em;width:180px;height:36px}
   .cc-wave path{fill:none;stroke-width:1.6;stroke-linecap:round}
   .cc-bio{font-family:var(--sans);font-size:11px;color:#6e6549;letter-spacing:.12em;line-height:1.95}
@@ -296,6 +331,10 @@
 
   @media (prefers-reduced-motion:reduce){
     .drop,.mote,#stage.shake{animation:none!important}
+    /* 实体签名动效全关；文字流只留淡入，不模糊不位移 */
+    .ex,.eo,.ek,.qk{animation:none!important}
+    .qk{background-size:100% 100%}
+    .ln{filter:none!important;transform:none!important;transition:opacity .3s ease!important}
   }
 
 /* 转写交互（g01 原语）:呼机留言纸带 */

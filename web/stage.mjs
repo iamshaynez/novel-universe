@@ -1,5 +1,7 @@
 // 文字舞台词汇模块:排版即运镜,演出单元全部内容无关化。
 // 由 IR + canon 摘要块驱动(ADR-004 舞台合同 v0);剧本零演出标注。
+// 行内实体签名(人物/地点/组织/关键信息/引语朱批)由 markup.mjs 从 canon 块自动推导(ADR-005)。
+import { buildLexicon, segment, markupText } from './markup.mjs';
 const $ = s => document.querySelector(s);
 const reflow = el => { void el.offsetWidth; };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -32,8 +34,13 @@ export class Stage {
     this.fast = false;
     this.pendingGate = null;
     this.rngSeed = 2049;
+    this.lex = buildLexicon({}); // 空词典兜底：IR 加载前只标数字与引语
     this._bindGesture();
   }
+
+  // 行内签名词典：随 IR 重建（纪元过滤已在编译期完成，这里拿到什么就能标什么）
+  setLexicon(ir) { this.lex = buildLexicon(ir ?? {}); }
+  mark(t) { return markupText(t, this.lex); }
 
   // ---------- 手势:点击/空格推进;揭示中点击 = 快进本拍 ----------
   _bindGesture() {
@@ -79,10 +86,10 @@ export class Stage {
     this.relayout(); this._dim();
     return el;
   }
-  static phrases(t) { return t.split(/(?<=[。！？…，、,.!?;；——])/).filter(x => x); }
-  /** 呼吸停顿档：句末长歇，逗顿短歇，破折号悬一口气。全角标点与半角同权。 */
+  static phrases(t) { return segment(t).map(p => p.text); }
+  /** 呼吸停顿档：句末长歇，逗顿短歇，破折号悬一口气。闭引号先剥掉再判尾标点。 */
   static pauseOf(p, dlg) {
-    const tail = p.slice(-1);
+    const tail = p.replace(/[」』）)]+$/, '').slice(-1);
     if (/[。！？…]/.test(tail)) return dlg ? 860 : 820;
     if (/[，、,;]/.test(tail)) return dlg ? 470 : 440;
     if (p.endsWith('——')) return 680;
@@ -91,33 +98,38 @@ export class Stage {
 
   async tell(text) {
     this.revealing = true;
-    for (const p of Stage.phrases(text)) {
-      this._append('', p);
+    const segs = segment(text);
+    for (let i = 0; i < segs.length; i++) {
+      const p = segs[i];
+      // 首拍 = 段落导语（杂志排版：略放大加重，给出节奏头）；引语块拍带 qb
+      this._append((i === 0 ? 'lead' : '') + (p.q ? ' qb' : ''), this.mark(p.text));
       this.audio.narr((this._rnd() - .5) * .06);
-      await this.pause(Stage.pauseOf(p, false));
+      await this.pause(Stage.pauseOf(p.text, false));
     }
     this.revealing = false; this.fast = false;
   }
   async say(name, text, { theme = 'var(--accent)', hz = 218, dir = 'r' } = {}) {
     this.revealing = true;
     const who = inkify(theme);
-    for (const p of Stage.phrases(text)) {
-      this._append('dlg' + (dir === 'l' ? ' lslide' : ''),
-        `<span class="who" style="color:${who}">${name}</span>${p}`);
+    const chip = `<span class="who" style="color:${who}">${name}</span>`;
+    // 台词文本以「」整体包裹（frame）：外框不算引语，框内逗号照常断拍
+    for (const p of segment(text, { frame: true })) {
+      this._append('dlg' + (dir === 'l' ? ' lslide' : '') + (p.q ? ' qb' : ''),
+        chip + this.mark(p.text));
       this.audio.blip(hz);
-      await this.pause(Stage.pauseOf(p, true));
+      await this.pause(Stage.pauseOf(p.text, true));
     }
     this.revealing = false; this.fast = false;
   }
 
   async choice(stem, options) {
-    if (stem) this._append('', stem);
+    if (stem) this._append('', this.mark(stem));
     return new Promise(res => {
       const c = this._append('choice', '');
       options.forEach((label, i) => {
         const d = document.createElement('div');
         d.className = 'opt';
-        d.innerHTML = `<span class="branch"></span><span class="txt">${label}</span>`;
+        d.innerHTML = `<span class="branch"></span><span class="txt">${this.mark(label)}</span>`;
         d.addEventListener('pointerdown', ev => { ev.stopPropagation(); c.innerHTML = ''; res(i); });
         c.appendChild(d);
         setTimeout(() => d.classList.add('in'), 500 + i * 400);
@@ -128,14 +140,14 @@ export class Stage {
   /** 转写交互（g01 原语）：呼入方报话，玩家把留言打进呼机。
    *  判定在服务端（可多打不漏字）；错一次即亮底单参照，点参照可直接抄录。 */
   async transcribe({ caller, target, misses = 0 }) {
-    this._append('', `【转写】${caller ?? '呼入'} 报话——请把留言打进呼机。`);
+    this._append('', this.mark(`【转写】${caller ?? '呼入'} 报话——请把留言打进呼机。`));
     return new Promise(res => {
       const c = this._append('choice', '');
       c.innerHTML = `<div class="tr">
-        <div class="tr-caller">${misses >= 1 ? `（第 ${misses + 1} 次尝试）` : ''}呼入 · ${caller ?? '未知'}</div>
+        <div class="tr-caller">${misses >= 1 ? `（第 ${misses + 1} 次尝试）` : ''}呼入 · ${this.mark(caller ?? '未知')}</div>
         <input class="tr-in" type="text" placeholder="照呼入的话打——可以多打，不能漏" autocomplete="off">
         <button class="tr-send">发送 ↵</button>
-        ${misses >= 1 ? `<div class="tr-hint">底单参照（点击抄录）——${target}</div>` : ''}
+        ${misses >= 1 ? `<div class="tr-hint">底单参照（点击抄录）——${this.mark(target)}</div>` : ''}
       </div>`;
       const inp = c.querySelector('.tr-in'), btn = c.querySelector('.tr-send');
       const hint = c.querySelector('.tr-hint');
@@ -143,7 +155,7 @@ export class Stage {
       const done = () => {
         const v = inp.value.trim();
         if (!v) return;
-        c.innerHTML = `<div class="tr-done">已入机——「${v}」</div>`;
+        c.innerHTML = `<div class="tr-done">已入机——${this.mark(`「${v}」`)}</div>`;
         res(v);
       };
       btn.addEventListener('pointerdown', ev => { ev.stopPropagation(); done(); });

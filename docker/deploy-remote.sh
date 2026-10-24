@@ -1,8 +1,10 @@
-#!/bin/sh
+#!/bin/bash
 # gb-test 服务器 /opt/apps/novel-universe/deploy.sh 的版本化副本——改动两处同步。
 # 由 GitHub Actions 经受限 SSH 密钥触发（authorized_keys 强制命令锁定本脚本）：
 #   拉镜像(3 次重试抗跨境瞬断) → 起容器 → 冒烟轮询(200/302/401 即就绪) →
 #   失败 dump 容器日志并以非零退出把 CI 打红。
+# 注意：强制命令经登录 shell 执行，脚本可能被 /bin/sh(dash) 接管——dash 不认
+# pipefail，故显式用 bash 解释器（与 app41 服务器侧一致）。
 set -uo pipefail
 cd /opt/apps/novel-universe || { echo "部署目录不存在"; exit 1; }
 

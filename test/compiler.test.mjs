@@ -85,6 +85,33 @@ describe('编译：g00 正作结构', () => {
   });
 });
 
+describe('编译：呼入者绑定与客串 class（声纹法证数据源）', () => {
+  it('转写呼入者解析到正典角色：callerChar 绑定，未登记者保持无档', () => {
+    const g = makeGame({
+      'chapters/ch1.md': '# a\n@bg rooftop\n@transcribe t1 caller=小桃 target=在吗。\n@transcribe t2 caller=路人甲 target=喂。\n== ending END_A A\n',
+    });
+    const { ir } = g.compile();
+    const t1 = Object.values(ir.nodes).find(n => n.transId === 't1');
+    const t2 = Object.values(ir.nodes).find(n => n.transId === 't2');
+    assert.equal(t1.caller, '小桃');
+    assert.equal(t1.callerChar, 'momo', '呼入者别名应绑定正典角色');
+    assert.equal(ir.characters.momo.voice_hz, 205, '绑定角色进登记表：演出层可查声纹');
+    assert.equal(t2.caller, '路人甲');
+    assert.equal(t2.callerChar, null, '未登记呼入者是刻意无档者：null 不报错');
+  });
+
+  it('canon 摘要块携带人物 class：universe 客串可辨别，缺省为 cast', () => {
+    const momo = JSON.parse(readFileSync(join(fixtureUniverse, 'characters/momo.json'), 'utf8'));
+    const g = makeGame({
+      'chapters/ch1.md': '# a\n@bg rooftop\n旁白。\n== ending END_A A\n',
+      'universe/characters/momo.json': JSON.stringify({ ...momo, class: 'universe' }),
+    }, m => ({ ...m, code: 'g00' }));
+    const { ir } = g.compile();
+    assert.equal(ir.canon.characters.find(c => c.id === 'momo').class, 'universe');
+    assert.equal(ir.canon.characters.find(c => c.id === 'yan').class, 'cast', '未标注 class 缺省 cast');
+  });
+});
+
 describe('编译：错误路径', () => {
   it('跳转目标不存在 → 报错', () => {
     const g = makeGame({ 'chapters/ch1.md': '# a\n去向不明。\n-> nope\n' });

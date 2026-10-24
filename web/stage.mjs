@@ -22,6 +22,15 @@ function inkify(color, amt = .62) {
   return '#' + out.map(v => v.toString(16).padStart(2, '0')).join('');
 }
 
+/** 未登典呼入者的伪声纹：名字确定性哈希 → 80–400Hz。同名恒同形（可比对），无随机。
+ *  已登典呼入者（caller_char 绑定）用正典 voice_hz——「陈先生/刘先生/他」同为 96Hz 同形，
+ *  是播种层埋下的公平线索：波形可比对，数字不标（回报拍才亮数字）。 */
+export function callerHz(name) {
+  let h = 0;
+  for (const ch of String(name ?? '')) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+  return 80 + (h % 321);
+}
+
 export class Stage {
   constructor(audio, { auto = false } = {}) {
     this.audio = audio;
@@ -138,13 +147,14 @@ export class Stage {
   }
 
   /** 转写交互（g01 原语）：呼入方报话，玩家把留言打进呼机。
-   *  判定在服务端（可多打不漏字）；错一次即亮底单参照，点参照可直接抄录。 */
-  async transcribe({ caller, target, misses = 0 }) {
+   *  判定在服务端（可多打不漏字）；错一次即亮底单参照，点参照可直接抄录。
+   *  hz：呼入者声纹频率（登典者用正典 voice_hz，未登典用确定性伪声纹）——形状即线索，不标数字。 */
+  async transcribe({ caller, target, misses = 0, hz = null }) {
     this._append('', this.mark(`【转写】${caller ?? '呼入'} 报话——请把留言打进呼机。`));
     return new Promise(res => {
       const c = this._append('choice', '');
       c.innerHTML = `<div class="tr">
-        <div class="tr-caller">${misses >= 1 ? `（第 ${misses + 1} 次尝试）` : ''}呼入 · ${this.mark(caller ?? '未知')}</div>
+        <div class="tr-caller">${misses >= 1 ? `（第 ${misses + 1} 次尝试）` : ''}呼入 · ${this.mark(caller ?? '未知')}${hz ? Stage.waveChip(hz) : ''}</div>
         <input class="tr-in" type="text" placeholder="照呼入的话打——可以多打，不能漏" autocomplete="off">
         <button class="tr-send">发送 ↵</button>
         ${misses >= 1 ? `<div class="tr-hint">底单参照（点击抄录）——${this.mark(target)}</div>` : ''}
@@ -203,6 +213,10 @@ export class Stage {
       d += (x ? 'L' : 'M') + x + ' ' + y.toFixed(1) + ' ';
     }
     return d;
+  }
+  /** 呼入者迷你声纹：中性墨小波形，随呼入方名并排（转写卡 / 底单回看共用）。 */
+  static waveChip(hz) {
+    return `<svg class="tr-wave" viewBox="0 0 96 20" aria-hidden="true"><path d="${Stage.voiceprint(hz, 96, 20)}"/></svg>`;
   }
   async charCard({ name, hz, side, theme, bio }) {
     const ink = inkify(theme);

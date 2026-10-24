@@ -195,6 +195,13 @@ export function compileGame(gameDir, universeDir) {
       const c = regChar(cid);
       speakers[n.speaker] = { char: c.id, voice_hz: c.voice_hz };
     }
+    // 转写呼入者绑定（声纹法证）：可解析的别名绑定正典角色并登记（声纹可查）；
+    // 解析不到的显式置 null——张嬢嬢/小柯这类刻意无档者是合法的
+    if (n.type === 'transcribe') {
+      const cid = n.caller ? U.aliasToChar[n.caller] : null;
+      n.callerChar = cid ?? null;
+      if (cid) regChar(cid);
+    }
     const bg = n.aview?.bg;
     if (bg && !U.locations[bg.id]) throw new Error(`未知地点: ${bg.id}（不在 universe/locations 注册）`);
   }
@@ -206,7 +213,7 @@ export function compileGame(gameDir, universeDir) {
     world: U.canon.world ?? '',
     characters: Object.values(U.chars)
       .filter(c => allowedCanon.has(c.first_appearance))
-      .map(c => ({ id: c.id, name: c.name, aliases: c.aliases ?? [], voice_hz: c.voice_hz, stage: c.stage ?? null, bio_public: c.bio_public ?? '' })),
+      .map(c => ({ id: c.id, name: c.name, aliases: c.aliases ?? [], voice_hz: c.voice_hz, stage: c.stage ?? null, bio_public: c.bio_public ?? '', class: c.class ?? 'cast' })),
     locations: Object.values(U.locations)
       .filter(l => l.layer === 'public' || allowedCanon.has(l.first_appearance))
       .map(l => ({ id: l.id, name: l.name, aliases: l.aliases ?? [], mood: l.mood ?? {} })),

@@ -1,0 +1,23 @@
+# gb-test 服务器 /opt/apps/novel-universe/docker-compose.yml 的版本化副本——改动两处同步。
+# 服务器布局：/opt/apps/novel-universe/{docker-compose.yml, deploy.sh, data/}
+# 主机端口 18084（避开 app41 的 18083）；CF 侧 chengdu.xiaowenz.com → 源站 127.0.0.1:18084。
+services:
+  novel:
+    image: ${ACR_REGISTRY}/xiaowenz/novel-universe:main
+    container_name: novel-universe
+    init: true
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:18084:3000"   # 只绑回环：对外一律走 CF，不直接暴露公网
+    environment:
+      PORT: "3000"
+      DB_PATH: /data/novel.db
+    volumes:
+      - ./data:/data
+    healthcheck:
+      # 启动即「迁移+全游戏编译+图校验，失败拒绝启动」——/ 能应答即等价健康
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s

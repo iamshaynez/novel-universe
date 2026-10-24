@@ -75,6 +75,14 @@ describe('编译：g00 正作结构', () => {
     assert.ok(ir.canon.events.every(e => e.disclosed_in === 'g00'), '只携带本作可披露的事件');
     assert.ok(ir.canon.characters.every(c => !('chibi' in c)), 'chibi 字段已移除');
   });
+
+  it('canon 摘要块携带别名与组织（ADR-005 行内签名数据源，纪元过滤同规）', () => {
+    assert.ok(ir.canon.characters.every(c => Array.isArray(c.aliases)), '人物别名必为数组');
+    assert.ok(ir.canon.characters.some(c => c.id === 'momo' && c.aliases.includes('小桃')));
+    assert.ok(ir.canon.locations.some(l => l.id === 'rooftop' && l.aliases.includes('天台')));
+    assert.ok(ir.canon.orgs.some(o => o.name === '雾川报社' && o.aliases.includes('报社')), '公开组织进块');
+    assert.ok(ir.canon.orgs.every(o => o.id !== 'org-secret'), '未披露组织不进块');
+  });
 });
 
 describe('编译：错误路径', () => {

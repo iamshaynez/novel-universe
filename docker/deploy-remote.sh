@@ -11,7 +11,7 @@ for i in 1 2 3; do
   if docker compose pull; then ok=1; break; fi
   echo "pull 失败,第 $i 次重试"; sleep 8
 done
-[ "$ok" = 1 ] || { echo "ACR pull 三次均失败"; exit 1; }
+[ "$ok" = 1 ] || { echo "镜像 pull 三次均失败"; exit 1; }
 
 docker compose up -d
 

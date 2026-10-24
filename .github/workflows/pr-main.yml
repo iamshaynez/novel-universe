@@ -37,7 +37,7 @@ jobs:
           npm run migrate:status
 
   docker:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04   # 钉版本：ubuntu-latest 已切 26，其 buildx 推本 ACR(cn-heyuan) 端点停滞挂死（三连 30m 超时复现）；24.04 为 app41 验证过的推送环境
     needs: gates
     timeout-minutes: 30   # 跨境推 ACR 偶发滞涨：与 app41 同预算，留足重试余量
     steps:

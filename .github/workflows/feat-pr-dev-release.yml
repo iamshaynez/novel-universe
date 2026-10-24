@@ -1,0 +1,26 @@
+# 集成与预发门禁：feat/fix → PR(dev)、dev → PR(release) 以及 dev/release 的直接推送。
+# 零依赖仓库：无需安装步骤，Node 24 原生跑全部门（AGENTS 研发标准第 2 条）。
+name: feat-pr-dev-release
+
+on:
+  pull_request:
+    branches: [dev, release]
+  push:
+    branches: [dev, release]
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: 单测 + 编译 + lint + API + e2e 全量
+        run: npm test
+      - name: 剧透纪元 + 图 + 结局全可达
+        run: npm run verify
+      - name: 迁移落地并幂等
+        run: |
+          npm run migrate
+          npm run migrate:status

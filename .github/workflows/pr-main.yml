@@ -1,0 +1,34 @@
+# 发布门禁：release → PR(main) 与 main 的直接推送。
+# 门禁与 feat-pr-dev-release 相同，外加 Docker 镜像构建冒烟（单体部署入口）。
+name: pr-main
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: 单测 + 编译 + lint + API + e2e 全量
+        run: npm test
+      - name: 剧透纪元 + 图 + 结局全可达
+        run: npm run verify
+      - name: 迁移落地并幂等
+        run: |
+          npm run migrate
+          npm run migrate:status
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: gates
+    steps:
+      - uses: actions/checkout@v4
+      - name: 镜像构建冒烟（启动即迁移+编译，构建通过即部署入口可用）
+        run: docker build -t novel-universe:ci .

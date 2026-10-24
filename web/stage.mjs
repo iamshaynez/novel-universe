@@ -79,25 +79,33 @@ export class Stage {
     this.relayout(); this._dim();
     return el;
   }
-  static phrases(t) { return t.split(/(?<=[。,、!?…]|——)/).filter(x => x); }
+  static phrases(t) { return t.split(/(?<=[。！？…，、,.!?;；——])/).filter(x => x); }
+  /** 呼吸停顿档：句末长歇，逗顿短歇，破折号悬一口气。全角标点与半角同权。 */
+  static pauseOf(p, dlg) {
+    const tail = p.slice(-1);
+    if (/[。！？…]/.test(tail)) return dlg ? 860 : 820;
+    if (/[，、,;]/.test(tail)) return dlg ? 470 : 440;
+    if (p.endsWith('——')) return 680;
+    return dlg ? 560 : 520;
+  }
 
   async tell(text) {
     this.revealing = true;
     for (const p of Stage.phrases(text)) {
       this._append('', p);
-      this.audio.narr();
-      await this.pause(/[。!?…]$/.test(p) ? 820 : (p.endsWith('——') ? 680 : 520));
+      this.audio.narr((this._rnd() - .5) * .06);
+      await this.pause(Stage.pauseOf(p, false));
     }
     this.revealing = false; this.fast = false;
   }
-  async say(name, text, { theme = 'var(--accent)', hz = 185, dir = 'r' } = {}) {
+  async say(name, text, { theme = 'var(--accent)', hz = 218, dir = 'r' } = {}) {
     this.revealing = true;
     const who = inkify(theme);
     for (const p of Stage.phrases(text)) {
       this._append('dlg' + (dir === 'l' ? ' lslide' : ''),
         `<span class="who" style="color:${who}">${name}</span>${p}`);
       this.audio.blip(hz);
-      await this.pause(/[。!?…]/.test(p) ? 860 : 560);
+      await this.pause(Stage.pauseOf(p, true));
     }
     this.revealing = false; this.fast = false;
   }
@@ -117,18 +125,21 @@ export class Stage {
     });
   }
 
-  /** 转写交互（g01 原语）：呼入方报话，玩家把留言打进呼机。错两次亮出底单参照。 */
+  /** 转写交互（g01 原语）：呼入方报话，玩家把留言打进呼机。
+   *  判定在服务端（可多打不漏字）；错一次即亮底单参照，点参照可直接抄录。 */
   async transcribe({ caller, target, misses = 0 }) {
     this._append('', `【转写】${caller ?? '呼入'} 报话——请把留言打进呼机。`);
     return new Promise(res => {
       const c = this._append('choice', '');
       c.innerHTML = `<div class="tr">
         <div class="tr-caller">${misses >= 1 ? `（第 ${misses + 1} 次尝试）` : ''}呼入 · ${caller ?? '未知'}</div>
-        <input class="tr-in" type="text" placeholder="留言内容…" autocomplete="off">
+        <input class="tr-in" type="text" placeholder="照呼入的话打——可以多打，不能漏" autocomplete="off">
         <button class="tr-send">发送 ↵</button>
-        ${misses >= 2 ? `<div class="tr-hint">底单参照——${target}</div>` : ''}
+        ${misses >= 1 ? `<div class="tr-hint">底单参照（点击抄录）——${target}</div>` : ''}
       </div>`;
       const inp = c.querySelector('.tr-in'), btn = c.querySelector('.tr-send');
+      const hint = c.querySelector('.tr-hint');
+      if (hint) hint.addEventListener('pointerdown', ev => { ev.stopPropagation(); inp.value = target; inp.focus(); });
       const done = () => {
         const v = inp.value.trim();
         if (!v) return;
@@ -249,25 +260,33 @@ export class Stage {
   }
 
   // ---------- 时间轴带 ----------
+  /** 本作事件轴：只摆本作私有事件（宇宙编年史归 canon.html），月粒度定位；
+   *  标签仅点亮后可见，同位事件错行。今夜金点永远在最右。 */
   buildTimeline(events) {
     const tl = $('#timeline');
-    const years = events.map(e => parseInt(e.date, 10)).filter(Number.isFinite);
-    const min = years.length ? Math.min(...years) : 2009;
-    const max = Math.max(...(years.length ? years : [2026]), min) + 1; // +1: 今夜永远在最右
-    tl.innerHTML = `<span class="tl-era">${min}</span><span class="tl-track" id="tlTrack">
-      <span class="tl-dot now"></span><span class="tl-tag now">今夜</span></span>
-      <span class="tl-era">${max}</span>`;
+    const ts = events.map(e => Date.parse(e.date)).filter(Number.isFinite);
+    if (!ts.length) return;
+    const min = Math.min(...ts), max = Math.max(...ts);
+    const pad = Math.max((max - min) * .35, 75 * 86400000);
+    const lo = min - pad * .4, hi = max + pad;
+    const posOf = t => Math.min(97, Math.max(3, (t - lo) / (hi - lo) * 100));
+    const fmt = t => { const d = new Date(t); return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}`; };
+    tl.innerHTML = `<span class="tl-era">${fmt(min)}</span><span class="tl-track" id="tlTrack">
+      <span class="tl-dot now"></span></span>
+      <span class="tl-era">今夜</span>`;
     const track = tl.querySelector('#tlTrack');
-    for (const ev of events) {
-      const y = parseInt(ev.date, 10);
-      if (!Number.isFinite(y)) continue;
-      const pos = Math.min(97, (y - min) / (max - min) * 100);
+    events.forEach((ev, i) => {
+      const t = Date.parse(ev.date);
+      if (!Number.isFinite(t)) return;
+      const pos = posOf(t);
       const dot = document.createElement('span');
       dot.className = 'tl-dot'; dot.id = `tl-${ev.id}`; dot.style.left = pos + '%';
       const tag = document.createElement('span');
-      tag.className = 'tl-tag'; tag.id = `tlt-${ev.id}`; tag.style.left = pos + '%'; tag.textContent = ev.title;
+      tag.className = 'tl-tag'; tag.id = `tlt-${ev.id}`; tag.style.left = pos + '%';
+      tag.style.top = (i % 2 ? 22 : 11) + 'px';
+      tag.textContent = ev.title;
       track.appendChild(dot); track.appendChild(tag);
-    }
+    });
   }
   showTimeline() { $('#timeline').classList.add('on'); }
   lightEvent(ev) {
@@ -383,6 +402,77 @@ const AMBIENT = {
       <ellipse cx="320" cy="600" rx="150" ry="9" fill="#8fb4ba" opacity=".06"/>
       <ellipse cx="820" cy="640" rx="180" ry="10" fill="#c98a72" opacity=".05"/>
       <ellipse cx="1100" cy="610" rx="120" ry="8" fill="#8fb4ba" opacity=".05"/>
+      <rect width="1280" height="720" fill="url(#a-fade)"/>
+    </svg>`;
+  },
+  // g01 三地点：太升南路的灯箱街 / 河音的磁带墙 / 府南河的黑对岸（案卷调墨）
+  chuantai(mood, params) {
+    const night = params.time !== 'day';
+    const [top, mid, low] = night ? ['#101722', '#1f2c3c', '#33505e'] : ['#3a3226', '#6a5a40', '#a08657'];
+    const box = (x, y, f) => `<rect x="${x}" y="${y}" width="16" height="26" fill="${f}" opacity="${night ? .42 : .16}"/>`;
+    const boxes = [[118, 466, '#8fb4a0'], [172, 446, '#c98a72'], [230, 460, '#8fb4a0'], [286, 434, '#c98a72'],
+      [344, 456, '#8fb4a0'], [408, 442, '#c98a72'], [978, 450, '#8fb4a0'], [1044, 436, '#c98a72']].map(b => box(...b)).join('');
+    return `<svg viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="a-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="${top}"/><stop offset=".5" stop-color="${mid}"/><stop offset="1" stop-color="${low}"/>
+        </linearGradient>
+        <linearGradient id="a-fade" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#17130d" stop-opacity=".97"/>
+          <stop offset=".5" stop-color="#17130d" stop-opacity=".55"/>
+          <stop offset="1" stop-color="#17130d" stop-opacity=".05"/>
+        </linearGradient>
+      </defs>
+      <rect x="0" y="360" width="1280" height="360" fill="url(#a-sky)" opacity=".55"/>
+      <path d="M0 548 L0 452 L150 452 L150 428 L250 428 L250 470 L420 470 L420 436 L560 436 L560 486 L880 486 L880 444 L1010 444 L1010 478 L1280 478 L1280 548 Z" fill="#191410" opacity=".92"/>
+      ${boxes}
+      ${night
+        ? '<circle cx="1100" cy="150" r="34" fill="#ddd6c2" opacity=".3"/><circle cx="1100" cy="150" r="80" fill="#c8c2ae" opacity=".07"/>'
+        : '<circle cx="1080" cy="140" r="46" fill="#e8d9a8" opacity=".4"/>'}
+      <rect width="1280" height="720" fill="url(#a-fade)"/>
+    </svg>`;
+  },
+  heyin(mood, params) {
+    const tape = (x, y, fill) => `<rect x="${x}" y="${y}" width="44" height="70" rx="3" fill="${fill}" opacity=".88"/>`;
+    const tapes = Array.from({ length: 16 }, (_, i) => tape(40 + i * 78, 438 - (i % 5) * 16, i % 3 ? '#241c12' : '#2e2315')).join('');
+    const glints = [3, 8, 13].map(i => `<rect x="${46 + i * 78}" y="${446 - (i % 5) * 16}" width="32" height="5" fill="#cfa76e" opacity=".5"/>`).join('');
+    return `<svg viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+      <defs><linearGradient id="a-sky" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#241a10"/><stop offset=".55" stop-color="#4a3620"/><stop offset="1" stop-color="#8a6a3e"/>
+      </linearGradient>
+      <linearGradient id="a-fade" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#17130d" stop-opacity=".96"/>
+        <stop offset=".5" stop-color="#17130d" stop-opacity=".5"/>
+        <stop offset="1" stop-color="#17130d" stop-opacity=".04"/>
+      </linearGradient></defs>
+      <rect x="0" y="360" width="1280" height="360" fill="url(#a-sky)" opacity=".5"/>
+      ${tapes}${glints}
+      <ellipse cx="640" cy="540" rx="380" ry="12" fill="#cfa76e" opacity=".08"/>
+      <rect width="1280" height="720" fill="url(#a-fade)"/>
+    </svg>`;
+  },
+  'funanhe-bank'(mood, params) {
+    const night = params.time !== 'day';
+    const [top, mid, low] = night ? ['#0d141d', '#1a2836', '#2c4252'] : ['#4a4434', '#7a7052', '#a89a6e'];
+    const willow = x => Array.from({ length: 5 }, (_, k) =>
+      `<line x1="${x + k * 7}" y1="330" x2="${x + k * 9 - 8}" y2="${430 + k * 6}"/>`).join('');
+    const willows = [180, 320, 460, 1010, 1150].map(x => `<g stroke="#0f1a14" stroke-width="3" opacity=".5">${willow(x)}</g>`).join('');
+    return `<svg viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+      <defs><linearGradient id="a-sky" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="${top}"/><stop offset=".5" stop-color="${mid}"/><stop offset="1" stop-color="${low}"/>
+      </linearGradient>
+      <linearGradient id="a-fade" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#17130d" stop-opacity=".97"/>
+        <stop offset=".5" stop-color="#17130d" stop-opacity=".55"/>
+        <stop offset="1" stop-color="#17130d" stop-opacity=".05"/>
+      </linearGradient></defs>
+      <rect x="0" y="330" width="1280" height="390" fill="url(#a-sky)" opacity=".55"/>
+      ${willows}
+      <rect x="0" y="468" width="1280" height="252" fill="${night ? '#0a121a' : '#3a3a2c'}" opacity=".5"/>
+      <rect x="0" y="440" width="1280" height="28" fill="#080d12" opacity=".85"/>
+      ${night
+        ? '<circle cx="940" cy="150" r="30" fill="#e8e2ce" opacity=".5"/><ellipse cx="940" cy="530" rx="130" ry="8" fill="#e8e2ce" opacity=".07"/><ellipse cx="380" cy="580" rx="90" ry="6" fill="#8fb4ba" opacity=".05"/>'
+        : '<ellipse cx="640" cy="520" rx="300" ry="10" fill="#e8d9a8" opacity=".1"/>'}
       <rect width="1280" height="720" fill="url(#a-fade)"/>
     </svg>`;
   },

@@ -91,6 +91,30 @@ describe('存档 API', () => {
     const { status } = await j('/api/saves/99999');
     assert.equal(status, 404);
   });
+
+  it('结局收集是游戏级：两个存档各通一个结局，任一存档都能看到两个', async () => {
+    // 玩家的收集进度不该因为「再来一局」清零——那是收集型三结局的命根
+    const walk = async choices => {
+      const start = await post('/api/games/g00-demo/saves', { player: 'collect' });
+      let state = start.body.state, queue = [...choices], guard = 0;
+      while (state.kind !== 'ending') {
+        assert.ok(++guard < 200);
+        const r = state.kind === 'choice'
+          ? await post(`/api/saves/${start.body.saveId}/choose`, { index: queue.shift() ?? 0 })
+          : await post(`/api/saves/${start.body.saveId}/advance`);
+        state = r.body.state;
+      }
+      return { saveId: start.body.saveId, ending: state.endingId };
+    };
+    const a = await walk([0, 0]);        // END_WAIT
+    const b = await walk([1, 1, 0]);     // END_TRUTH
+    assert.notEqual(a.ending, b.ending, '两条序列应打到不同结局');
+    for (const id of [a.saveId, b.saveId]) {
+      const { body } = await j(`/api/saves/${id}/endings`);
+      const ids = body.map(e => e.ending_id);
+      assert.ok(ids.includes(a.ending) && ids.includes(b.ending), `存档 ${id} 应看到两个结局，实际 ${ids}`);
+    }
+  });
 });
 
 describe('静态资源与安全', () => {

@@ -42,10 +42,15 @@ feat/fix 分支 → PR → dev（集成）→ PR → release（预发）→ PR �
 1. 从 `dev` 拉分支，命名 `feat/<功能>` / `fix/<问题>`，小写连字符（如 `feat/chapter-title-card`）；PR 目标恒为 `dev`。
 2. CI 门（`feat-pr-dev-release` workflow：`npm test` + `npm run verify` + `npm run migrate` 幂等）绿才可合并；单人项目审批 0 人可自合并，但测试门不可豁免——CI 与本地自测是同一套命令，本地绿了 CI 才会绿。
 3. `dev → release` 预发 PR 与 `release → main` 发布 PR 过同一套门；发布门（`pr-main` workflow）额外构建 Docker 镜像冒烟。
-4. 合并统一 squash；合并后源分支删除，禁止复用已合并分支。
-5. 发布打 tag（在 `main` 上）：`gNN-vX.Y.Z`（每部作品独立版本线）。
-6. hotfix：从 `main` 拉 `fix/` 分支，PR 直进 `main`（过 `pr-main` 门）；合并后立即把 `main` 回同步进 `dev` 与 `release`。
-7. 禁止 force push、删除 `main`/`dev`/`release`、绕过测试门提交。
+4. **跨分支晋级标准操作**：全仓 squash 线性历史使各分支没有近期共同祖先，`dev → release` 直连 PR 必然 squash 冲突，且分支保护禁 merge commit——不得用「追平合并」修复，也不得 force push 重写历史。统一走**晋级分支**：
+   1. 校验基线：`git diff <特性提交>^ origin/release` 为空（dev 基线与目标分支内容一致）才可晋级；
+   2. `git switch -c release-promote/<slug> origin/release && git cherry-pick <dev 上的特性 squash 提交>`；
+   3. 晋级分支 PR（目标 `release`，命名 `release-promote/<slug>`；`release → main` 同理用 `main-promote/<slug>`），过门禁后 squash 合入并删分支；
+   4. 若 GitHub 判定直连 PR `MERGEABLE`（基线尚未老化时可能成立），可直接用直连 PR；一旦冲突即关闭直连、走晋级分支，并在评论注明原因。
+5. 合并统一 squash；合并后源分支删除，禁止复用已合并分支。
+6. 发布打 tag（在 `main` 上）：`gNN-vX.Y.Z`（每部作品独立版本线）。
+7. hotfix：从 `main` 拉 `fix/` 分支，PR 直进 `main`（过 `pr-main` 门）；合并后立即把 `main` 回同步进 `dev` 与 `release`（回同步同样走晋级分支 cherry-pick main 上的 squash 提交）。
+8. 禁止 force push、删除 `main`/`dev`/`release`、绕过测试门提交。
 
 ## 4. AI 代理特别约束
 

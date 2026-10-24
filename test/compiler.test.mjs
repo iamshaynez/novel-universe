@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { compileGame } from '../tools/compile-scenario.mjs';
+import { createRun, stateOf } from '../engine/state.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureGame = join(root, 'test/fixtures/games/g00-demo');
@@ -109,6 +110,32 @@ describe('编译：呼入者绑定与客串 class（声纹法证数据源）', (
     const { ir } = g.compile();
     assert.equal(ir.canon.characters.find(c => c.id === 'momo').class, 'universe');
     assert.equal(ir.canon.characters.find(c => c.id === 'yan').class, 'cast', '未标注 class 缺省 cast');
+  });
+});
+
+describe('编译：@peak 峰值指令（舞台合同 v1 首片）', () => {
+  it('@peak 折叠到下一停点：kind 与 args 入节点，stateOf 纯透传', () => {
+    const g = makeGame({
+      'chapters/ch1.md': '# a\n@bg rooftop\n@peak inner\n一句要炸的话。\n@peak desk t3,t4\n@transcribe t1 caller=小桃 target=在吗。\n== ending END_A A\n',
+    });
+    const { ir } = g.compile();
+    const line = Object.values(ir.nodes).find(n => n.type === 'line');
+    assert.deepEqual(line.peak, { kind: 'inner', args: [] });
+    const tr = Object.values(ir.nodes).find(n => n.type === 'transcribe');
+    assert.deepEqual(tr.peak, { kind: 'desk', args: ['t3', 't4'] });
+    // 引擎只透传（演出归 web），存档即回放的纯函数合同不变
+    const st = stateOf(ir, createRun(ir));
+    assert.deepEqual(st.peak, { kind: 'inner', args: [] });
+  });
+
+  it('@peak 悬空（章尾无后续内容）→ 报错', () => {
+    const g = makeGame({ 'chapters/ch1.md': '# a\n@bg rooftop\n旁白。\n@peak inner\n' });
+    assert.throws(g.compile, /@peak 后没有内容/);
+  });
+
+  it('@peak 落在过渡节点（jump）→ 报错：峰值只属于停点', () => {
+    const g = makeGame({ 'chapters/ch1.md': '# a\n@peak inner\n-> b\n# b\n乙。\n== ending END_A A\n' });
+    assert.throws(g.compile, /@peak 只能落在/);
   });
 });
 

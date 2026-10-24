@@ -28,8 +28,15 @@ const app = {
   prev: { chapter: null, bgKey: null },
   met: new Set(), facts: new Set(), timelineBuilt: false, running: false,
   sheet: new Map(), // 转写底单：tid -> {caller, target}（本局回看）
+  trByTid: new Map(), // tid -> 转写节点（证物拍/并轨拍的呈堂材料）
   gen: 0,           // 换代令牌：切档/重开时 +1，旧渲染循环立即退场，防止双驱动
 };
+
+/** IR 就绪时重建索引：转写节点按 tid 一张表（峰值拍的呈堂材料）。 */
+function indexIr() {
+  app.trByTid = new Map(
+    Object.values(app.ir.nodes).filter(n => n.type === 'transcribe').map(n => [n.transId, n]));
+}
 
 // 代词说话者是剧本刻意匿名（g01 叙诡合同）：声纹卡/锚点只显声线，不揭名——
 // 「我姓廖」那一拍之前的任何姓名都是剧透。
@@ -39,6 +46,15 @@ const charOf = name => {
   const sp = app.ir.speakers[name];
   return sp ? app.ir.characters[sp.char] : null;
 };
+
+/** 峰值拍数据行：按 tid 从 IR 取转写节点（证物拍/并轨拍的呈堂材料，不依赖存档）。 */
+function peakRows(tids) {
+  return tids.map(tid => app.trByTid?.get(tid)).filter(Boolean).map(n => ({
+    caller: n.caller,
+    target: n.target,
+    hz: n.callerChar ? (app.ir.characters[n.callerChar]?.voice_hz ?? callerHz(n.caller)) : callerHz(n.caller),
+  }));
+}
 
 function resetRun() {
   app.gen++;
@@ -87,8 +103,16 @@ async function renderBeat(s) {
       stage.buildTimeline(own.length ? own : app.ir.canon.events);
       app.timelineBuilt = true;
     }
-    stage.showTimeline(); stage.lightEvent(ev); stage.addClue(ev.title); audio.chime();
+      stage.showTimeline(); stage.lightEvent(ev); stage.addClue(ev.title); audio.chime();
   }
+
+  // 峰值拍（@peak · 舞台合同 v1 首片）：回报拍演出——播种拍保持安静。
+  // 词表见 tools/content-lint.mjs 的 PEAK_KINDS（lint 门禁）；未知 kind 安静降级为普通拍。
+  const peak = s.peak;
+  stage.ambientDim(peak?.kind === 'dead');
+  if (peak?.kind === 'desk') await stage.desk(peakRows(peak.args));
+  if (peak?.kind === 'collapse') await stage.collapse(peakRows(peak.args));
+  if (peak?.kind === 'retype') await stage.retype(peak.args[0] ?? '……');
 
   if (s.kind === 'line') {
     let card = null;
@@ -105,7 +129,10 @@ async function renderBeat(s) {
         card = await stage.charCard({ name: masked ? s.speaker : c.name, hz, side, theme, bio: masked ? '' : c.bio_public });
       }
       if (c) stage.setAnchor(masked ? s.speaker : c.name, side, theme);
-      await stage.say(s.speaker, s.text, { theme, hz, dir: side });
+      await stage.say(s.speaker, s.text, { theme, hz, dir: side, split: peak?.kind === 'split' });
+    } else if (peak?.kind === 'inner') {
+      // 内声拍：叙述首次携带声纹——用玩家自己的声线
+      await stage.tellInner(s.text, app.ir.player?.voice_hz ?? 218);
     } else {
       await stage.tell(s.text);
     }
@@ -132,7 +159,10 @@ async function renderBeat(s) {
       const hz = cur.caller_char
         ? (app.ir.characters[cur.caller_char]?.voice_hz ?? callerHz(cur.caller))
         : callerHz(cur.caller);
-      const text = await stage.transcribe({ caller: cur.caller, target: cur.target, misses: cur.misses, hz });
+      const text = await stage.transcribe({
+        caller: cur.caller, target: cur.target, misses: cur.misses, hz,
+        dead: cur.peak?.kind === 'dead', stamp: cur.peak?.args[0] ?? null,
+      });
       if (gen !== app.gen) return null;
       const r = await api.post(`/api/saves/${app.saveId}/advance`, { text });
       if (r.state.kind === 'transcribe' && r.state.id === cur.id) { stage.toast('听岔了——再听一遍'); cur = r.state; }
@@ -174,6 +204,7 @@ async function startGame(gameId) {
   const info = await api.j(`/api/games/${gameId}`);
   app.ir = info.ir; app.gameId = gameId;
   stage.setLexicon(app.ir); // 行内签名词典随 IR 重建（ADR-005）
+  indexIr();
   const r = await api.post(`/api/games/${gameId}/saves`, { player: '玩家' });
   app.saveId = r.saveId;
   $('#title').style.display = 'none';
@@ -189,6 +220,7 @@ async function loadSave(saveId) {
   const info = await api.j(`/api/games/${r.save.gameId}`);
   app.ir = info.ir; app.gameId = r.save.gameId; app.saveId = saveId;
   stage.setLexicon(app.ir);
+  indexIr();
   $('#title').style.display = 'none';
   $('#savesPanel').classList.remove('on');
   $('#endcard').classList.remove('on');

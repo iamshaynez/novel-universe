@@ -36,14 +36,16 @@
 ## 3. 分支标准（唯一提交流程）
 
 ```
-feat/fix 分支 → PR → main
+feat/fix 分支 → PR → dev（集成）→ PR → release（预发）→ PR → main（发布）
 ```
 
-1. 从 `main` 拉分支，命名 `feat/<功能>` / `fix/<问题>`，小写连字符（如 `feat/chapter-title-card`）。
-2. 完成自测（`npm test` + `npm run verify` + 涉及 DB 时 `npm run migrate:status`）后开 PR；单人项目审批 0 人可自合并，但测试门不可豁免。
-3. 合并后源分支删除，禁止复用已合并分支。
-4. 发布打 tag：`gNN-vX.Y.Z`（每部作品独立版本线）。
-5. 禁止 force push、删除 `main`、绕过测试门提交。
+1. 从 `dev` 拉分支，命名 `feat/<功能>` / `fix/<问题>`，小写连字符（如 `feat/chapter-title-card`）；PR 目标恒为 `dev`。
+2. CI 门（`feat-pr-dev-release` workflow：`npm test` + `npm run verify` + `npm run migrate` 幂等）绿才可合并；单人项目审批 0 人可自合并，但测试门不可豁免——CI 与本地自测是同一套命令，本地绿了 CI 才会绿。
+3. `dev → release` 预发 PR 与 `release → main` 发布 PR 过同一套门；发布门（`pr-main` workflow）额外构建 Docker 镜像冒烟。
+4. 合并统一 squash；合并后源分支删除，禁止复用已合并分支。
+5. 发布打 tag（在 `main` 上）：`gNN-vX.Y.Z`（每部作品独立版本线）。
+6. hotfix：从 `main` 拉 `fix/` 分支，PR 直进 `main`（过 `pr-main` 门）；合并后立即把 `main` 回同步进 `dev` 与 `release`。
+7. 禁止 force push、删除 `main`/`dev`/`release`、绕过测试门提交。
 
 ## 4. AI 代理特别约束
 

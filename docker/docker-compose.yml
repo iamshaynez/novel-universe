@@ -1,10 +1,11 @@
 # gb-test 服务器 /opt/apps/novel-universe/docker-compose.yml 的版本化副本——改动两处同步。
 # 服务器布局：/opt/apps/novel-universe/{docker-compose.yml, deploy.sh, data/}
-# 镜像来自 ghcr.io（公共包，服务器匿名即可 pull，无需 docker login）。
+# 镜像来自阿里云 ACR（与 app41 同实例，命名空间 xiaowenz）。
+# 服务器侧需 docker login 该 ACR 一次（compose pull 用，凭据与 CI 推送相同）。
 # 主机端口 18084（避开 app41 的 18083）；CF 侧 chengdu.xiaowenz.com → 源站 127.0.0.1:18084。
 services:
   novel:
-    image: ghcr.io/iamshaynez/novel-universe:main
+    image: ${ACR_REGISTRY}/xiaowenz/novel-universe:main
     container_name: novel-universe
     init: true
     restart: unless-stopped

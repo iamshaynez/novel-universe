@@ -117,14 +117,19 @@ export class Stage {
     }
     this.revealing = false; this.fast = false;
   }
-  async say(name, text, { theme = 'var(--accent)', hz = 218, dir = 'r' } = {}) {
+  async say(name, text, { theme = 'var(--accent)', hz = 218, dir = 'r', split = false } = {}) {
     this.revealing = true;
     const who = inkify(theme);
-    const chip = `<span class="who" style="color:${who}">${name}</span>`;
+    // 分身拍（你→她）：首拍签条中性墨起笔、个体色慢渗入——代词分裂在排版层可见
+    const chipOf = first => split && first
+      ? `<span class="who split" style="--c:${who}">${name}</span>`
+      : `<span class="who" style="color:${who}">${name}</span>`;
     // 台词文本以「」整体包裹（frame）：外框不算引语，框内逗号照常断拍
+    let first = true;
     for (const p of segment(text, { frame: true })) {
       this._append('dlg' + (dir === 'l' ? ' lslide' : '') + (p.q ? ' qb' : ''),
-        chip + this.mark(p.text));
+        chipOf(first) + this.mark(p.text));
+      first = false;
       this.audio.blip(hz);
       await this.pause(Stage.pauseOf(p.text, true));
     }
@@ -148,8 +153,9 @@ export class Stage {
 
   /** 转写交互（g01 原语）：呼入方报话，玩家把留言打进呼机。
    *  判定在服务端（可多打不漏字）；错一次即亮底单参照，点参照可直接抄录。
-   *  hz：呼入者声纹频率（登典者用正典 voice_hz，未登典用确定性伪声纹）——形状即线索，不标数字。 */
-  async transcribe({ caller, target, misses = 0, hz = null }) {
+   *  hz：呼入者声纹频率（登典者用正典 voice_hz，未登典用确定性伪声纹）——形状即线索，不标数字。
+   *  dead：死单拍——这一条是引向河对岸的那条，回执朱砂化 + 戏中时间戳 + 呼机双短音。 */
+  async transcribe({ caller, target, misses = 0, hz = null, dead = false, stamp = null }) {
     this._append('', this.mark(`【转写】${caller ?? '呼入'} 报话——请把留言打进呼机。`));
     return new Promise(res => {
       const c = this._append('choice', '');
@@ -165,7 +171,8 @@ export class Stage {
       const done = () => {
         const v = inp.value.trim();
         if (!v) return;
-        c.innerHTML = `<div class="tr-done">已入机——${this.mark(`「${v}」`)}</div>`;
+        c.innerHTML = `<div class="tr-done${dead ? ' dead' : ''}">已入机——${this.mark(`「${v}」`)}${dead && stamp ? `<span class="tr-stamp">${stamp}</span>` : ''}</div>`;
+        if (dead) this.audio.page();
         res(v);
       };
       btn.addEventListener('pointerdown', ev => { ev.stopPropagation(); done(); });
@@ -173,6 +180,96 @@ export class Stage {
       setTimeout(() => { inp.classList.add('in'); if (!this.auto) inp.focus(); }, 400);
       if (this.auto) setTimeout(() => { inp.value = target; done(); }, this.fast ? 50 : 1200);
     });
+  }
+
+  // ---------- 峰值拍（舞台合同 v1 首片：@peak —— 回报拍专用，播种拍保持安静） ----------
+
+  /** 死单拍的氛围压暗：随 peak 差分自动开关（renderBeat 每拍对齐，无需手工复位）。 */
+  ambientDim(on) { $('#ambient').classList.toggle('dim', !!on); }
+
+  /** 内声拍：全游戏唯一「带声音的叙述行」——叙述首次携带声纹（玩家自己的声线），
+   *  浓墨底带慢入场。身份揭秘那一拍，心里的话第一次有了 Hz。 */
+  async tellInner(text, hz) {
+    this.revealing = true;
+    const segs = segment(text);
+    for (let i = 0; i < segs.length; i++) {
+      const p = segs[i];
+      const head = i === 0
+        ? `<svg class="tr-wave inner-wave" viewBox="0 0 96 20" aria-hidden="true"><path d="${Stage.voiceprint(hz, 96, 20)}"/></svg>`
+        : '';
+      this._append(i === 0 ? 'lead inner' : '', head + this.mark(p.text));
+      if (i === 0) {
+        this.audio.blip(hz);
+        setTimeout(() => this.audio.blip(hz), this.fast ? 40 : 340);
+      } else this.audio.narr((this._rnd() - .5) * .06);
+      await this.pause(Math.round(Stage.pauseOf(p.text, false) * 1.25));
+    }
+    this.revealing = false; this.fast = false;
+  }
+
+  /** 证物拍：玩家自己转过的底单并排成案——caller · 手描声纹 · Hz · 留言，
+   *  相同声纹依次点亮朱砂。Hz 数字只在回报拍出现（播种拍只给形状）。 */
+  async desk(rows) {
+    const w = document.createElement('div');
+    w.className = 'desk';
+    w.innerHTML = `<div class="desk-kicker">证物 · 并排连线</div>` +
+      rows.map(r => `<div class="desk-row"><span class="desk-caller">${this.mark(r.caller)}</span>` +
+        `<svg class="tr-wave desk-wave" viewBox="0 0 96 20"><path d="${Stage.voiceprint(r.hz, 96, 20)}"/></svg>` +
+        `<span class="desk-hz">${r.hz}<i>Hz</i></span><span class="desk-text">${this.mark(r.target)}</span></div>`).join('');
+    this.root.appendChild(w);
+    await sleep(this.auto ? 60 : 420);
+    w.querySelectorAll('.desk-row').forEach((row, i) =>
+      setTimeout(() => row.classList.add('in'), this.auto ? 0 : 240 * i));
+    await sleep(this.auto ? 60 : 240 * rows.length + 400);
+    w.querySelectorAll('.desk-wave').forEach((sv, i) =>
+      setTimeout(() => sv.classList.add('same'), this.auto ? 0 : 170 * i));
+    await sleep(this.auto ? 60 : 170 * rows.length + 1600);
+    w.style.opacity = '0';
+    await sleep(this.auto ? 30 : 700);
+    w.remove();
+  }
+
+  /** 并轨拍：四条呼入波形从四角滑入、叠合成一根——「四声一模一样」的视觉证明。
+   *  四声 blip 收敛为一声；随后「他」的遮罩声纹卡与这根波同形。 */
+  async collapse(rows) {
+    const hz = rows[0]?.hz ?? 96;
+    const w = document.createElement('div');
+    w.className = 'coll';
+    w.innerHTML = rows.map((r, i) =>
+      `<svg class="coll-wave p${i}" viewBox="0 0 180 36"><path d="${Stage.voiceprint(r.hz)}"/></svg>`).join('') +
+      `<svg class="coll-wave one" viewBox="0 0 180 36"><path d="${Stage.voiceprint(hz)}"/></svg>`;
+    this.root.appendChild(w);
+    for (let i = 0; i < rows.length; i++) { this.audio.blip(rows[i].hz); await sleep(this.auto ? 30 : 320); }
+    await sleep(this.auto ? 30 : 380);
+    w.classList.add('merge');
+    await sleep(this.auto ? 30 : 950);
+    w.classList.add('merged');
+    this.audio.blip(hz);
+    await sleep(this.auto ? 60 : 1700);
+    w.style.opacity = '0';
+    await sleep(this.auto ? 30 : 600);
+    w.remove();
+  }
+
+  /** 复键拍：一个词键出 → 朱线划除 → 重打——「最该停下来的半秒钟」。 */
+  async retype(word) {
+    const w = document.createElement('div');
+    w.className = 'rt';
+    w.innerHTML = `<span class="rt-key a">${word}</span>`;
+    this.root.appendChild(w);
+    await sleep(this.auto ? 30 : 320);
+    const a = w.querySelector('.a');
+    a.classList.add('in'); this.audio.narr(.04);
+    await sleep(this.auto ? 30 : 620);
+    a.classList.add('cut'); this.audio.narr(-.03);
+    await sleep(this.auto ? 30 : 700);
+    const b = document.createElement('span');
+    b.className = 'rt-key b'; b.textContent = word;
+    w.appendChild(b); reflow(b); b.classList.add('in'); this.audio.narr(.06);
+    await sleep(this.auto ? 30 : 950);
+    w.style.opacity = '0';
+    await sleep(this.auto ? 30 : 500);
+    w.remove();
   }
 
   async wipe() {
@@ -185,9 +282,9 @@ export class Stage {
   reset() {
     this.flow.innerHTML = ''; this.lines.length = 0; this.off = 0;
     this.flow.style.transform = 'translate(-50%, 0)';
-    // 瞬态舞台层（印章/声纹卡/章节卡）挂在 #stage 根上，换幕必须一并清场——
+    // 瞬态舞台层（印章/声纹卡/章节卡/峰值拍）挂在 #stage 根上，换幕必须一并清场——
     // 否则印章等点击时切存档/重开，旧印章残留画面叠成一层红
-    this.root.querySelectorAll('.sealwrap,.charcard,.chcard').forEach(el => el.remove());
+    this.root.querySelectorAll('.sealwrap,.charcard,.chcard,.desk,.coll,.rt').forEach(el => el.remove());
     this.pendingGate = null; this.revealing = false; this.fast = false;
     this.hint(false);
   }
@@ -259,6 +356,7 @@ export class Stage {
   setAmbient(locId, mood = {}, params = {}) {
     const a = $('#ambient');
     a.classList.remove('on');
+    a.classList.remove('dim'); // 峰值压暗随场景切换复位（renderBeat 差分会再对齐）
     setTimeout(() => {
       a.innerHTML = AMBIENT[locId] ? AMBIENT[locId](mood, params) : ambientFallback(mood);
       a.classList.add('on');

@@ -43,7 +43,7 @@ function parseKV(toks) {
 
 function parseChapter(text, ch) {
   const nodes = {}, order = [], scenes = {}, endings = [];
-  let pendingLabels = [], pendingView = {}, pendingEnter = [];
+  let pendingLabels = [], pendingView = {}, pendingEnter = [], pendingPeak = null;
   let prevId = null, afterChoice = false, currentScene = null, ctr = 0;
   const nid = () => `${ch.id}-n${++ctr}`;
 
@@ -61,7 +61,8 @@ function parseChapter(text, ch) {
     node.scene = currentScene;
     if (Object.keys(pendingView).length) node.view = { ...pendingView };
     if (pendingEnter.length) node.enter = [...pendingEnter];
-    pendingView = {}; pendingEnter = [];
+    if (pendingPeak) node.peak = pendingPeak;
+    pendingView = {}; pendingEnter = []; pendingPeak = null;
     if (prevId) nodes[prevId].next = node.id;
     nodes[node.id] = node;
     order.push(node.id);
@@ -106,6 +107,12 @@ function parseChapter(text, ch) {
       }
       else if (cmd === 'fact') { if (!toks[0]) throw new Error(`${ch.id}: @fact 缺少事件`); pendingEnter.push({ op: 'flag', name: `fact.${toks[0]}`, value: true }); }
       else if (cmd === 'set') { if (!toks[0]) throw new Error(`${ch.id}: @set 缺少 flag 名`); pendingEnter.push({ op: 'flag', name: toks[0], value: true }); }
+      else if (cmd === 'peak') {
+        // @peak <kind> [args]（舞台合同 v1 首片）：手工峰值特效，折叠到下一停点。
+        // 演出词表与预算归 content-lint；编译器只保证结构与落点。
+        if (!toks[0]) throw new Error(`${ch.id}: @peak 缺少 kind`);
+        pendingPeak = { kind: toks[0], args: toks.slice(1).join(',').split(',').map(s => s.trim()).filter(Boolean) };
+      }
       else if (cmd === 'transcribe') {
         // @transcribe <id> caller=<呼入方> target=<留言文本> —— 转写是带提交语义的停点节点
         if (!toks[0]) throw new Error(`${ch.id}: @transcribe 缺少 id`);
@@ -136,6 +143,7 @@ function parseChapter(text, ch) {
   }
 
   if (pendingLabels.length) throw new Error(`${ch.id}: 标签后没有内容: ${pendingLabels.join(', ')}`);
+  if (pendingPeak) throw new Error(`${ch.id}: @peak 后没有内容`);
   const tailId = prevId && nodes[prevId].type === 'line' ? prevId : null;
   return { nodes, order, scenes, endings, entry: order[0] ?? null, tailId };
 }
@@ -201,6 +209,10 @@ export function compileGame(gameDir, universeDir) {
       const cid = n.caller ? U.aliasToChar[n.caller] : null;
       n.callerChar = cid ?? null;
       if (cid) regChar(cid);
+    }
+    // 峰值只属于停点：jump/ending 是过渡节点，峰落其上等于静默丢失
+    if (n.peak && !['line', 'transcribe', 'choice'].includes(n.type)) {
+      throw new Error(`${n.id}: @peak 只能落在台词/转写/选项停点上（当前落在 ${n.type}）`);
     }
     const bg = n.aview?.bg;
     if (bg && !U.locations[bg.id]) throw new Error(`未知地点: ${bg.id}（不在 universe/locations 注册）`);

@@ -70,14 +70,38 @@ export function checkTranscribeSource(md) {
   return errs;
 }
 
-/** 全章内容 lint：game.json 需声明 set_in 才启用节气校验；转写溯源恒开。 */
+// @peak 演出预算（ADR-004 债 4 / ADR-005 债 2 的落地）：峰值只给回报拍，且必须限量——
+// 满屏都在喊，就没有惊讶了。词表与 web 舞台词汇镜像（单一事实源在 docs/ADR/004 修订记录）。
+export const PEAK_KINDS = ['inner', 'dead', 'desk', 'collapse', 'retype', 'split'];
+export const PEAK_BUDGET = { perChapter: 3, perGame: 8 };
+
+/** @peak 峰值 lint：词表校验 + 本章预算（全作预算在 lintContent 汇总）。 */
+export function checkPeaks(md) {
+  const errs = [];
+  const peaks = [...md.matchAll(/@peak\s+(\S+)/g)];
+  for (const m of peaks) {
+    if (!PEAK_KINDS.includes(m[1])) errs.push(`峰值词表外：@peak ${m[1]}（合法：${PEAK_KINDS.join(' / ')}）`);
+  }
+  if (peaks.length > PEAK_BUDGET.perChapter) {
+    errs.push(`@peak 本章 ${peaks.length} 处，超预算 ${PEAK_BUDGET.perChapter}——峰值只给回报拍`);
+  }
+  return errs;
+}
+
+/** 全章内容 lint：game.json 需声明 set_in 才启用节气校验；转写溯源与峰值预算恒开。 */
 export function lintContent(gameDir, manifest) {
   const errs = [];
   const year = manifest?.set_in ? parseInt(manifest.set_in, 10) : null;
+  let peakTotal = 0;
   for (const ch of manifest?.chapters ?? []) {
     const md = readFileSync(join(gameDir, 'chapters', ch.file), 'utf8');
     for (const e of checkSolarTerms(md, year)) errs.push(`${ch.id}：${e}`);
     for (const e of checkTranscribeSource(md)) errs.push(`${ch.id}：${e}`);
+    for (const e of checkPeaks(md)) errs.push(`${ch.id}：${e}`);
+    peakTotal += [...md.matchAll(/@peak\s+\S+/g)].length;
+  }
+  if (peakTotal > PEAK_BUDGET.perGame) {
+    errs.push(`@peak 全作 ${peakTotal} 处，超预算 ${PEAK_BUDGET.perGame}——揭秘的响度是稀缺资源`);
   }
   return errs;
 }

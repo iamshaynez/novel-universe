@@ -144,6 +144,16 @@ describe('场景：转写交互（g01）', () => {
     assert.equal(g01.speakers['他']?.char, 'liaozhikun', '「他」应解析到廖志坤');
   });
 
+  it('stateOf 透传呼入者绑定：陈先生/刘先生携带 caller_char=liaozhikun（声纹法证）', () => {
+    assert.ok(g01);
+    const byTid = tid => Object.values(g01.nodes).find(n => n.type === 'transcribe' && n.transId === tid);
+    const st = n => stateOf(g01, { ...createRun(g01), nodeId: n.id });
+    assert.equal(st(byTid('t3')).caller_char, 'liaozhikun', '陈先生 → 廖志坤');
+    assert.equal(st(byTid('t4')).caller_char, 'liaozhikun', '刘先生 → 廖志坤');
+    assert.equal(st(byTid('t9')).caller_char, 'liaozhikun', '终章前最后一条 → 廖志坤');
+    assert.equal(st(byTid('t1')).caller_char, null, '张嬢嬢刻意无档');
+  });
+
   it('advance 不得越过转写节点（转写是停点）', () => {
     assert.ok(g01);
     let r = createRun(g01), guard = 0, hit = null;

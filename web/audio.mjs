@@ -49,4 +49,6 @@ export class StageAudio {
     } catch (e) {}
   }
   stamp() { this.thud(); this.tone(1250, .04, 'square', .12); }
+  /** 呼机双短音：BP 机收到留言的「滴、滴」——戏中音（diegetic），留言落机的瞬间。 */
+  page() { this.tone(1400, .09, 'square', .16); this.tone(1400, .09, 'square', .16, .17); }
 }

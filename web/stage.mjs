@@ -163,6 +163,11 @@ export class Stage {
   reset() {
     this.flow.innerHTML = ''; this.lines.length = 0; this.off = 0;
     this.flow.style.transform = 'translate(-50%, 0)';
+    // 瞬态舞台层（印章/声纹卡/章节卡）挂在 #stage 根上，换幕必须一并清场——
+    // 否则印章等点击时切存档/重开，旧印章残留画面叠成一层红
+    this.root.querySelectorAll('.sealwrap,.charcard,.chcard').forEach(el => el.remove());
+    this.pendingGate = null; this.revealing = false; this.fast = false;
+    this.hint(false);
   }
 
   // ---------- 角色锚点(分侧)与声纹卡 ----------
@@ -208,6 +213,8 @@ export class Stage {
 
   // ---------- 地点:印章 + 氛围层 ----------
   async seal(name, caption) {
+    // 同屏只允许一枚印章：切换中的残留一律先撤
+    this.root.querySelectorAll('.sealwrap').forEach(w => w.remove());
     const parts = name.split('·').map(s => s.trim()).filter(Boolean);
     const lines = parts.length >= 2 ? parts : [name.slice(0, 2), name.slice(2)].filter(Boolean);
     const w = document.createElement('div'); w.className = 'sealwrap';

@@ -28,6 +28,7 @@ const app = {
   prev: { chapter: null, bgKey: null },
   met: new Set(), facts: new Set(), timelineBuilt: false, running: false,
   sheet: new Map(), // 转写底单：tid -> {caller, target}（本局回看）
+  gen: 0,           // 换代令牌：切档/重开时 +1，旧渲染循环立即退场，防止双驱动
 };
 
 // 代词说话者是剧本刻意匿名（g01 叙诡合同）：声纹卡/锚点只显声线，不揭名——
@@ -40,6 +41,7 @@ const charOf = name => {
 };
 
 function resetRun() {
+  app.gen++;
   app.prev = { chapter: null, bgKey: null };
   app.met = new Set(); app.facts = new Set(); app.timelineBuilt = false; app.sheet.clear();
   stage.reset(); stage.clearClues(); stage.clearAnchors();
@@ -50,6 +52,7 @@ function resetRun() {
 
 /** 渲染一个停点;返回下一停点状态(结局/选择后返回其状态),终局返回 null。 */
 async function renderBeat(s) {
+  const gen = app.gen;
   // 章节切换 → 清场 + 章节卡
   if (s.chapter !== app.prev.chapter) {
     const idx = Math.max(0, app.ir.chapters.findIndex(c => c.id === s.chapter));
@@ -108,6 +111,7 @@ async function renderBeat(s) {
     }
     stage.dismissCard(card);
     await stage.gate();
+    if (gen !== app.gen) return null; // 等待期间换了幕/档：不再触碰任何存档
     const r = await api.post(`/api/saves/${app.saveId}/advance`);
     if (r.state.kind === 'void') { stage.toast('剧情已到尽头'); return null; }
     return r.state;
@@ -115,6 +119,7 @@ async function renderBeat(s) {
 
   if (s.kind === 'choice') {
     const idx = await stage.choice(null, s.options.map(o => o.label));
+    if (gen !== app.gen) return null;
     const r = await api.post(`/api/saves/${app.saveId}/choose`, { index: idx });
     return r.state;
   }
@@ -123,6 +128,7 @@ async function renderBeat(s) {
     let cur = s;
     while (cur.kind === 'transcribe') {
       const text = await stage.transcribe({ caller: cur.caller, target: cur.target, misses: cur.misses });
+      if (gen !== app.gen) return null;
       const r = await api.post(`/api/saves/${app.saveId}/advance`, { text });
       if (r.state.kind === 'transcribe' && r.state.id === cur.id) { stage.toast('听岔了——再听一遍'); cur = r.state; }
       // tid 用于底单/flag 追踪；同节点判定用 id
@@ -140,10 +146,14 @@ async function renderBeat(s) {
 }
 
 async function runLoop(s0) {
+  const gen = app.gen;
   app.running = true;
   let s = s0;
-  while (s) s = await renderBeat(s);
-  app.running = false;
+  while (s) {
+    if (gen !== app.gen) break; // 换幕/换档：旧循环退场
+    s = await renderBeat(s);
+  }
+  if (gen === app.gen) app.running = false;
 }
 
 async function showEnding(s) {

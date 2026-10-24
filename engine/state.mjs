@@ -32,7 +32,7 @@ export function stateOf(ir, run) {
   };
   if (n.type === 'line') return { ...base, kind: 'line', speaker: n.speaker ?? null, text: n.text };
   if (n.type === 'choice') return { ...base, kind: 'choice', options: visibleOptions(run, n).map(o => ({ label: o.label })) };
-  if (n.type === 'transcribe') return { ...base, kind: 'transcribe', id: n.id, tid: n.transId, caller: n.caller ?? null, target: n.target, misses: run.trMisses[n.transId] ?? 0 };
+  if (n.type === 'transcribe') return { ...base, kind: 'transcribe', id: n.id, tid: n.transId, caller: n.caller ?? null, caller_char: n.callerChar ?? null, target: n.target, misses: run.trMisses[n.transId] ?? 0 };
   if (n.type === 'ending') return { ...base, kind: 'ending', endingId: n.endingId, title: n.title };
   return { ...base, kind: 'beat' };
 }

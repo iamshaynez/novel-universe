@@ -15,10 +15,10 @@ const synth = (canon = {}) => buildLexicon({ canon: { characters: [], locations:
 const EMPTY = synth();
 const JIEXIAN = synth({
   characters: [
-    { id: 'liaozhikun', name: '廖志坤', aliases: ['他', '陈先生', '刘先生'], stage: { theme: '#e0523f' } },
-    { id: 'dujuan', name: '杜鹃', aliases: ['杜鹃'], stage: { theme: '#ffd9a3' } },
-    { id: 'xiaowen', name: '潇文', aliases: ['望哥', '老板'] },
-    { id: 'wanglei', name: '王磊', aliases: ['街机', '磊哥'] },
+    { id: 'liaozhikun', name: '廖志坤', aliases: ['他', '陈先生', '刘先生'], stage: { theme: '#e0523f' }, class: 'cast' },
+    { id: 'dujuan', name: '杜鹃', aliases: ['杜鹃'], stage: { theme: '#ffd9a3' }, class: 'cast' },
+    { id: 'xiaowen', name: '潇文', aliases: ['望哥', '老板'], class: 'universe' },
+    { id: 'wanglei', name: '王磊', aliases: ['街机', '磊哥'], class: 'universe' },
   ],
   locations: [
     { id: 'chuantai', name: '锦声传呼台', aliases: ['传呼台'] },
@@ -58,6 +58,24 @@ describe('标注层：词典从 canon 摘要块自动推导', () => {
 
   it('不在 canon 块里的名字不签名——纪元过滤由编译器保证，演出层不越权', () => {
     assert.equal(markupText('贺青禾在河对岸。', JIEXIAN), '贺青禾在河对岸。');
+  });
+
+  it('宇宙级客串签名 eu：universe 类人物名与别名皆获灯箱签名，cast 仍 ep，仍是中性墨', () => {
+    assert.equal(markupText('望哥的灯亮着。', JIEXIAN), '<span class="eu">望哥</span>的灯亮着。');
+    assert.equal(markupText('潇文笑了。', JIEXIAN), '<span class="eu">潇文</span>笑了。');
+    assert.equal(markupText('杜鹃交班。', JIEXIAN), '<span class="ep">杜鹃</span>交班。');
+    assert.ok(!markupText('望哥的灯亮着。', JIEXIAN).includes('style='), '客串签名不携带个体色（防泄底铁律）');
+  });
+});
+
+describe('标注层：g01 实战（宇宙客串出道）', () => {
+  const { ir: g01 } = compileGame(join(root, 'games/g01-jiexianyuan'), join(root, 'universe'));
+  const lex = buildLexicon(g01);
+
+  it('向师傅两处现身均为 eu 客串签名（正典别名入典）', () => {
+    assert.equal(markupText('修机的向师傅那台座机又串音。', lex),
+      '修机的<span class="eu">向师傅</span>那台座机又串音。');
+    assert.ok(markupText('斜对面修行情机的向师傅的灯箱刚刚亮起。', lex).includes('<span class="eu">向师傅</span>'));
   });
 });
 

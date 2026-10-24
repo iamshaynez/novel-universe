@@ -1,0 +1,18 @@
+{
+  "id": "laopeng",
+  "name": "老彭",
+  "aliases": [
+    "彭警官"
+  ],
+  "class": "cast",
+  "birth_year": 1958,
+  "voice_hz": 142,
+  "stage": {
+    "side": "left",
+    "theme": "#4a4a5a"
+  },
+  "first_appearance": "g01",
+  "universe_role": "g01 管片民警——双向触碰的枢纽，E1 受理门。",
+  "bio_public": "后子门管片民警，经办坠河案定性。口头禅：结都结了的。",
+  "bio_secret": []
+}

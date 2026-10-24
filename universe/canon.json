@@ -1,9 +1,11 @@
 {
   "name": "锦江悬疑宇宙",
   "world": "成都",
-  "version": "0.7.0",
-  "epoch": "pre",
-  "released_games": [],
+  "version": "0.8.0",
+  "epoch": "g01",
+  "released_games": [
+    "g01"
+  ],
   "era": {
     "main": [
       "1997",
@@ -13,11 +15,11 @@
     "background_reserve": "2024–"
   },
   "layers": {
-    "timeline": "universe/timeline.json · 59 个公共锚点 × 6 个叙事阶段（phases）",
+    "timeline": "universe/timeline.json · 59 公共锚点 × 6 阶段 + 2 条 g01 私有事件",
     "atlas": "universe/atlas.json · 水系/片区/走廊与变迁（含 geo 坐标）",
-    "locations": "universe/locations/*.json · 14 个真实锚点地点（layer=public 免纪元;address/geo/mood/era_notes + card 背景卡片:门面/内里/物件/声味光/人群/年代道具/戏剧钩子;泡桐树小学与石室中学为情感核心锚点）",
+    "locations": "universe/locations/*.json · 17 个（15 公共 + 2 私有：传呼台/河音，随 g01 出道）",
     "orgs": "universe/orgs/*.json · 9 个真实机构企业（信息层，暂无 DSL 引用通道）",
-    "characters": "universe/characters/*.json · 6 位宇宙级原型人物（姓名与性格特征保留，职业年龄虚构；永不主角；persona_anchors/stages/timeline_hooks；秘密池 revealed_in=null 待指派）",
+    "characters": "universe/characters/*.json · 14 位（6 位宇宙级原型人物[class:universe] + 8 位 g01 剧集人物[class:cast]）",
     "map": "universe/map.json · 年代地图册：定位层(中轴/环线/POI) + 六阶段城市快照（WGS-84 街区级精度）",
     "hearts": "universe/hearts.json · 3 颗心脏事件（六千点[主]/非典之春/足球纪元[储备]）——或然结局载体，历史不可改写、人心分支"
   },

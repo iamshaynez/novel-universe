@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { existsSync, readdirSync } from 'node:fs';
 import { extname, join, resolve as resolvePath } from 'node:path';
 import { compileGame } from '../tools/compile-scenario.mjs';
-import { createRun, advance, choose, stateOf, loadRun } from '../engine/state.mjs';
+import { createRun, advance, choose, stateOf, loadRun, submit } from '../engine/state.mjs';
 import { validateGraph } from '../engine/graph.mjs';
 import {
   createSave, getSave, listSaves, updateSave, recordEnding, listEndings,
@@ -110,8 +110,16 @@ export function createApp({ db, games, webDir }) {
       return json(res, 200, { save: { id: row.id, gameId: row.game_id, player: row.player, ended: row.ended, updatedAt: row.updated_at }, state: stateOf(g.ir, run) });
     }
     if (req.method === 'POST' && a === 'saves' && b && c === 'advance') {
+      const body = await readBody(req);
       const { row, run } = loadRunOf(Number(b));
       const g = games[row.game_id];
+      // 转写停点：advance 携带 {text} 走 submit；无 text 时不推进（幂等重取状态）
+      if (stateOf(g.ir, run).kind === 'transcribe') {
+        if (typeof body.text !== 'string') return json(res, 200, { state: stateOf(g.ir, run) });
+        const next = submit(run, g.ir, body.text);
+        persist(row.id, next);
+        return json(res, 200, { state: stateOf(g.ir, next) });
+      }
       const next = advance(run, g.ir);
       persist(row.id, next);
       return json(res, 200, { state: stateOf(g.ir, next) });

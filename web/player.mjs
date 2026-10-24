@@ -103,6 +103,17 @@ async function renderBeat(s) {
     return r.state;
   }
 
+  if (s.kind === 'transcribe') {
+    let cur = s;
+    while (cur.kind === 'transcribe') {
+      const text = await stage.transcribe({ caller: cur.caller, target: cur.target, misses: cur.misses });
+      const r = await api.post(`/api/saves/${app.saveId}/advance`, { text });
+      if (r.state.kind === 'transcribe' && r.state.id === cur.id) { stage.toast('听岔了——再听一遍'); cur = r.state; }
+      // tid 用于底单/flag 追踪；同节点判定用 id
+      else return r.state;
+    }
+  }
+
   if (s.kind === 'ending') {
     await showEnding(s);
     return null;
@@ -169,10 +180,25 @@ async function openSaves() {
 
 // ---- HUD 按钮 ----
 $('#btnSaves').onclick = openSaves;
-$('#btnRestart').onclick = () => app.gameId && startGame(app.gameId);
+// 破坏性操作二次确认：第一次点击只亮「确认？」，2.5s 内再点才执行——防误触毁档
+function armConfirm(btn, fn) {
+  btn.onclick = () => {
+    if (btn.dataset.armed) {
+      btn.dataset.armed = ''; btn.textContent = btn.dataset.label;
+      fn();
+    } else {
+      btn.dataset.label = btn.textContent;
+      btn.dataset.armed = '1'; btn.textContent = '确认？';
+      setTimeout(() => {
+        if (btn.dataset.armed) { btn.dataset.armed = ''; btn.textContent = btn.dataset.label; }
+      }, 2500);
+    }
+  };
+}
+armConfirm($('#btnRestart'), () => app.gameId && startGame(app.gameId));
+armConfirm($('#btnTitle'), () => location.reload());
 $('#btnAgain').onclick = () => startGame(app.gameId);
 $('#btnBackTitle').onclick = () => location.reload();
-$('#btnTitle').onclick = () => location.reload();
 $('#btnMute').onclick = e => {
   audio.muted = !audio.muted;
   e.currentTarget.textContent = audio.muted ? '♪ 已静' : '♪ 音效';
@@ -183,10 +209,23 @@ document.addEventListener('pointerdown', () => audio.ensure(), { once: true });
 (async () => {
   const games = await api.j('/api/games');
   for (const g of games) {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:8px;align-items:center;justify-content:center';
     const b = document.createElement('button');
     b.innerHTML = `${g.title}<span class="g-sub">${g.subtitle ?? ''}</span>`;
     b.onclick = () => startGame(g.id);
-    $('#gameList').appendChild(b);
+    row.appendChild(b);
+    // 「继续上次」：任何 reload/误触都不再是灾难——一键回到最近的进行中存档
+    const saves = await api.j(`/api/saves?gameId=${g.id}`).catch(() => []);
+    const last = saves.filter(s => !s.ended).sort((a, b2) => b2.id - a.id)[0];
+    if (last && !AUTO) {
+      const c = document.createElement('button');
+      c.innerHTML = `继续存档 #${last.id}`;
+      c.style.cssText = 'font-size:13px;padding:6px 12px';
+      c.onclick = () => loadSave(last.id);
+      row.appendChild(c);
+    }
+    $('#gameList').appendChild(row);
   }
   if (AUTO) await startGame(games[0].id);
 })();

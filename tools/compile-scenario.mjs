@@ -96,6 +96,14 @@ function parseChapter(text, ch) {
         pendingView.bg = { id: toks[0], params: parseKV(toks.slice(1)) };
       }
       else if (cmd === 'fact') { if (!toks[0]) throw new Error(`${ch.id}: @fact 缺少事件`); pendingEnter.push({ op: 'flag', name: `fact.${toks[0]}`, value: true }); }
+      else if (cmd === 'set') { if (!toks[0]) throw new Error(`${ch.id}: @set 缺少 flag 名`); pendingEnter.push({ op: 'flag', name: toks[0], value: true }); }
+      else if (cmd === 'transcribe') {
+        // @transcribe <id> caller=<呼入方> target=<留言文本> —— 转写是带提交语义的停点节点
+        if (!toks[0]) throw new Error(`${ch.id}: @transcribe 缺少 id`);
+        const kv = parseKV(toks.slice(1));
+        if (!kv.target) throw new Error(`${ch.id}: @transcribe 缺少 target`);
+        attach({ type: 'transcribe', transId: toks[0], caller: kv.caller ?? null, target: kv.target });
+      }
       else throw new Error(`${ch.id}: 未知指令 @${cmd}`);
       continue;
     }

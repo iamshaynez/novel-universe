@@ -1,0 +1,23 @@
+{
+  "id": "suwan",
+  "name": "苏晚",
+  "aliases": [
+    "她"
+  ],
+  "class": "cast",
+  "birth_year": 1977,
+  "voice_hz": 218,
+  "stage": {
+    "side": "right",
+    "theme": "#7de3ff"
+  },
+  "first_appearance": "g01",
+  "universe_role": "g01《接线员》玩家——夜班接线员；终章文本分裂后以「她」显名（声纹卡=揭晓时刻）。",
+  "bio_public": "锦声传呼台夜班接线员，白天读电大会计。手艺人的骄傲：打字跟人声走，听声辨人。",
+  "bio_secret": [
+    {
+      "fact": "把贺青禾引向河对岸的那条留言，是她的手发出去的。",
+      "revealed_in": "g01"
+    }
+  ]
+}

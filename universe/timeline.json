@@ -207,6 +207,24 @@
       "phase": "turning"
     },
     {
+      "id": "ev-g01-heqinghe",
+      "date": "1999-10-26",
+      "title": "贺青禾坠河",
+      "summary": "深夜，河音音像店店员贺青禾溺亡于府南河，定性意外走夜路。家属无异议。",
+      "disclosed_in": "g01",
+      "depends_on": []
+    },
+    {
+      "id": "ev-g01-message",
+      "date": "1999-10-26",
+      "title": "最后一条留言",
+      "summary": "「十点，老地方，河对岸等你。就这样。」——当晚 22:47 由锦声传呼台发出，把人引向修路的黑岸。",
+      "disclosed_in": "g01",
+      "depends_on": [
+        "ev-g01-heqinghe"
+      ]
+    },
+    {
       "id": "pub-1999-macau",
       "date": "1999-12-20",
       "title": "澳门回归",

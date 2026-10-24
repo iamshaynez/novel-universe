@@ -4,12 +4,12 @@ import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { compileGame } from './compile-scenario.mjs';
 import { lintGame } from './canon-lint.mjs';
+import { lintContent } from './content-lint.mjs';
 import { validateGraph, enumerateRoutes } from '../engine/graph.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const gamesRoot = join(root, 'games');
 const universeDir = join(root, 'universe');
-const assetsDir = join(root, 'assets');
 
 let failed = false;
 for (const name of readdirSync(gamesRoot).sort()) {
@@ -17,9 +17,9 @@ for (const name of readdirSync(gamesRoot).sort()) {
   const dir = join(gamesRoot, name);
   if (!existsSync(join(dir, 'game.json'))) continue;
 
-  const { ir } = compileGame(dir, universeDir);
+  const { ir, manifest } = compileGame(dir, universeDir);
   const errs = validateGraph(ir);
-  const lint = lintGame(dir, universeDir, assetsDir);
+  const lint = [...lintGame(dir, universeDir), ...lintContent(dir, manifest)];
   const routes = enumerateRoutes(ir);
   const dead = routes.filter(r => r.ending.startsWith('__'));
   const reached = new Set(routes.map(r => r.ending));

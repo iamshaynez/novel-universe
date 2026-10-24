@@ -1,0 +1,17 @@
+{
+  "code": "g01",
+  "id": "g01-jiexianyuan",
+  "title": "接线员",
+  "subtitle": "锦江悬疑宇宙 · 第一号档案 · 一九九九",
+  "set_in": "1999",
+  "canon": ">=0.7 <1",
+  "assumes": [],
+  "player": { "name": "你", "voice_hz": 218 },
+  "chapters": [
+    { "id": "ch1", "title": "上岗", "file": "ch1.md" },
+    { "id": "ch2", "title": "两个号码", "file": "ch2.md" },
+    { "id": "ch3", "title": "河对岸", "file": "ch3.md" },
+    { "id": "ch4", "title": "底单", "file": "ch4.md" },
+    { "id": "ch5", "title": "档案室", "file": "ch5.md" }
+  ]
+}

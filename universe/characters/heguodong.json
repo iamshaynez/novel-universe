@@ -1,0 +1,18 @@
+{
+  "id": "heguodong",
+  "name": "贺国栋",
+  "aliases": [
+    "贺父"
+  ],
+  "class": "cast",
+  "birth_year": 1952,
+  "voice_hz": 110,
+  "stage": {
+    "side": "left",
+    "theme": "#6a5a4a"
+  },
+  "first_appearance": "g01",
+  "universe_role": "g01 贺青禾之父——K7 之钉，桥头烧纸的道德地桩。",
+  "bio_public": "东郊厂下岗钳工，赌球欠债，借条上有女儿的签名。",
+  "bio_secret": []
+}

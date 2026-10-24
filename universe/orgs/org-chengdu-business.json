@@ -1,0 +1,13 @@
+{
+  "id": "org-chengdu-business",
+  "name": "成都商报",
+  "aliases": [
+    "商报"
+  ],
+  "type": "都市报媒体",
+  "span": {
+    "start": "1994"
+  },
+  "summary": "九十年代都市报浪潮中的劲旅，市民生活史的日报底稿；这座宇宙里许多「报纸上的新闻」的出处。",
+  "layer": "public"
+}

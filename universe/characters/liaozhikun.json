@@ -1,0 +1,25 @@
+{
+  "id": "liaozhikun",
+  "name": "廖志坤",
+  "aliases": [
+    "他",
+    "陈先生",
+    "刘先生"
+  ],
+  "class": "cast",
+  "birth_year": 1964,
+  "voice_hz": 96,
+  "stage": {
+    "side": "left",
+    "theme": "#e0523f"
+  },
+  "first_appearance": "g01",
+  "universe_role": "g01《接线员》行动章之「你」——三个呼号一张嗓子；终章以「他」显名。",
+  "bio_public": "收账外勤，盘口的「递话人」。句尾「就这样」，挂机前一声轻咳，对服务者过度客气。",
+  "bio_secret": [
+    {
+      "fact": "三个回电号都是他——号码两张脸，嗓子一张。",
+      "revealed_in": "g01"
+    }
+  ]
+}

@@ -1,7 +1,27 @@
 {
-  "name": "雾川市悬疑宇宙",
-  "version": "0.1.0",
-  "epoch": "g00",
-  "released_games": ["g00"],
-  "notes": "版本规则：新增条目/字段 = minor；改含义/删条目 = major。games 通过 manifest.canon 声明兼容区间。"
+  "name": "锦江悬疑宇宙",
+  "world": "成都",
+  "version": "0.9.0",
+  "epoch": "g01",
+  "released_games": [
+    "g01"
+  ],
+  "era": {
+    "main": [
+      "1997",
+      "2023"
+    ],
+    "prequel_reserve": "≤1996",
+    "background_reserve": "2024–"
+  },
+  "layers": {
+    "timeline": "universe/timeline.json · 59 公共锚点 × 6 阶段 + 2 条 g01 私有事件",
+    "atlas": "universe/atlas.json · 水系/片区/走廊与变迁（含 geo 坐标）",
+    "locations": "universe/locations/*.json · 17 个（15 公共 + 2 私有：传呼台/河音，随 g01 出道）",
+    "orgs": "universe/orgs/*.json · 9 个真实机构企业（信息层，暂无 DSL 引用通道）",
+    "characters": "universe/characters/*.json · 14 位（6 位宇宙级原型人物[class:universe] + 8 位 g01 剧集人物[class:cast]）",
+    "map": "universe/map.json · 年代地图册：定位层(中轴/环线/POI) + 六阶段城市快照（WGS-84 街区级精度）",
+    "hearts": "universe/hearts.json · 3 颗心脏事件（六千点[主]/非典之春/足球纪元[储备]）——或然结局载体，历史不可改写、人心分支"
+  },
+  "notes": "宇宙名为暂名，终名待定（见 docs/宇宙-成都-v0.md 待决清单）。真实城市+真实年代；无超自然为当前创作约束。公共层（真实历史/真实地点）免剧透纪元；私有层（虚构事件/虚构地点/人物秘密）须 disclosed_in/first_appearance ∈ assumes ∪ {本作}。"
 }

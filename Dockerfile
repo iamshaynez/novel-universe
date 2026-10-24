@@ -6,7 +6,6 @@ COPY package.json ./
 COPY engine/ engine/
 COPY games/ games/
 COPY universe/ universe/
-COPY assets/ assets/
 COPY web/ web/
 COPY server/ server/
 COPY tools/ tools/

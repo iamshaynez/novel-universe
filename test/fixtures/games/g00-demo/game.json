@@ -1,0 +1,13 @@
+{
+  "code": "g00",
+  "id": "g00-demo",
+  "title": "雨夜来信",
+  "subtitle": "雾川市悬疑宇宙 · 第〇号档案（脚手架验证用）",
+  "canon": ">=0.2 <1",
+  "assumes": [],
+  "player": { "name": "你", "voice_hz": 185 },
+  "chapters": [
+    { "id": "ch1", "title": "黄昏的天台", "file": "ch1.md" },
+    { "id": "ch2", "title": "雨夜长街", "file": "ch2.md" }
+  ]
+}

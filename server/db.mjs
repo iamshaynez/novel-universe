@@ -79,3 +79,9 @@ export function recordEnding(db, saveId, endingId) {
 export function listEndings(db, saveId) {
   return db.prepare('SELECT ending_id, seen_at FROM endings_seen WHERE save_id = ? ORDER BY seen_at').all(saveId);
 }
+/** 结局收集是游戏级：跨存档聚合（同一玩家的「再来一局」不清零收集）。 */
+export function listEndingsByGame(db, gameId) {
+  return db.prepare(`SELECT es.ending_id AS ending_id, MIN(es.seen_at) AS seen_at
+    FROM endings_seen es JOIN saves s ON s.id = es.save_id
+    WHERE s.game_id = ? GROUP BY es.ending_id ORDER BY seen_at`).all(gameId);
+}

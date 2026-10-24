@@ -94,12 +94,16 @@ function parseChapter(text, ch) {
       if (cmd === 'bg') {
         if (!toks[0]) throw new Error(`${ch.id}: @bg 缺少地点`);
         pendingView.bg = { id: toks[0], params: parseKV(toks.slice(1)) };
-        if (!('show' in pendingView)) pendingView.show = null; // 换景即清场
       }
-      else if (cmd === 'show') { if (!toks[0]) throw new Error(`${ch.id}: @show 缺少角色`); pendingView.show = { id: toks[0], expr: toks[1] ?? 'usual' }; }
-      else if (cmd === 'hide') pendingView.show = null;
-      else if (cmd === 'bgm') { if (!toks[0]) throw new Error(`${ch.id}: @bgm 缺少曲目`); pendingView.bgm = toks[0]; }
       else if (cmd === 'fact') { if (!toks[0]) throw new Error(`${ch.id}: @fact 缺少事件`); pendingEnter.push({ op: 'flag', name: `fact.${toks[0]}`, value: true }); }
+      else if (cmd === 'set') { if (!toks[0]) throw new Error(`${ch.id}: @set 缺少 flag 名`); pendingEnter.push({ op: 'flag', name: toks[0], value: true }); }
+      else if (cmd === 'transcribe') {
+        // @transcribe <id> caller=<呼入方> target=<留言文本> —— 转写是带提交语义的停点节点
+        if (!toks[0]) throw new Error(`${ch.id}: @transcribe 缺少 id`);
+        const kv = parseKV(toks.slice(1));
+        if (!kv.target) throw new Error(`${ch.id}: @transcribe 缺少 target`);
+        attach({ type: 'transcribe', transId: toks[0], caller: kv.caller ?? null, target: kv.target });
+      }
       else throw new Error(`${ch.id}: 未知指令 @${cmd}`);
       continue;
     }
@@ -166,12 +170,12 @@ export function compileGame(gameDir, universeDir) {
     n.aview = { ...running };
   }
 
-  // 说话者 / 角色登记
+  // 说话者 / 角色登记（文字舞台：角色以台词登场，声线与站位来自正典）
   const speakers = {}, characters = {};
   const regChar = cid => {
     const c = U.chars[cid];
     if (!c) throw new Error(`未知角色: ${cid}（不在 universe/characters 注册）`);
-    if (!characters[cid]) characters[cid] = { id: c.id, name: c.name, voice_hz: c.voice_hz, chibi: c.chibi };
+    if (!characters[cid]) characters[cid] = { id: c.id, name: c.name, voice_hz: c.voice_hz, stage: c.stage ?? null };
     return c;
   };
   for (const id of order) {
@@ -182,11 +186,24 @@ export function compileGame(gameDir, universeDir) {
       const c = regChar(cid);
       speakers[n.speaker] = { char: c.id, voice_hz: c.voice_hz };
     }
-    const show = n.aview?.show;
-    if (show && show.id) regChar(show.id);
     const bg = n.aview?.bg;
     if (bg && !U.locations[bg.id]) throw new Error(`未知地点: ${bg.id}（不在 universe/locations 注册）`);
   }
+
+  // 舞台合同 v0：IR 携带纪元过滤后的 canon 摘要块（演出层数据一次到位，不泄未来正典）
+  const allowedCanon = new Set([...(manifest.assumes ?? []), manifest.code]);
+  const canonBlock = {
+    world: U.canon.world ?? '',
+    characters: Object.values(U.chars)
+      .filter(c => allowedCanon.has(c.first_appearance))
+      .map(c => ({ id: c.id, name: c.name, voice_hz: c.voice_hz, stage: c.stage ?? null, bio_public: c.bio_public ?? '' })),
+    locations: Object.values(U.locations)
+      .filter(l => l.layer === 'public' || allowedCanon.has(l.first_appearance))
+      .map(l => ({ id: l.id, name: l.name, mood: l.mood ?? {} })),
+    events: Object.values(U.events)
+      .filter(e => e.layer === 'public' || allowedCanon.has(e.disclosed_in))
+      .map(e => ({ id: e.id, date: e.date, title: e.title, ...(e.disclosed_in ? { disclosed_in: e.disclosed_in } : {}) })),
+  };
 
   // 结局去重登记
   const endingMap = new Map(endings.map(e => [e.id, e]));
@@ -198,7 +215,7 @@ export function compileGame(gameDir, universeDir) {
     entry: results[0].entry,
     nodes, scenes,
     endings: [...endingMap.values()],
-    speakers, characters,
+    speakers, characters, canon: canonBlock,
     player: manifest.player ?? { name: '你', voice_hz: 185 },
   };
   return { ir, manifest };

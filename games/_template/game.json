@@ -2,11 +2,18 @@
   "code": "gNEW",
   "id": "__SLUG__",
   "title": "__TITLE__",
-  "subtitle": "雾川市悬疑宇宙",
+  "subtitle": "锦江悬疑宇宙（暂名）",
   "canon": ">=0.1 <1",
   "assumes": [],
-  "player": { "name": "你", "voice_hz": 185 },
+  "player": {
+    "name": "你",
+    "voice_hz": 185
+  },
   "chapters": [
-    { "id": "ch1", "title": "第一章", "file": "ch1.md" }
+    {
+      "id": "ch1",
+      "title": "第一章",
+      "file": "ch1.md"
+    }
   ]
 }

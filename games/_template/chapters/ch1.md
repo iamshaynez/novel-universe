@@ -1,17 +1,16 @@
 # ch1-opening
-@bg rooftop time=dusk
-@bgm rooftop
 
-// 剧本 DSL 速查：
+// 剧本 DSL 速查（文字舞台语法，详见 docs/ADR/003 与 ADR-004）：
 //   # scene-id            场景标签（跳转目标，全局唯一）
-//   @bg <地点> k=v        背景（地点须在 universe/locations 注册）
-//   @show <角色> <表情>   登场立绘 / @hide 清场
-//   @bgm <曲目>           配乐（assets/scores/<曲目>.mjs）
-//   @fact <事件id>        触碰正典事件（须在 universe/timeline 注册）
-//   名字：「台词」         有主台词；无前缀为旁白
+//   @bg <地点> [k=v]      地点（→ 印章转场 + 氛围层；地点须在 universe/locations 注册）
+//   @fact <事件id>        触碰正典事件（→ 时间轴点亮 + 线索解锁；须在 universe/timeline 注册）
+//   名字：「台词」         有主台词（→ 声线/站位锚点自动登场）；无前缀为旁白
 //   * 选项 -> scene-id [if flag]   选项行，连续 * 行合并为一个选择点
 //   -> scene-id           无条件跳转
 //   == ending END_ID 标题  结局（终端节点）
+// 演出零标注：呼吸节奏、强调、声纹卡、时间轴由编译器从正典自动推导。
+// 一拍一句：句号即呼吸停顿。写正典词条（人名/地名/事件词）时它们会自动强调。
+// 公共背景事件（layer=public，如 @fact pub-1997-hongkong）免剧透纪元，任意作品可引用。
 
 这里是故事开始的地方。
 角色名：「像这样说话。」

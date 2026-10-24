@@ -5,10 +5,10 @@ import { readFile } from 'node:fs/promises';
 import { existsSync, readdirSync } from 'node:fs';
 import { extname, join, resolve as resolvePath } from 'node:path';
 import { compileGame } from '../tools/compile-scenario.mjs';
-import { createRun, advance, choose, stateOf, loadRun } from '../engine/state.mjs';
+import { createRun, advance, choose, stateOf, loadRun, submit } from '../engine/state.mjs';
 import { validateGraph } from '../engine/graph.mjs';
 import {
-  createSave, getSave, listSaves, updateSave, recordEnding, listEndings,
+  createSave, getSave, listSaves, updateSave, recordEnding, listEndingsByGame,
 } from './db.mjs';
 
 export function loadGames(gamesRoot, universeDir) {
@@ -30,10 +30,9 @@ const MIME = {
   '.js': 'text/javascript; charset=utf-8',
   '.mjs': 'text/javascript; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
-  '.svg': 'image/svg+xml',
   '.css': 'text/css; charset=utf-8',
   '.png': 'image/png',
-  '.wav': 'audio/wav',
+  '.svg': 'image/svg+xml',
 };
 
 function json(res, status, body) {
@@ -55,15 +54,11 @@ async function readBody(req) {
   try { return JSON.parse(text); } catch { throw httpError(400, '请求体不是合法 JSON'); }
 }
 
-export function createApp({ db, games, webDir, assetsDir }) {
+export function createApp({ db, games, webDir }) {
   async function serveStatic(res, pathname) {
     let file = null;
     if (pathname === '/') file = join(webDir, 'index.html');
-    else if (pathname.startsWith('/assets/')) {
-      const rel = pathname.slice('/assets/'.length);
-      file = resolvePath(join(assetsDir, rel));
-      if (!file.startsWith(resolvePath(assetsDir))) throw httpError(403, '路径越界');
-    } else {
+    else {
       file = resolvePath(join(webDir, pathname.slice(1)));
       if (!file.startsWith(resolvePath(webDir))) throw httpError(403, '路径越界');
     }
@@ -115,8 +110,16 @@ export function createApp({ db, games, webDir, assetsDir }) {
       return json(res, 200, { save: { id: row.id, gameId: row.game_id, player: row.player, ended: row.ended, updatedAt: row.updated_at }, state: stateOf(g.ir, run) });
     }
     if (req.method === 'POST' && a === 'saves' && b && c === 'advance') {
+      const body = await readBody(req);
       const { row, run } = loadRunOf(Number(b));
       const g = games[row.game_id];
+      // 转写停点：advance 携带 {text} 走 submit；无 text 时不推进（幂等重取状态）
+      if (stateOf(g.ir, run).kind === 'transcribe') {
+        if (typeof body.text !== 'string') return json(res, 200, { state: stateOf(g.ir, run) });
+        const next = submit(run, g.ir, body.text);
+        persist(row.id, next);
+        return json(res, 200, { state: stateOf(g.ir, next) });
+      }
       const next = advance(run, g.ir);
       persist(row.id, next);
       return json(res, 200, { state: stateOf(g.ir, next) });
@@ -137,7 +140,7 @@ export function createApp({ db, games, webDir, assetsDir }) {
     }
     if (req.method === 'GET' && a === 'saves' && b && c === 'endings') {
       const { row } = loadRunOf(Number(b));
-      return json(res, 200, listEndings(db, row.id));
+      return json(res, 200, listEndingsByGame(db, row.game_id));
     }
     throw httpError(404, `无此路由 ${req.method} ${pathname}`);
   }

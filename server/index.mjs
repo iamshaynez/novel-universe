@@ -24,7 +24,6 @@ console.log(`[games] ${Object.keys(games).join(', ') || '(空)'}`);
 const app = createApp({
   db, games,
   webDir: join(root, 'web'),
-  assetsDir: join(root, 'assets'),
 });
 app.listen(PORT, () => {
   console.log(`[novel-universe] http://127.0.0.1:${PORT}`);

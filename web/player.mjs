@@ -487,6 +487,21 @@ $('#apSubmit').onclick = async () => {
   } catch (e) { $('#apErr').textContent = e.message; }
 };
 
+// ---- 版本指纹（footer 部署追踪）：v版本 · sha · 起服 · 服务器时间，30s 对时 ----
+// 看不到这条 = 浏览器还在吃旧缓存；时间不走 = 会话挂在旧实例上。
+const fmtClock = iso => {
+  const d = new Date(iso), p = n => String(n).padStart(2, '0');
+  return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+};
+async function tickVtag() {
+  const v = await api.j('/api/version').catch(() => null);
+  $('#vtag').textContent = v
+    ? `v${v.version} · ${v.sha} · 起 ${fmtClock(v.boot)} · 服务器 ${fmtClock(v.now)}`
+    : 'v? · /api/version 不可达';
+}
+tickVtag();
+setInterval(tickVtag, 30000);
+
 // ---- 启动:标题页游戏列表;?auto=1 冒烟 ----
 (async () => {
   // 重载原因标记：按钮重载前写入；boot 时若 reload 但无标记 = 浏览器行为（下拉刷新/标签回收）——

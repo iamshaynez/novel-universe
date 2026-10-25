@@ -133,6 +133,15 @@ describe('静态资源与安全', () => {
     assert.match(res.headers.get('cache-control') ?? '', /no-cache/i);
   });
 
+  it('静态资源带 ETag，If-None-Match 回源得 304（no-cache 的零成本校验）', async () => {
+    const first = await fetch(base.url + '/');
+    const etag = first.headers.get('etag');
+    assert.ok(etag, '首响应必须带 ETag');
+    const revalidate = await fetch(base.url + '/', { headers: { 'If-None-Match': etag } });
+    assert.equal(revalidate.status, 304, '内容未变时回源应 304');
+    assert.match(revalidate.headers.get('cache-control') ?? '', /no-cache/i);
+  });
+
   it('路径穿越被拒', async () => {
     const res = await fetch(base.url + '/%2e%2e/%2e%2e/package.json');
     assert.ok([403, 404].includes(res.status));

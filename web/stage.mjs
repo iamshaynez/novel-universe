@@ -162,6 +162,7 @@ export class Stage {
       c.innerHTML = `<div class="tr">
         <div class="tr-caller">${misses >= 1 ? `（第 ${misses + 1} 次尝试）` : ''}呼入 · ${this.mark(caller ?? '未知')}${hz ? Stage.waveChip(hz) : ''}</div>
         <input class="tr-in" type="text" placeholder="照呼入的话打——可以多打，不能漏" autocomplete="off">
+        <div class="tr-rule">规矩 · 照呼入原话全文可过——可多打，不可漏字${misses >= 1 ? '（点下方参照可直接抄录）' : ''}</div>
         <button class="tr-send">发送 ↵</button>
         ${misses >= 1 ? `<div class="tr-hint">底单参照（点击抄录）——${this.mark(target)}</div>` : ''}
       </div>`;
@@ -434,11 +435,11 @@ export class Stage {
     raf().then(() => c.classList.add('in'));
   }
   clearClues() { $('#clues').innerHTML = ''; }
-  async chapterCard(numText, title) {
+  async chapterCard(numText, title, date = null) {
     const w = document.createElement('div');
     w.className = 'chcard';
     w.innerHTML = `<div class="ch-num">${numText}</div><div class="ch-bar"></div>
-      <div class="ch-title">${title}</div><div class="ch-seal">章</div>`;
+      <div class="ch-title">${title}</div>${date ? `<div class="ch-date">${date}</div>` : ''}<div class="ch-seal">章</div>`;
     this.root.appendChild(w);
     await sleep(this.auto ? 60 : 400);
     w.style.opacity = '1';
@@ -450,6 +451,19 @@ export class Stage {
   setChapterLabel(text) {
     const el = $('#chapterLabel');
     el.textContent = text; el.classList.add('on');
+  }
+  /** HUD 戏中日期行（@date）：双时间线的常驻罗盘——读者随时知道「现在是哪一夜」。 */
+  setDateLabel(text) {
+    const el = $('#dateLabel');
+    if (!el) return;
+    el.textContent = text; el.classList.add('on');
+  }
+  clearDateLabel() { $('#dateLabel')?.classList.remove('on'); }
+  /** 流内日期章：章内时间跳变（回拨/前跳）时的卷宗批注——把「时间换了」钉在纸上。 */
+  async dateLine(text) {
+    this._append('dline', `<i></i><span>${text}</span><i></i>`);
+    this.audio.narr(.04);
+    await this.pause(this.auto ? 40 : 900);
   }
   toast(msg) {
     const t = $('#toast');

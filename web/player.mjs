@@ -24,9 +24,10 @@ const api = {
 };
 
 const app = {
-  ir: null, saveId: null, gameId: null,
-  prev: { chapter: null, bgKey: null },
+  ir: null, saveId: null, gameId: null, user: null,
+  prev: { chapter: null, bgKey: null, date: null },
   met: new Set(), facts: new Set(), timelineBuilt: false, running: false,
+  cards: new Set(), // 本局已见的 card.* flag（读档种子先灌满，避免补播入档提示）
   sheet: new Map(), // 转写底单：tid -> {caller, target}（本局回看）
   trByTid: new Map(), // tid -> 转写节点（证物拍/并轨拍的呈堂材料）
   gen: 0,           // 换代令牌：切档/重开时 +1，旧渲染循环立即退场，防止双驱动
@@ -58,9 +59,9 @@ function peakRows(tids) {
 
 function resetRun() {
   app.gen++;
-  app.prev = { chapter: null, bgKey: null };
-  app.met = new Set(); app.facts = new Set(); app.timelineBuilt = false; app.sheet.clear();
-  stage.reset(); stage.clearClues(); stage.clearAnchors();
+  app.prev = { chapter: null, bgKey: null, date: null };
+  app.met = new Set(); app.facts = new Set(); app.timelineBuilt = false; app.sheet.clear(); app.cards.clear();
+  stage.reset(); stage.clearClues(); stage.clearAnchors(); stage.clearDateLabel();
   $('#timeline').classList.remove('on');
   $('#chapterLabel').classList.remove('on');
   $('#sheetPanel').classList.remove('on');
@@ -69,16 +70,23 @@ function resetRun() {
 /** 渲染一个停点;返回下一停点状态(结局/选择后返回其状态),终局返回 null。 */
 async function renderBeat(s) {
   const gen = app.gen;
-  // 章节切换 → 清场 + 章节卡
+  // 章节切换 → 清场 + 章节卡（带本章起始日期——双时间线在章卡上就亮明年代）
   if (s.chapter !== app.prev.chapter) {
     const idx = Math.max(0, app.ir.chapters.findIndex(c => c.id === s.chapter));
     const ch = app.ir.chapters[idx];
     const num = CN[idx] ?? String(idx + 1);
     await stage.wipe();
-    await stage.chapterCard(`第${num}章`, ch.title);
+    await stage.chapterCard(`第${num}章`, ch.title, s.date ?? null);
     stage.setChapterLabel(`第${num}章 · ${ch.title}`);
+    if (s.date) { stage.setDateLabel(s.date); app.prev.date = s.date; } // 章卡已示日期，流内不再重复盖章
     app.prev.chapter = s.chapter;
     app.prev.bgKey = null;
+  }
+  // 章内时间跳变（@date 变更）→ HUD 罗盘换日 + 流内日期章：回拨/前跳都被钉在纸上
+  if (s.date && s.date !== app.prev.date) {
+    stage.setDateLabel(s.date);
+    await stage.dateLine(s.date);
+    app.prev.date = s.date;
   }
   // 地点或昼夜切换 → 氛围层 + 印章（白日/夜翻面本身是场景信号，同地点也要换）
   const bgId = s.view?.bg?.id ?? null;
@@ -104,6 +112,20 @@ async function renderBeat(s) {
       app.timelineBuilt = true;
     }
       stage.showTimeline(); stage.lightEvent(ev); stage.addClue(ev.title); audio.chime();
+  }
+
+  // 图鉴入档差分：新出现的 card.* 键 → 提示入档（词条/人物卡提示，解锁键静默）
+  for (const k of Object.keys(s.flags ?? {})) {
+    if (!k.startsWith('card.') || app.cards.has(k)) continue;
+    app.cards.add(k);
+    let name = null;
+    if (k.startsWith('card.char.')) {
+      const c = canonChar(k.slice(9));
+      if (c) name = dossierName(c, app.cards);
+    } else {
+      name = app.ir.canon.lexicon.find(e => `card.${e.id}` === k)?.name ?? null;
+    }
+    if (name) { stage.toast(`档案入档 · ${name}`); audio.chime(); }
   }
 
   // 峰值拍（@peak · 舞台合同 v1 首片）：回报拍演出——播种拍保持安静。
@@ -205,8 +227,9 @@ async function startGame(gameId) {
   app.ir = info.ir; app.gameId = gameId;
   stage.setLexicon(app.ir); // 行内签名词典随 IR 重建（ADR-005）
   indexIr();
-  const r = await api.post(`/api/games/${gameId}/saves`, { player: '玩家' });
+  const r = await api.post(`/api/games/${gameId}/saves`); // player 缺省=服务端取会话用户名
   app.saveId = r.saveId;
+  for (const k of Object.keys(r.state.flags ?? {})) if (k.startsWith('card.')) app.cards.add(k); // 开局种子：不补播提示
   $('#title').style.display = 'none';
   $('#endcard').classList.remove('on');
   $('#savesPanel').classList.remove('on');
@@ -219,6 +242,7 @@ async function loadSave(saveId) {
   const r = await api.j(`/api/saves/${saveId}`);
   const info = await api.j(`/api/games/${r.save.gameId}`);
   app.ir = info.ir; app.gameId = r.save.gameId; app.saveId = saveId;
+  for (const k of Object.keys(r.state.flags ?? {})) if (k.startsWith('card.')) app.cards.add(k); // 读档种子
   stage.setLexicon(app.ir);
   indexIr();
   $('#title').style.display = 'none';
@@ -246,18 +270,99 @@ async function openSaves() {
 // ---- HUD 按钮 ----
 $('#btnSaves').onclick = openSaves;
 // 底单回看：本局转写记录（悬疑玩家要翻回去对时间戳与号码）
+// 同频聚簇：同形声纹相邻并列——形状即线索，不标数字（播种层公平证据的回看强化）
 $('#btnSheet').onclick = () => {
   const panel = $('#sheetPanel'), list = $('#sheetList');
   const items = [...app.sheet.values()];
   list.innerHTML = items.length ? '' : '<div style="color:#6e6549;font-size:12px">还没有转写记录</div>';
+  const byHz = new Map(), groups = [];
   for (const it of items) {
-    const div = document.createElement('div');
-    div.className = 'tr-row';
-    div.innerHTML = `<span class="tr-row-caller">${it.caller ?? '呼入'}${it.hz ? Stage.waveChip(it.hz) : ''}</span><span class="tr-row-text">${stage.mark(it.target)}</span>`;
-    list.appendChild(div);
+    const k = it.hz ?? 0;
+    if (!byHz.has(k)) { byHz.set(k, []); groups.push(byHz.get(k)); }
+    byHz.get(k).push(it);
   }
+  groups.forEach((grp, gi) => {
+    if (gi > 0) { const sep = document.createElement('hr'); sep.className = 'tr-sep'; list.appendChild(sep); }
+    for (const it of grp) {
+      const div = document.createElement('div');
+      div.className = 'tr-row';
+      div.innerHTML = `<span class="tr-row-caller">${it.caller ?? '呼入'}${it.hz ? Stage.waveChip(it.hz) : ''}</span><span class="tr-row-text">${stage.mark(it.target)}</span>`;
+      list.appendChild(div);
+    }
+  });
   panel.classList.toggle('on');
 };
+
+// ---- 结局档案：已归档回读全文（IR 静态提取，不重跑舞台）；未归档只给暗示 ----
+function endingBody(eid) {
+  let id = app.ir.scenes[eid], out = '', guard = 0;
+  while (id && ++guard < 500) {
+    const n = app.ir.nodes[id];
+    if (!n || n.type === 'ending') break;
+    if (n.type === 'line') out += `<p>${n.speaker ? `<i>${n.speaker}：</i>` : ''}${stage.mark(n.text)}</p>`;
+    else if (n.type === 'transcribe') out += `<p class="end-tr">【转写】${n.caller ?? '呼入'}：${stage.mark(n.target)}</p>`;
+    id = n.next;
+  }
+  return out;
+}
+async function openEnds() {
+  if (!app.gameId) { stage.toast('先开始游戏'); return; }
+  const seen = await api.j(`/api/games/${app.gameId}/endings`).catch(() => []);
+  const seenIds = new Set(seen.map(e => e.ending_id));
+  const box = $('#endsList');
+  box.innerHTML = '';
+  for (const e of app.ir.endings) {
+    const div = document.createElement('div');
+    if (seenIds.has(e.id)) {
+      div.className = 'end-item';
+      div.innerHTML = `<div class="end-title">◆ ${e.title}</div><div class="end-body">${endingBody(e.id)}</div>`;
+    } else {
+      div.className = 'end-item locked';
+      div.innerHTML = `<div class="end-title">◇ 未归档</div><div class="end-hint">${e.hint ?? '——还没走到这一页'}</div>`;
+    }
+    box.appendChild(div);
+  }
+  $('#endsPanel').classList.toggle('on');
+}
+$('#btnEnds').onclick = openEnds;
+$('#btnEnds2').onclick = () => { $('#endcard').classList.remove('on'); openEnds(); };
+
+// ---- 图鉴：时代词条 + 人物案卷（入档读全文，未入档悬影；案卷字段逐条解锁，未解锁 ？？？）----
+const canonChar = cid => app.ir.canon.characters.find(c => c.id === cid) ?? null;
+/** 案卷显示名：未揭名（name_unlock 未置位）显示遮罩名——叙诡人物（廖志坤→「他」）的防泄底。 */
+function dossierName(c, revealed) {
+  const d = c.dossier;
+  return d?.name_unlock && !revealed.has(d.name_unlock) ? (d.masked_as ?? '？？？') : c.name;
+}
+async function openCodex() {
+  if (!app.gameId) { stage.toast('先开始游戏'); return; }
+  const seen = await api.j(`/api/games/${app.gameId}/cards`).catch(() => []);
+  // 统一用全名（card.*）判收集与解锁：服务端历史键补 card. 前缀
+  const has = new Set([...app.cards, ...seen.map(k => 'card.' + k)]);
+  const box = $('#codexList');
+  box.innerHTML = '';
+  const sec = label => { const d = document.createElement('div'); d.className = 'cx-sec'; d.textContent = label; box.appendChild(d); };
+  const item = (ghost, html) => { const d = document.createElement('div'); d.className = 'cx-item' + (ghost ? ' ghost' : ''); d.innerHTML = html; box.appendChild(d); };
+
+  sec('人物档案');
+  for (const c of app.ir.canon.characters) {
+    if (!has.has(`card.char.${c.id}`)) { item(true, '<div class="cx-name">？？？</div>'); continue; }
+    const fields = (c.dossier?.fields ?? []).map(f => {
+      const open = !f.unlock || has.has(f.unlock);
+      return `<div class="cx-field${open ? '' : ' locked'}"><b>${f.label}</b><span>${open ? stage.mark(f.text) : '？？？'}</span></div>`;
+    }).join('');
+    item(false, `<div class="cx-name">${dossierName(c, has)}${Stage.waveChip(c.voice_hz)}</div>` +
+      `<div class="cx-body">${stage.mark(c.bio_public ?? '')}</div>${fields}`);
+  }
+  sec('时代词条');
+  for (const e of app.ir.canon.lexicon) {
+    if (!has.has(`card.${e.id}`)) { item(true, `<div class="cx-name">？？？<span class="cx-kind">${e.kind}</span></div>`); continue; }
+    item(false, `<div class="cx-name">${e.name}<span class="cx-kind">${e.kind}</span></div>` +
+      `<div class="cx-kicker">${e.kicker}</div><div class="cx-body">${stage.mark(e.body)}</div>`);
+  }
+  $('#codexPanel').classList.toggle('on');
+}
+$('#btnCodex').onclick = openCodex;
 // 破坏性操作二次确认：第一次点击只亮「确认？」，2.5s 内再点才执行——防误触毁档
 function armConfirm(btn, fn) {
   btn.onclick = () => {
@@ -283,14 +388,55 @@ $('#btnMute').onclick = e => {
 };
 document.addEventListener('pointerdown', () => audio.ensure(), { once: true });
 
+// ---- 账籍（游客优先：boot 的 me 自动发游客会话；注册=游客补录凭据，进度归属不动）----
+const authMode = { now: 'register' }; // register | login
+function renderAuthBar() {
+  const bar = $('#authBar');
+  if (!app.user) { bar.innerHTML = ''; return; }
+  // 用户名经服务端字符白名单校验（文字/数字/._-），不含标记字符，innerHTML 安全
+  bar.innerHTML = app.user.guest
+    ? `<span>游客进度仅存本机</span><button id="btnAuth">注册留存</button>`
+    : `<span>档案 · ${app.user.username}</span><button id="btnLogout">退出</button>`;
+  if (app.user.guest) $('#btnAuth').onclick = () => openAuth('register');
+  else $('#btnLogout').onclick = async () => { await api.post('/api/auth/logout'); location.reload(); };
+}
+function openAuth(mode) {
+  authMode.now = mode;
+  $('#apTitle').textContent = mode === 'register' ? '注册 · 留存进度' : '登录 · 调取档案';
+  $('#apSubmit').textContent = mode === 'register' ? '立档' : '登录';
+  $('#apSwitch').textContent = mode === 'register' ? '已有档案？直接登录' : '还没有档案？注册一个';
+  $('#apErr').textContent = '';
+  $('#apPass').value = '';
+  $('#authPanel').classList.add('on');
+  $('#apUser').focus();
+}
+$('#apClose').onclick = () => $('#authPanel').classList.remove('on');
+$('#authPanel').onclick = e => { if (e.target.id === 'authPanel') $('#authPanel').classList.remove('on'); };
+$('#apSwitch').onclick = () => openAuth(authMode.now === 'register' ? 'login' : 'register');
+$('#apPass').onkeydown = e => { if (e.key === 'Enter') $('#apSubmit').click(); };
+$('#apSubmit').onclick = async () => {
+  try {
+    const r = await api.post(`/api/auth/${authMode.now}`, {
+      username: $('#apUser').value.trim(), password: $('#apPass').value,
+    });
+    app.user = r.user;
+    stage.toast(authMode.now === 'register' ? `已立档：${r.user.username}，进度已留存` : `档案调取：${r.user.username}`);
+    $('#authPanel').classList.remove('on');
+    renderAuthBar();
+  } catch (e) { $('#apErr').textContent = e.message; }
+};
+
 // ---- 启动:标题页游戏列表;?auto=1 冒烟 ----
 (async () => {
+  const me = await api.j('/api/auth/me'); // 播放器 boot 合同：先立会话，存档从此有归属
+  app.user = me.user;
+  renderAuthBar();
   const games = await api.j('/api/games');
   for (const g of games) {
     const row = document.createElement('div');
     row.style.cssText = 'display:flex;gap:8px;align-items:center;justify-content:center';
     const b = document.createElement('button');
-    b.innerHTML = `${g.title}<span class="g-sub">${g.subtitle ?? ''}</span>`;
+    b.innerHTML = `${g.title}<span class="g-sub">${g.subtitle ?? ''}</span>${g.hook ? `<span class="g-hook">${g.hook}</span>` : ''}`;
     b.onclick = () => startGame(g.id);
     row.appendChild(b);
     // 「继续上次」：任何 reload/误触都不再是灾难——一键回到最近的进行中存档

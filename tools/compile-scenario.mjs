@@ -28,8 +28,12 @@ export function loadUniverse(universeDir) {
   }
   const events = {};
   for (const ev of JSON.parse(readFileSync(join(universeDir, 'timeline.json'), 'utf8')).events) events[ev.id] = ev;
+  // 时代词条（玩家图鉴的公共背景知识）：目录可缺省（脚手架宇宙）
+  const lexicon = [];
+  const lexFile = join(universeDir, 'lexicon.json');
+  if (existsSync(lexFile)) lexicon.push(...JSON.parse(readFileSync(lexFile, 'utf8')).entries);
   const canon = JSON.parse(readFileSync(join(universeDir, 'canon.json'), 'utf8'));
-  return { chars, aliasToChar, locations, orgs, events, canon };
+  return { chars, aliasToChar, locations, orgs, events, lexicon, canon };
 }
 
 function parseKV(toks) {
@@ -43,7 +47,7 @@ function parseKV(toks) {
 
 function parseChapter(text, ch) {
   const nodes = {}, order = [], scenes = {}, endings = [];
-  let pendingLabels = [], pendingView = {}, pendingEnter = [], pendingPeak = null;
+  let pendingLabels = [], pendingView = {}, pendingEnter = [], pendingPeak = null, pendingDate = null;
   let prevId = null, afterChoice = false, currentScene = null, ctr = 0;
   const nid = () => `${ch.id}-n${++ctr}`;
 
@@ -62,7 +66,8 @@ function parseChapter(text, ch) {
     if (Object.keys(pendingView).length) node.view = { ...pendingView };
     if (pendingEnter.length) node.enter = [...pendingEnter];
     if (pendingPeak) node.peak = pendingPeak;
-    pendingView = {}; pendingEnter = []; pendingPeak = null;
+    if (pendingDate) node.date = pendingDate;
+    pendingView = {}; pendingEnter = []; pendingPeak = null; pendingDate = null;
     if (prevId) nodes[prevId].next = node.id;
     nodes[node.id] = node;
     order.push(node.id);
@@ -107,11 +112,22 @@ function parseChapter(text, ch) {
       }
       else if (cmd === 'fact') { if (!toks[0]) throw new Error(`${ch.id}: @fact 缺少事件`); pendingEnter.push({ op: 'flag', name: `fact.${toks[0]}`, value: true }); }
       else if (cmd === 'set') { if (!toks[0]) throw new Error(`${ch.id}: @set 缺少 flag 名`); pendingEnter.push({ op: 'flag', name: toks[0], value: true }); }
+      else if (cmd === 'card') {
+        // @card <词条id>：时代卡入档（图鉴）。词条存在性与纪元在 compileGame 校验。
+        if (!toks[0]) throw new Error(`${ch.id}: @card 缺少词条 id`);
+        pendingEnter.push({ op: 'flag', name: `card.${toks[0]}`, value: true });
+      }
       else if (cmd === 'peak') {
         // @peak <kind> [args]（舞台合同 v1 首片）：手工峰值特效，折叠到下一停点。
         // 演出词表与预算归 content-lint；编译器只保证结构与落点。
         if (!toks[0]) throw new Error(`${ch.id}: @peak 缺少 kind`);
         pendingPeak = { kind: toks[0], args: toks.slice(1).join(',').split(',').map(s => s.trim()).filter(Boolean) };
+      }
+      else if (cmd === 'date') {
+        // @date <戏中日期文本>（双时间线界面信号）：折叠到下一停点，沿阅读顺序绝对化（adate）。
+        // 章内时间跳变由 HUD 日期行与流内日期章呈现，剧本仍零演出标注（ADR-003 增补）。
+        if (!rest.trim()) throw new Error(`${ch.id}: @date 缺少日期文本`);
+        pendingDate = rest.trim();
       }
       else if (cmd === 'transcribe') {
         // @transcribe <id> caller=<呼入方> target=<留言文本> —— 转写是带提交语义的停点节点
@@ -130,10 +146,12 @@ function parseChapter(text, ch) {
     }
 
     if (line.startsWith('== ending')) {
-      const m = line.match(/^== ending ([A-Za-z0-9_]+)\s*(.*)$/);
+      // == ending <ID> <标题> [| <暗示>]：暗示供结局档案面板的未归档提示（收集引导，不泄结局内容）
+      const m = line.match(/^== ending ([A-Za-z0-9_]+)\s*([^|]*?)\s*(?:\|\s*(.+))?$/);
       if (!m) throw new Error(`${ch.id}: 结局行语法错误: ${line}`);
-      attach({ type: 'ending', endingId: m[1], title: m[2] || m[1] });
-      endings.push({ id: m[1], title: m[2] || m[1] });
+      const [, eid, title, hint] = m;
+      attach({ type: 'ending', endingId: eid, title: title || eid });
+      endings.push({ id: eid, title: title || eid, ...(hint ? { hint } : {}) });
       continue;
     }
 
@@ -179,12 +197,14 @@ export function compileGame(gameDir, universeDir) {
     if (n.type === 'jump') n.goto = resolveTarget(n.goto);
   }
 
-  // 视图绝对化：沿创作（阅读）顺序滚动合并；读档幂等重渲染
-  let running = {};
+  // 视图/日期绝对化：沿创作（阅读）顺序滚动合并；读档幂等重渲染
+  let running = {}, runningDate = null;
   for (const id of order) {
     const n = nodes[id];
     if (n.view) running = { ...running, ...n.view };
     n.aview = { ...running };
+    if (n.date) runningDate = n.date;
+    n.adate = runningDate;
   }
 
   // 说话者 / 角色登记（文字舞台：角色以台词登场，声线与站位来自正典）
@@ -218,6 +238,41 @@ export function compileGame(gameDir, universeDir) {
     if (bg && !U.locations[bg.id]) throw new Error(`未知地点: ${bg.id}（不在 universe/locations 注册）`);
   }
 
+  // 图鉴自动入档：角色首次以说话者或转写呼入者出现的那一拍，注入 card.char.<id>
+  // （阅读顺序首现；幂等 flag。转写呼入者与说话者同卡——陈先生/刘先生/他共用一张案卷）
+  const charSeen = new Set();
+  for (const id of order) {
+    const n = nodes[id];
+    const cid = n.type === 'line' && n.speaker ? U.aliasToChar[n.speaker] : (n.type === 'transcribe' ? n.callerChar : null);
+    if (!cid || charSeen.has(cid)) continue;
+    charSeen.add(cid);
+    (n.enter ??= []).push({ op: 'flag', name: `card.char.${cid}`, value: true });
+  }
+
+  // @card 词条校验 + 人物案卷悬空守卫（unlock flag 必须能在本作置位）
+  const allowedCanon2 = new Set([...(manifest.assumes ?? []), manifest.code]);
+  const lexById = new Map(U.lexicon
+    .filter(e => e.layer === 'public' || allowedCanon2.has(e.disclosed_in))
+    .map(e => [e.id, e]));
+  const setFlags = new Set();
+  for (const id of order) for (const op of nodes[id].enter ?? []) if (op.op === 'flag') setFlags.add(op.name);
+  for (const id of order) {
+    for (const op of nodes[id].enter ?? []) {
+      if (op.op !== 'flag' || !op.name.startsWith('card.') || op.name.startsWith('card.char.')) continue;
+      const name = op.name.slice(5);
+      if (name.includes('.')) continue; // 多段键 = 案卷解锁键（@set card.<人物>.<条>），非词条引用
+      if (!lexById.has(name)) throw new Error(`@card 未知词条（或未到披露纪元）: ${name}`);
+    }
+  }
+  for (const cid of charSeen) {
+    const c = U.chars[cid];
+    if (c.first_appearance !== manifest.code || !c.dossier) continue; // 只管本作首登且实际登场者的案卷
+    const needed = [c.dossier.name_unlock, ...(c.dossier.fields ?? []).map(f => f.unlock)].filter(Boolean);
+    for (const f of needed) {
+      if (!setFlags.has(f)) throw new Error(`人物案卷悬空: ${c.id} 的 ${f} 未在本作置位（@set/@card）`);
+    }
+  }
+
   // 舞台合同 v0：IR 携带纪元过滤后的 canon 摘要块（演出层数据一次到位，不泄未来正典）
   // ADR-005：人物/地点/组织附 aliases，供演出层行内实体签名；别名只做匹配，不做展示
   const allowedCanon = new Set([...(manifest.assumes ?? []), manifest.code]);
@@ -225,7 +280,7 @@ export function compileGame(gameDir, universeDir) {
     world: U.canon.world ?? '',
     characters: Object.values(U.chars)
       .filter(c => allowedCanon.has(c.first_appearance))
-      .map(c => ({ id: c.id, name: c.name, aliases: c.aliases ?? [], voice_hz: c.voice_hz, stage: c.stage ?? null, bio_public: c.bio_public ?? '', class: c.class ?? 'cast' })),
+      .map(c => ({ id: c.id, name: c.name, aliases: c.aliases ?? [], voice_hz: c.voice_hz, stage: c.stage ?? null, bio_public: c.bio_public ?? '', class: c.class ?? 'cast', dossier: c.dossier ?? null })),
     locations: Object.values(U.locations)
       .filter(l => l.layer === 'public' || allowedCanon.has(l.first_appearance))
       .map(l => ({ id: l.id, name: l.name, aliases: l.aliases ?? [], mood: l.mood ?? {} })),
@@ -235,6 +290,10 @@ export function compileGame(gameDir, universeDir) {
     events: Object.values(U.events)
       .filter(e => e.layer === 'public' || allowedCanon.has(e.disclosed_in))
       .map(e => ({ id: e.id, date: e.date, title: e.title, ...(e.disclosed_in ? { disclosed_in: e.disclosed_in } : {}) })),
+    // 时代词条（图鉴）：纪元过滤同事件——public 直通，私有须 disclosed_in 解锁
+    lexicon: U.lexicon
+      .filter(e => e.layer === 'public' || allowedCanon.has(e.disclosed_in))
+      .map(e => ({ id: e.id, kind: e.kind ?? '物件', name: e.name, aliases: e.aliases ?? [], kicker: e.kicker ?? '', body: e.body ?? '' })),
   };
 
   // 结局去重登记
@@ -243,6 +302,7 @@ export function compileGame(gameDir, universeDir) {
   const ir = {
     id: manifest.id, code: manifest.code, title: manifest.title,
     subtitle: manifest.subtitle ?? '',
+    hook: manifest.hook ?? '',
     chapters: manifest.chapters.map(c => ({ id: c.id, title: c.title })),
     entry: results[0].entry,
     nodes, scenes,

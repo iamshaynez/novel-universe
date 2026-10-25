@@ -29,6 +29,7 @@ export function stateOf(ir, run) {
     flags: { ...run.flags },
     view: n.aview ?? null,
     peak: n.peak ?? null, // 峰值拍标记（舞台合同 v1）：引擎纯透传，演出归 web
+    date: n.adate ?? null, // 戏中日期（ADR-003 增补）：纯透传，时间结构信号归 web
     ended: run.ended,
   };
   if (n.type === 'line') return { ...base, kind: 'line', speaker: n.speaker ?? null, text: n.text };

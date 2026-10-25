@@ -181,12 +181,13 @@ async function renderBeat(s) {
       const hz = cur.caller_char
         ? (app.ir.characters[cur.caller_char]?.voice_hz ?? callerHz(cur.caller))
         : callerHz(cur.caller);
-      const text = await stage.transcribe({
-        caller: cur.caller, target: cur.target, misses: cur.misses, hz,
+      const pick = await stage.transcribe({
+        caller: cur.caller, target: cur.target, options: cur.options ?? [cur.target],
+        misses: cur.misses, hz,
         dead: cur.peak?.kind === 'dead', stamp: cur.peak?.args[0] ?? null,
       });
       if (gen !== app.gen) return null;
-      const r = await api.post(`/api/saves/${app.saveId}/advance`, { text });
+      const r = await api.post(`/api/saves/${app.saveId}/advance`, { pick });
       if (r.state.kind === 'transcribe' && r.state.id === cur.id) { stage.toast('听岔了——再听一遍'); cur = r.state; }
       // tid 用于底单/flag 追踪；同节点判定用 id
       else { app.sheet.set(cur.tid, { caller: cur.caller, target: cur.target, hz }); return r.state; }

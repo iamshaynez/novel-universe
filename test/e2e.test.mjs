@@ -147,9 +147,13 @@ describe('e2e：g01《接线员》', () => {
           assert.equal(r.status, 200, `choose 失败: ${JSON.stringify(r.body)}`);
           state = r.body.state;
         } else if (state.kind === 'transcribe') {
-          const bad = await post(`/api/saves/${saveId}/advance`, { text: '听岔了' });
-          assert.equal(bad.body.state.kind, 'transcribe', '错误转写不得推进');
-          const r = await post(`/api/saves/${saveId}/advance`, { text: state.target });
+          // 玩家只做选择题：先故意听岔一次（若有干扰项），再选正确项
+          const badIdx = state.options.findIndex(o => o !== state.target);
+          if (badIdx >= 0) {
+            const bad = await post(`/api/saves/${saveId}/advance`, { pick: badIdx });
+            assert.equal(bad.body.state.kind, 'transcribe', '错误转写不得推进');
+          }
+          const r = await post(`/api/saves/${saveId}/advance`, { pick: state.options.indexOf(state.target) });
           assert.equal(r.status, 200);
           assert.notEqual(r.body.state.id, state.id, '正确转写应离开停点');
           state = r.body.state;

@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { existsSync, readdirSync } from 'node:fs';
 import { extname, join, resolve as resolvePath } from 'node:path';
 import { compileGame } from '../tools/compile-scenario.mjs';
-import { createRun, advance, choose, stateOf, loadRun, submit } from '../engine/state.mjs';
+import { createRun, advance, choose, stateOf, loadRun, submitPick } from '../engine/state.mjs';
 import { validateGraph } from '../engine/graph.mjs';
 import {
   createSave, getSave, listSaves, updateSave, recordEnding, listEndingsByGame, recordCards, listCards,
@@ -214,10 +214,15 @@ export function createApp({ db, games, webDir }) {
       const body = await readBody(req);
       const { row, run } = loadRunOf(Number(b), user.id);
       const g = games[row.game_id];
-      // 转写停点：advance 携带 {text} 走 submit；无 text 时不推进（幂等重取状态）
+      // 转写停点：advance 携带 {pick} 走 submitPick（玩家只做选择题）；无 pick 时不推进（幂等重取状态）
       if (stateOf(g.ir, run).kind === 'transcribe') {
-        if (typeof body.text !== 'string') return json(res, 200, { state: stateOf(g.ir, run) });
-        const next = submit(run, g.ir, body.text);
+        if (!Number.isInteger(body.pick)) return json(res, 200, { state: stateOf(g.ir, run) });
+        let next;
+        try {
+          next = submitPick(run, g.ir, body.pick);
+        } catch (e) {
+          throw httpError(409, e.message);
+        }
         persist(row, next);
         return json(res, 200, { state: stateOf(g.ir, next) });
       }

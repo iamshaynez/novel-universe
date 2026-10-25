@@ -23,14 +23,15 @@ const KEY_SRC = [
 
 const reEsc = s => s.replace(/[.*+?^${}()|[\]\\\-]/g, '\\$&');
 const htmlEsc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-const KIND_CLS = { p: 'ep', x: 'ex', o: 'eo', u: 'eu' };
+const KIND_CLS = { p: 'ep', x: 'ex', o: 'eo', u: 'eu', t: 'et' };
 
 /** 从 IR 构建行内签名词典。kind：p=人物 x=地点 o=组织 u=宇宙级客串（class:universe 人物，
- *  永不主角，行文里以传闻与边缘在场出现——灯箱式金墨签名）；同词先到先得（人物 > 地点 > 组织）。 */
+ *  永不主角，行文里以传闻与边缘在场出现——灯箱式金墨签名）；t=时代词条（ADR-006 图鉴：
+ *  淡墨点线，提示「这是个老词，图鉴里有它的档案」）；同词先到先得（人物 > 地点 > 组织 > 词条）。 */
 export function buildLexicon(ir = {}) {
   const canon = ir.canon ?? {};
   const byText = new Map();
-  for (const [kind, list] of [['p', canon.characters], ['x', canon.locations], ['o', canon.orgs]]) {
+  for (const [kind, list] of [['p', canon.characters], ['x', canon.locations], ['o', canon.orgs], ['t', canon.lexicon]]) {
     for (const e of list ?? []) {
       const k = kind === 'p' && e.class === 'universe' ? 'u' : kind;
       for (const name of [e.name, ...(e.aliases ?? [])]) {

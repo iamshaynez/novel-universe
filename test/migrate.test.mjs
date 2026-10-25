@@ -6,7 +6,8 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openDb, migrate, migrationStatus, createSave, getSave, updateSave, listSaves, recordEnding, listEndings,
-  createUser, getUserByName, setUserCredentials, createSession, getSessionUser, deleteSession, listEndingsByGame } from '../server/db.mjs';
+  createUser, getUserByName, setUserCredentials, createSession, getSessionUser, deleteSession, listEndingsByGame,
+  recordCards, listCards } from '../server/db.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const MIG = join(root, 'server/migrations');
@@ -22,9 +23,9 @@ describe('迁移', () => {
   it('全新库：应用全部迁移并建表', () => {
     db = openDb(dbPath);
     const r = migrate(db, MIG);
-    assert.equal(r.appliedCount, 2);
-    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('saves','endings_seen','users','sessions','schema_migrations') ORDER BY name").all();
-    assert.deepEqual(tables.map(t => t.name), ['endings_seen', 'saves', 'schema_migrations', 'sessions', 'users']);
+    assert.equal(r.appliedCount, 3);
+    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('saves','endings_seen','users','sessions','cards_seen','schema_migrations') ORDER BY name").all();
+    assert.deepEqual(tables.map(t => t.name), ['cards_seen', 'endings_seen', 'saves', 'schema_migrations', 'sessions', 'users']);
     // 002 给存量表加的归属列必须就位
     const cols = db.prepare("SELECT name FROM pragma_table_info('saves') WHERE name = 'user_id'").all();
     assert.equal(cols.length, 1);
@@ -136,5 +137,16 @@ describe('用户与会话 CRUD', () => {
     const legacy = createSave(db, 'g00-demo', '无名', run);
     assert.equal(getSave(db, legacy).user_id, null);
     assert.equal(listSaves(db, 'g00-demo', u1).length, 1, '遗留存档不得混入用户列表');
+  });
+
+  it('图鉴入档：card.* flag 幂等落库，按用户隔离', () => {
+    const u1 = createUser(db, '玩家甲', null);
+    const u2 = createUser(db, '玩家乙', null);
+    const flags = { 'card.letter': true, 'card.char.momo': true, 'fact.ev-letter': true, 'card.momo.faces': true };
+    recordCards(db, u1, 'g00-demo', flags);
+    recordCards(db, u1, 'g00-demo', flags); // 幂等
+    assert.deepEqual(listCards(db, u1, 'g00-demo').sort(),
+      ['char.momo', 'letter', 'momo.faces'], '只收 card.* 前缀且剥前缀存键');
+    assert.deepEqual(listCards(db, u2, 'g00-demo'), [], '图鉴不得跨用户串档');
   });
 });

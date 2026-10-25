@@ -255,6 +255,7 @@ async function loadSave(saveId) {
 
 async function openSaves() {
   if (!app.gameId) { stage.toast('先开始游戏'); return; }
+  if (!requestPanel('#savesPanel')) return;
   const list = await api.j(`/api/saves?gameId=${app.gameId}`);
   $('#savesList').innerHTML = list.length ? '' : '<div style="color:var(--ink-dim);font-size:12px">暂无存档</div>';
   for (const sv of list) {
@@ -264,8 +265,60 @@ async function openSaves() {
     div.onclick = () => loadSave(sv.id);
     $('#savesList').appendChild(div);
   }
-  $('#savesPanel').classList.toggle('on');
+  settlePanel('#savesPanel');
 }
+
+// ---- 侧面板统一合同：互斥开关 + 关闭钮 + 点外关闭（该拍不推进）+ ESC/空格冻结 ----
+const SIDE_PANELS = ['#savesPanel', '#sheetPanel', '#endsPanel', '#codexPanel'];
+const panelOpen = () => SIDE_PANELS.find(sel => $(sel).classList.contains('on')) ?? null;
+let pendingPanel = null; // 点击即声明：异步开面板取数期间，别的面板不得反杀
+function closePanels() {
+  pendingPanel = null;
+  for (const sel of SIDE_PANELS) $(sel).classList.remove('on');
+  if (stage.pendingGate) stage.hint(true); // 面板让位后，推进提示回来
+}
+/** 同步面板：点击即开（含 toggle）。已开着 → 关（toggle 语义）。 */
+function openPanel(sel) {
+  if ($(sel).classList.contains('on')) return closePanels();
+  closePanels();
+  pendingPanel = sel;
+  $(sel).classList.add('on');
+  stage.hint(false); // 面板在场时「点击·空格——继续」是误导
+}
+/** 异步面板：点击时先声明占位（关别人），取数完成后落位——期间用户改点别的即作废。 */
+function requestPanel(sel) {
+  if ($(sel).classList.contains('on')) return closePanels(), false;
+  closePanels();
+  pendingPanel = sel;
+  stage.hint(false);
+  return true;
+}
+function settlePanel(sel) {
+  if (pendingPanel !== sel) return; // 用户已改点别的面板：本次开面板作废
+  $(sel).classList.add('on');
+}
+
+// HUD 按钮的按压不得冒泡到舞台（否则开面板会偷推进一拍）
+document.querySelectorAll('#hud button').forEach(b =>
+  b.addEventListener('pointerdown', e => e.stopPropagation()));
+
+// 点面板外 = 关面板，且这一拍绝不推进剧情；HUD 按钮豁免（保 toggle 语义）
+document.addEventListener('pointerdown', e => {
+  if (!panelOpen()) return;
+  if (e.target.closest('.sidepanel')) return;
+  if (e.target.closest('#hud button')) return;
+  closePanels();
+  e.stopPropagation();
+}, true);
+
+// 面板在场冻结空格/回车（浏览时误触推进），ESC 关闭
+document.addEventListener('keydown', e => {
+  if (!panelOpen()) return;
+  if (e.key === 'Escape') { closePanels(); e.stopPropagation(); }
+  else if (e.code === 'Space' || e.key === 'Enter') e.stopPropagation();
+}, true);
+
+document.querySelectorAll('.pnl-x').forEach(b => b.onclick = () => closePanels());
 
 // ---- HUD 按钮 ----
 $('#btnSaves').onclick = openSaves;
@@ -290,7 +343,7 @@ $('#btnSheet').onclick = () => {
       list.appendChild(div);
     }
   });
-  panel.classList.toggle('on');
+  openPanel('#sheetPanel'); // 底单同步取数：直开
 };
 
 // ---- 结局档案：已归档回读全文（IR 静态提取，不重跑舞台）；未归档只给暗示 ----
@@ -322,7 +375,7 @@ async function openEnds() {
     }
     box.appendChild(div);
   }
-  $('#endsPanel').classList.toggle('on');
+  settlePanel('#endsPanel');
 }
 $('#btnEnds').onclick = openEnds;
 $('#btnEnds2').onclick = () => { $('#endcard').classList.remove('on'); openEnds(); };
@@ -336,6 +389,7 @@ function dossierName(c, revealed) {
 }
 async function openCodex() {
   if (!app.gameId) { stage.toast('先开始游戏'); return; }
+  if (!requestPanel('#codexPanel')) return;
   const seen = await api.j(`/api/games/${app.gameId}/cards`).catch(() => []);
   // 统一用全名（card.*）判收集与解锁：服务端历史键补 card. 前缀
   const has = new Set([...app.cards, ...seen.map(k => 'card.' + k)]);
@@ -360,7 +414,7 @@ async function openCodex() {
     item(false, `<div class="cx-name">${e.name}<span class="cx-kind">${e.kind}</span></div>` +
       `<div class="cx-kicker">${e.kicker}</div><div class="cx-body">${stage.mark(e.body)}</div>`);
   }
-  $('#codexPanel').classList.toggle('on');
+  settlePanel('#codexPanel');
 }
 $('#btnCodex').onclick = openCodex;
 // 破坏性操作二次确认：第一次点击只亮「确认？」，2.5s 内再点才执行——防误触毁档

@@ -153,3 +153,12 @@ describe('游戏元数据与结局档案', () => {
     assert.equal((await j('/api/games/nope/endings')).status, 404);
   });
 });
+
+describe('图鉴：时代词条与人物档案', () => {
+  it('GET /api/games/:id/cards：无会话 401；入档跨存档持久（玩家级）', async () => {
+    assert.equal((await fetch(base.url + '/api/games/g00-demo/cards')).status, 401);
+    const mine = await j('/api/games/g00-demo/cards');
+    assert.equal(mine.status, 200);
+    assert.ok(mine.body.includes('char.momo'), '先前对局的人物自动入档应持久化');
+  });
+});

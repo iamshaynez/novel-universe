@@ -27,6 +27,7 @@ const app = {
   ir: null, saveId: null, gameId: null, user: null,
   prev: { chapter: null, bgKey: null, date: null },
   met: new Set(), facts: new Set(), timelineBuilt: false, running: false,
+  cards: new Set(), // 本局已见的 card.* flag（读档种子先灌满，避免补播入档提示）
   sheet: new Map(), // 转写底单：tid -> {caller, target}（本局回看）
   trByTid: new Map(), // tid -> 转写节点（证物拍/并轨拍的呈堂材料）
   gen: 0,           // 换代令牌：切档/重开时 +1，旧渲染循环立即退场，防止双驱动
@@ -59,7 +60,7 @@ function peakRows(tids) {
 function resetRun() {
   app.gen++;
   app.prev = { chapter: null, bgKey: null, date: null };
-  app.met = new Set(); app.facts = new Set(); app.timelineBuilt = false; app.sheet.clear();
+  app.met = new Set(); app.facts = new Set(); app.timelineBuilt = false; app.sheet.clear(); app.cards.clear();
   stage.reset(); stage.clearClues(); stage.clearAnchors(); stage.clearDateLabel();
   $('#timeline').classList.remove('on');
   $('#chapterLabel').classList.remove('on');
@@ -111,6 +112,20 @@ async function renderBeat(s) {
       app.timelineBuilt = true;
     }
       stage.showTimeline(); stage.lightEvent(ev); stage.addClue(ev.title); audio.chime();
+  }
+
+  // 图鉴入档差分：新出现的 card.* 键 → 提示入档（词条/人物卡提示，解锁键静默）
+  for (const k of Object.keys(s.flags ?? {})) {
+    if (!k.startsWith('card.') || app.cards.has(k)) continue;
+    app.cards.add(k);
+    let name = null;
+    if (k.startsWith('card.char.')) {
+      const c = canonChar(k.slice(9));
+      if (c) name = dossierName(c, app.cards);
+    } else {
+      name = app.ir.canon.lexicon.find(e => `card.${e.id}` === k)?.name ?? null;
+    }
+    if (name) { stage.toast(`档案入档 · ${name}`); audio.chime(); }
   }
 
   // 峰值拍（@peak · 舞台合同 v1 首片）：回报拍演出——播种拍保持安静。
@@ -214,6 +229,7 @@ async function startGame(gameId) {
   indexIr();
   const r = await api.post(`/api/games/${gameId}/saves`); // player 缺省=服务端取会话用户名
   app.saveId = r.saveId;
+  for (const k of Object.keys(r.state.flags ?? {})) if (k.startsWith('card.')) app.cards.add(k); // 开局种子：不补播提示
   $('#title').style.display = 'none';
   $('#endcard').classList.remove('on');
   $('#savesPanel').classList.remove('on');
@@ -226,6 +242,7 @@ async function loadSave(saveId) {
   const r = await api.j(`/api/saves/${saveId}`);
   const info = await api.j(`/api/games/${r.save.gameId}`);
   app.ir = info.ir; app.gameId = r.save.gameId; app.saveId = saveId;
+  for (const k of Object.keys(r.state.flags ?? {})) if (k.startsWith('card.')) app.cards.add(k); // 读档种子
   stage.setLexicon(app.ir);
   indexIr();
   $('#title').style.display = 'none';
@@ -309,6 +326,43 @@ async function openEnds() {
 }
 $('#btnEnds').onclick = openEnds;
 $('#btnEnds2').onclick = () => { $('#endcard').classList.remove('on'); openEnds(); };
+
+// ---- 图鉴：时代词条 + 人物案卷（入档读全文，未入档悬影；案卷字段逐条解锁，未解锁 ？？？）----
+const canonChar = cid => app.ir.canon.characters.find(c => c.id === cid) ?? null;
+/** 案卷显示名：未揭名（name_unlock 未置位）显示遮罩名——叙诡人物（廖志坤→「他」）的防泄底。 */
+function dossierName(c, revealed) {
+  const d = c.dossier;
+  return d?.name_unlock && !revealed.has(d.name_unlock) ? (d.masked_as ?? '？？？') : c.name;
+}
+async function openCodex() {
+  if (!app.gameId) { stage.toast('先开始游戏'); return; }
+  const seen = await api.j(`/api/games/${app.gameId}/cards`).catch(() => []);
+  // 统一用全名（card.*）判收集与解锁：服务端历史键补 card. 前缀
+  const has = new Set([...app.cards, ...seen.map(k => 'card.' + k)]);
+  const box = $('#codexList');
+  box.innerHTML = '';
+  const sec = label => { const d = document.createElement('div'); d.className = 'cx-sec'; d.textContent = label; box.appendChild(d); };
+  const item = (ghost, html) => { const d = document.createElement('div'); d.className = 'cx-item' + (ghost ? ' ghost' : ''); d.innerHTML = html; box.appendChild(d); };
+
+  sec('人物档案');
+  for (const c of app.ir.canon.characters) {
+    if (!has.has(`card.char.${c.id}`)) { item(true, '<div class="cx-name">？？？</div>'); continue; }
+    const fields = (c.dossier?.fields ?? []).map(f => {
+      const open = !f.unlock || has.has(f.unlock);
+      return `<div class="cx-field${open ? '' : ' locked'}"><b>${f.label}</b><span>${open ? stage.mark(f.text) : '？？？'}</span></div>`;
+    }).join('');
+    item(false, `<div class="cx-name">${dossierName(c, has)}${Stage.waveChip(c.voice_hz)}</div>` +
+      `<div class="cx-body">${stage.mark(c.bio_public ?? '')}</div>${fields}`);
+  }
+  sec('时代词条');
+  for (const e of app.ir.canon.lexicon) {
+    if (!has.has(`card.${e.id}`)) { item(true, `<div class="cx-name">？？？<span class="cx-kind">${e.kind}</span></div>`); continue; }
+    item(false, `<div class="cx-name">${e.name}<span class="cx-kind">${e.kind}</span></div>` +
+      `<div class="cx-kicker">${e.kicker}</div><div class="cx-body">${stage.mark(e.body)}</div>`);
+  }
+  $('#codexPanel').classList.toggle('on');
+}
+$('#btnCodex').onclick = openCodex;
 // 破坏性操作二次确认：第一次点击只亮「确认？」，2.5s 内再点才执行——防误触毁档
 function armConfirm(btn, fn) {
   btn.onclick = () => {

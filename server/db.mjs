@@ -123,3 +123,15 @@ export function listEndingsByGame(db, gameId, userId) {
     FROM endings_seen es JOIN saves s ON s.id = es.save_id
     WHERE s.game_id = ? AND s.user_id IS ? GROUP BY es.ending_id ORDER BY seen_at`).all(gameId, userId);
 }
+
+// ---- 图鉴入档（时代词条 / 人物档案）：玩家级、跨存档幂等 ----
+/** 把 run.flags 里所有 card.* 键剥前缀落库（INSERT OR IGNORE 幂等）。 */
+export function recordCards(db, userId, gameId, flags) {
+  const keys = Object.keys(flags ?? {}).filter(k => k.startsWith('card.')).map(k => k.slice(5));
+  if (!keys.length) return;
+  const stmt = db.prepare('INSERT OR IGNORE INTO cards_seen(user_id, game_id, key) VALUES (?, ?, ?)');
+  for (const k of keys) stmt.run(userId, gameId, k);
+}
+export function listCards(db, userId, gameId) {
+  return db.prepare('SELECT key FROM cards_seen WHERE user_id = ? AND game_id = ?').all(userId, gameId).map(r => r.key);
+}

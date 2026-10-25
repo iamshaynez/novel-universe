@@ -172,3 +172,18 @@ describe('正典完整性：时间轴', () => {
     }
   });
 });
+
+describe('正典完整性：时代词条（图鉴）', () => {
+  it('词条 id 唯一、必备字段齐、纪元二选一（layer=public 或 disclosed_in）', () => {
+    const lex = read(join(uni, 'lexicon.json'));
+    const seen = new Set();
+    for (const e of lex.entries) {
+      assert.ok(!seen.has(e.id), `词条 id 重复: ${e.id}`);
+      seen.add(e.id);
+      assert.ok(!e.id.includes('.'), `词条 id 不得含点: ${e.id}（多段键保留给案卷解锁）`);
+      for (const f of ['name', 'kicker', 'body']) assert.ok(typeof e[f] === 'string' && e[f].length >= 2, `词条 ${e.id} 缺 ${f}`);
+      assert.ok(e.layer === 'public' || typeof e.disclosed_in === 'string', `词条 ${e.id} 须 layer=public 或 disclosed_in`);
+      for (const a of e.aliases ?? []) assert.ok(a.length >= 2, `词条 ${e.id} 别名过短: ${a}`);
+    }
+  });
+});

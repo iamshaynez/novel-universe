@@ -8,7 +8,7 @@ import { compileGame } from '../tools/compile-scenario.mjs';
 import { createRun, advance, choose, stateOf, loadRun, submit } from '../engine/state.mjs';
 import { validateGraph } from '../engine/graph.mjs';
 import {
-  createSave, getSave, listSaves, updateSave, recordEnding, listEndingsByGame,
+  createSave, getSave, listSaves, updateSave, recordEnding, listEndingsByGame, recordCards, listCards,
   createUser, getUserByName, setUserCredentials, createSession, getSessionUser,
   refreshSession, deleteSession, purgeExpiredSessions,
 } from './db.mjs';
@@ -80,9 +80,10 @@ export function createApp({ db, games, webDir }) {
     if (!row || row.user_id !== userId) throw httpError(404, `存档不存在 ${saveId}`);
     return { row, run: loadRun(row.run_json) };
   }
-  function persist(saveId, run) {
-    updateSave(db, saveId, run);
-    if (run.ended) recordEnding(db, saveId, run.ended);
+  function persist(row, run) {
+    updateSave(db, row.id, run);
+    if (run.ended) recordEnding(db, row.id, run.ended);
+    recordCards(db, row.user_id, row.game_id, run.flags); // 图鉴入档随进度同步（幂等）
   }
 
   // ---- 会话（游客优先：me 自动发游客；其余存档操作要求已持有会话）----
@@ -174,6 +175,13 @@ export function createApp({ db, games, webDir }) {
       return json(res, 200, { id: g.ir.id, code: g.ir.code, title: g.ir.title, subtitle: g.ir.subtitle, hook: g.ir.hook,
         chapters: g.ir.chapters, endings: g.ir.endings, ir: g.ir });
     }
+    if (req.method === 'GET' && a === 'games' && b && c === 'cards') {
+      // 图鉴：玩家级已入档键（跨存档），面板据此渲染收集态
+      const g = games[b];
+      if (!g) throw httpError(404, `游戏不存在 ${b}`);
+      const user = requireUser(req);
+      return json(res, 200, listCards(db, user.id, g.ir.id));
+    }
     if (req.method === 'GET' && a === 'games' && b && c === 'endings') {
       // 结局档案：用户 × 游戏级收集（标题页/结局卡回读入口，无需挂靠某个存档）
       const g = games[b];
@@ -188,6 +196,7 @@ export function createApp({ db, games, webDir }) {
       const body = await readBody(req);
       const run = createRun(g.ir, body.seed ?? Math.floor(Math.random() * 1e9));
       const saveId = createSave(db, g.ir.id, body.player ?? user.username, run, user.id);
+      recordCards(db, user.id, g.ir.id, run.flags); // 开局即入档（入口节点携带的 card.* flag）
       return json(res, 201, { saveId, state: stateOf(g.ir, run) });
     }
     if (req.method === 'GET' && a === 'saves' && !b && query.get('gameId')) {
@@ -209,11 +218,11 @@ export function createApp({ db, games, webDir }) {
       if (stateOf(g.ir, run).kind === 'transcribe') {
         if (typeof body.text !== 'string') return json(res, 200, { state: stateOf(g.ir, run) });
         const next = submit(run, g.ir, body.text);
-        persist(row.id, next);
+        persist(row, next);
         return json(res, 200, { state: stateOf(g.ir, next) });
       }
       const next = advance(run, g.ir);
-      persist(row.id, next);
+      persist(row, next);
       return json(res, 200, { state: stateOf(g.ir, next) });
     }
     if (req.method === 'POST' && a === 'saves' && b && c === 'choose') {
@@ -228,7 +237,7 @@ export function createApp({ db, games, webDir }) {
       } catch (e) {
         throw httpError(409, e.message);
       }
-      persist(row.id, next);
+      persist(row, next);
       return json(res, 200, { state: stateOf(g.ir, next) });
     }
     if (req.method === 'GET' && a === 'saves' && b && c === 'endings') {

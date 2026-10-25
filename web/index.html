@@ -124,6 +124,8 @@
   .eo{font-family:var(--kai);font-weight:600;color:var(--accent-ink);font-size:.94em;
     letter-spacing:.12em;padding:.02em .16em;margin:0 .05em;
     border-block:1px solid rgba(125,98,38,.55)}
+  /* 时代词条（ADR-006 图鉴）：淡墨点线——「这是个老词，卷宗里有它的档案」 */
+  .et{border-bottom:1px dotted rgba(51,46,33,.45);cursor:help}
   /* 关键信息（日期/时刻/号码）：dateline 数字块——无衬线 + 表格数字，字落后再着墨 */
   .ek{font-family:var(--sans);font-weight:700;color:var(--accent-ink);font-size:.92em;
     letter-spacing:.05em;font-variant-numeric:tabular-nums;
@@ -321,6 +323,27 @@
   .save{padding:8px;border-radius:2px;cursor:pointer;font-size:13px;display:flex;justify-content:space-between;gap:8px;
     border-bottom:1px dashed rgba(124,112,79,.4)}
   .save:hover{background:rgba(124,112,79,.12)}
+
+  /* 图鉴:时代词条与人物档案的收集页（已入档可读，未入档悬影，案卷字段逐条解锁） */
+  #codexPanel{position:absolute;right:2%;top:10%;width:min(460px,92vw);max-height:74%;overflow:auto;display:none;
+    background:linear-gradient(150deg,#e9dcbd,#ddd0a9);border:1px solid #a8946a;border-radius:3px;padding:14px;z-index:21;
+    font-family:var(--sans);color:#2e2818;
+    box-shadow:0 24px 70px rgba(0,0,0,.7),inset 0 0 0 4px rgba(23,19,13,.10)}
+  #codexPanel.on{display:block}
+  #codexPanel h3{font-size:13px;color:#7c704f;margin:0 0 8px;letter-spacing:.28em;font-family:var(--kai)}
+  .cx-sec{font-size:11px;color:#9e3a2b;letter-spacing:.3em;margin:10px 0 4px;font-family:var(--kai);
+    border-bottom:1px solid rgba(158,58,43,.3);padding-bottom:3px}
+  .cx-item{border-bottom:1px dashed rgba(124,112,79,.35);padding:8px 2px}
+  .cx-name{font-family:var(--kai);font-size:16px;letter-spacing:.2em;font-weight:700;color:#2e2818}
+  .cx-item.ghost .cx-name{color:#8f8567;letter-spacing:.5em}
+  .cx-kicker{font-size:11px;color:#8f8567;letter-spacing:.18em;margin-top:2px}
+  .cx-body{font-family:var(--serif);font-size:13px;line-height:1.9;color:#332e21;margin-top:5px}
+  .cx-field{display:flex;gap:8px;font-size:12.5px;margin-top:5px;align-items:baseline}
+  .cx-field b{flex:none;font-family:var(--kai);color:#7c704f;font-weight:600}
+  .cx-field span{color:#332e21}
+  .cx-field.locked span{color:#a8946a;letter-spacing:.3em}
+  .cx-kind{display:inline-block;font-size:10px;color:#8f8567;border:1px solid #a8946a;border-radius:2px;
+    padding:0 .4em;margin-left:.5em;letter-spacing:.15em;vertical-align:2px}
 
   /* 结局档案:已归档可回读全文,未归档只给暗示（收集引导，不泄内容） */
   #endsPanel{position:absolute;right:2%;top:10%;width:min(460px,92vw);max-height:74%;overflow:auto;display:none;
@@ -529,6 +552,7 @@
       <div class="topbtns">
         <button id="btnSheet">底单</button>
         <button id="btnEnds">结案</button>
+        <button id="btnCodex">图鉴</button>
         <button id="btnSaves">存档</button>
         <button id="btnRestart">重新开始</button>
         <button id="btnMute">♪ 音效</button>
@@ -555,6 +579,7 @@
 
   <div id="savesPanel"><h3>读取存档</h3><div id="savesList"></div></div>
   <div id="endsPanel"><h3>结案档案 · 已归档结局</h3><div id="endsList"></div></div>
+  <div id="codexPanel"><h3>卷宗图鉴 · 时代与人物</h3><div id="codexList"></div></div>
   <div id="sheetPanel"><h3>转写底单 · 本局</h3><div id="sheetList"></div></div>
 
   <div id="endcard">

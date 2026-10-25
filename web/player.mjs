@@ -418,25 +418,30 @@ async function openCodex() {
   settlePanel('#codexPanel');
 }
 $('#btnCodex').onclick = openCodex;
-// 破坏性操作二次确认：第一次点击只亮「确认？」，2.5s 内再点才执行——防误触毁档
+// 破坏性操作二次确认：第一次点击武装（红框「确认？」），2.5s 内再点才执行。
+// 武装后 500ms 内的点击一律忽略——反射性双击（间隔多在 300ms 内）不得触发破坏性动作，
+// 读到「确认？」再点必然超过 500ms。
 function armConfirm(btn, fn) {
   btn.onclick = () => {
     if (btn.dataset.armed) {
-      btn.dataset.armed = ''; btn.textContent = btn.dataset.label;
+      if (Date.now() - Number(btn.dataset.armedAt) < 500) return; // 反射双击：忽略
+      btn.dataset.armed = ''; btn.classList.remove('armed');
+      btn.textContent = btn.dataset.label;
       fn();
     } else {
       btn.dataset.label = btn.textContent;
-      btn.dataset.armed = '1'; btn.textContent = '确认？';
+      btn.dataset.armed = '1'; btn.dataset.armedAt = String(Date.now());
+      btn.classList.add('armed'); btn.textContent = '确认？';
       setTimeout(() => {
-        if (btn.dataset.armed) { btn.dataset.armed = ''; btn.textContent = btn.dataset.label; }
+        if (btn.dataset.armed) { btn.dataset.armed = ''; btn.classList.remove('armed'); btn.textContent = btn.dataset.label; }
       }, 2500);
     }
   };
 }
 armConfirm($('#btnRestart'), () => app.gameId && startGame(app.gameId));
-armConfirm($('#btnTitle'), () => location.reload());
+armConfirm($('#btnTitle'), () => { sessionStorage.setItem('nu.reload.cause', 'btnTitle'); location.reload(); });
 $('#btnAgain').onclick = () => startGame(app.gameId);
-armConfirm($('#btnBackTitle'), () => location.reload()); // 回到封面=重载：与「标题」同级的二次确认
+armConfirm($('#btnBackTitle'), () => { sessionStorage.setItem('nu.reload.cause', 'btnBackTitle'); location.reload(); }); // 回到封面=重载：二次确认
 $('#btnMute').onclick = e => {
   audio.muted = !audio.muted;
   e.currentTarget.textContent = audio.muted ? '♪ 已静' : '♪ 音效';
@@ -453,7 +458,7 @@ function renderAuthBar() {
     ? `<span>游客进度仅存本机</span><button id="btnAuth">注册留存</button>`
     : `<span>档案 · ${app.user.username}</span><button id="btnLogout">退出</button>`;
   if (app.user.guest) $('#btnAuth').onclick = () => openAuth('register');
-  else $('#btnLogout').onclick = async () => { await api.post('/api/auth/logout'); location.reload(); };
+  else $('#btnLogout').onclick = async () => { await api.post('/api/auth/logout'); sessionStorage.setItem('nu.reload.cause', 'btnLogout'); location.reload(); };
 }
 function openAuth(mode) {
   authMode.now = mode;
@@ -483,6 +488,15 @@ $('#apSubmit').onclick = async () => {
 
 // ---- 启动:标题页游戏列表;?auto=1 冒烟 ----
 (async () => {
+  // 重载原因标记：按钮重载前写入；boot 时若 reload 但无标记 = 浏览器行为（下拉刷新/标签回收）——
+  // 玩家看到的「莫名弹回封面」由此可当场分辨
+  try {
+    if (performance.getEntriesByType('navigation')[0]?.type === 'reload') {
+      sessionStorage.setItem('nu.reload.cause', sessionStorage.getItem('nu.reload.cause') ?? 'browser');
+    } else {
+      sessionStorage.removeItem('nu.reload.cause');
+    }
+  } catch { /* sessionStorage 不可用时静默 */ }
   const me = await api.j('/api/auth/me'); // 播放器 boot 合同：先立会话，存档从此有归属
   app.user = me.user;
   renderAuthBar();
@@ -507,4 +521,12 @@ $('#apSubmit').onclick = async () => {
     $('#gameList').appendChild(row);
   }
   if (AUTO) await startGame(games[0].id);
+  else {
+    // 若页面是「被刷新」回来的，当场告知原因（诊断玩家报告的「莫名弹回」）
+    try {
+      const cause = sessionStorage.getItem('nu.reload.cause');
+      if (cause === 'browser') { sessionStorage.removeItem('nu.reload.cause'); stage.toast('页面被浏览器刷新（下拉刷新/系统回收）——进度在存档里，点「继续存档」即可回来'); }
+      else if (cause) { sessionStorage.removeItem('nu.reload.cause'); }
+    } catch { /* 静默 */ }
+  }
 })();

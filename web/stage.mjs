@@ -31,6 +31,10 @@ export function callerHz(name) {
   return 80 + (h % 321);
 }
 
+// 推进提示双态：常态推进；回看未收起时，第一下轻点先归位（不推进）
+const HINT_LIVE = '点击 · 空格 —— 继续 ▸';
+const HINT_BACK = '回看前文 · 轻点回到现在 ▾';
+
 export class Stage {
   constructor(audio, { auto = false } = {}) {
     this.audio = audio;
@@ -39,6 +43,8 @@ export class Stage {
     this.flow = $('#flow');
     this.lines = [];
     this.off = 0;
+    this.panY = 0;      // 回看位移：0=钉在现在，>0=往回翻（上限 _maxPan）
+    this._back = false; // 回看模式（浓墨恢复 + 提示词切换）
     this.revealing = false;
     this.fast = false;
     this.pendingGate = null;
@@ -51,19 +57,54 @@ export class Stage {
   setLexicon(ir) { this.lex = buildLexicon(ir ?? {}); }
   mark(t) { return markupText(t, this.lex); }
 
-  // ---------- 手势:点击/空格推进;揭示中点击 = 快进本拍 ----------
+  // ---------- 手势：轻点推进;揭示中轻点 = 快进本拍;拖拽/滚轮 = 回看前文 ----------
   _bindGesture() {
+    const root = this.root;
+    // 停点交互控件不参与舞台手势（选项/面板/按钮各有各的 pointerdown）
+    const INTERACTIVE = '.opt,.sidepanel,#endcard,#authPanel,#title,#hud';
     const act = () => {
+      if (this.panY > 8) return this.snapBack();
       if (this.revealing) this.fast = true;
       else if (this.pendingGate) { const r = this.pendingGate; this.pendingGate = null; this.hint(false); r(); }
     };
-    this.root.addEventListener('pointerdown', () => { this.audio.ensure(); act(); });
+    // 拖拽回看：位移超过阈值才算拖（拖过不推进）；松开未拖 = 轻点
+    let ptr = null;
+    root.addEventListener('pointerdown', e => {
+      this.audio.ensure();
+      if (e.target.closest(INTERACTIVE)) return;
+      ptr = { id: e.pointerId, y: e.clientY, pan: this.panY, moved: false };
+      try { root.setPointerCapture(e.pointerId); } catch { /* 旧浏览器无捕获 */ }
+    });
+    root.addEventListener('pointermove', e => {
+      if (!ptr || e.pointerId !== ptr.id) return;
+      const dy = e.clientY - ptr.y;
+      if (!ptr.moved && Math.abs(dy) < 9) return;
+      ptr.moved = true;
+      this.panTo(ptr.pan + dy, false);
+    });
+    root.addEventListener('pointerup', e => {
+      if (!ptr || e.pointerId !== ptr.id) return;
+      const moved = ptr.moved; ptr = null;
+      if (!moved) act();
+    });
+    root.addEventListener('pointercancel', e => { if (ptr?.id === e.pointerId) ptr = null; });
+    // 滚轮/触控板回看（面板与卡片内部滚动不受影响；行模式 ×16 归一为像素）
+    root.addEventListener('wheel', e => {
+      if (e.target.closest(INTERACTIVE)) return;
+      const dy = e.deltaY * (e.deltaMode === 1 ? 16 : 1);
+      if (this.panY <= 0 && dy >= 0) return; // 已钉在现在：向下滚没有可前进的内容
+      this.panTo(this.panY - dy, false);
+    }, { passive: true });
     addEventListener('keydown', e => {
       if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); act(); }
     });
     addEventListener('resize', () => this.relayout());
   }
-  hint(on) { $('#hint').classList.toggle('on', on && !this.auto); }
+  hint(on) {
+    const h = $('#hint');
+    h.classList.toggle('on', on && !this.auto);
+    h.textContent = this.panY > 8 ? HINT_BACK : HINT_LIVE;
+  }
   gate() {
     if (this.auto) return sleep(380);
     return new Promise(r => { this.pendingGate = r; this.hint(true); });
@@ -72,12 +113,38 @@ export class Stage {
   idle() { return !this.revealing && !this.pendingGate; }
   rush() { if (this.revealing) this.fast = true; }
 
+  // ---------- 回看（往回自由滑动）：panY 叠加在自动排版 off 之上 ----------
+  _maxPan() {
+    const first = this.lines[0];
+    if (!first) return 0;
+    return Math.max(0, Math.round(8 - this.off - first.offsetTop)); // 首行顶最多下移到视口上缘 8px
+  }
+  /** panY 夹取到 [0, maxPan] 并落位；animate=false 供拖拽逐帧跟手。 */
+  panTo(v, animate = true) {
+    this.panY = Math.max(0, Math.min(v, this._maxPan()));
+    if (!animate) this.flow.style.transition = 'none';
+    this.flow.style.transform = `translate(-50%, ${this.off + this.panY}px)`;
+    if (!animate) { reflow(this.flow); this.flow.style.transition = ''; }
+    this._setBack(this.panY > 8);
+  }
+  /** 轻点/滚轮到底：带缓动回到「现在」，恢复推进提示。 */
+  snapBack() { this.panTo(0); }
+  _setBack(on) {
+    if (this._back === on) return;
+    this._back = on;
+    $('#tape').classList.toggle('back', on);
+    this.hint(on || !!this.pendingGate);
+  }
+
   // ---------- 文字流 ----------
+  /** 重排：绝对定位——目标 off 直接由末行布局几何（offsetTop/Height，与 transform/过渡无关）解出。
+   *  旧版用 getBoundingClientRect 增量修正，分拍快于 0.95s 过渡时测量滞后会指数发散。 */
   relayout() {
     const last = this.lines[this.lines.length - 1]; if (!last) return;
-    const anchor = this.root.clientHeight * .60;
-    this.off += anchor - last.getBoundingClientRect().bottom;
-    this.flow.style.transform = `translate(-50%, ${this.off}px)`;
+    const prevOff = this.off;
+    this.off = Math.round(this.root.clientHeight * .60 - (last.offsetTop + last.offsetHeight));
+    if (this.panY > 8) this.panY += prevOff - this.off; // 回看锁定：新行落卷不打扰阅读位置
+    this.flow.style.transform = `translate(-50%, ${this.off + this.panY}px)`;
   }
   _dim() {
     this.lines.forEach((el, i) => {
@@ -151,35 +218,41 @@ export class Stage {
     });
   }
 
-  /** 转写交互（g01 原语）：呼入方报话，玩家把留言打进呼机。
-   *  判定在服务端（可多打不漏字）；错一次即亮底单参照，点参照可直接抄录。
+  /** 转写拍（g01 原语·选择题）：呼入方报话，玩家从候选里选出该入机的那条。
+   *  玩家只做选择题——干扰项是本局已入机的历史留言（服务端 transcribeOptions，零剧透）。
    *  hz：呼入者声纹频率（登典者用正典 voice_hz，未登典用确定性伪声纹）——形状即线索，不标数字。
    *  dead：死单拍——这一条是引向河对岸的那条，回执朱砂化 + 戏中时间戳 + 呼机双短音。 */
-  async transcribe({ caller, target, misses = 0, hz = null, dead = false, stamp = null }) {
-    this._append('', this.mark(`【转写】${caller ?? '呼入'} 报话——请把留言打进呼机。`));
+  async transcribe({ caller, target, options = [], misses = 0, hz = null, dead = false, stamp = null }) {
+    this._append('', this.mark(`【转写】${caller ?? '呼入'} 报话——选出该入机的那条。`));
     return new Promise(res => {
       const c = this._append('choice', '');
       c.innerHTML = `<div class="tr">
         <div class="tr-caller">${misses >= 1 ? `（第 ${misses + 1} 次尝试）` : ''}呼入 · ${this.mark(caller ?? '未知')}${hz ? Stage.waveChip(hz) : ''}</div>
-        <input class="tr-in" type="text" placeholder="照呼入的话打——可以多打，不能漏" autocomplete="off">
-        <div class="tr-rule">规矩 · 照呼入原话全文可过——可多打，不可漏字${misses >= 1 ? '（点下方参照可直接抄录）' : ''}</div>
-        <button class="tr-send">发送 ↵</button>
-        ${misses >= 1 ? `<div class="tr-hint">底单参照（点击抄录）——${this.mark(target)}</div>` : ''}
+        <div class="tr-rule">规矩 · 只递话，不问话——照呼入原话入机</div>
       </div>`;
-      const inp = c.querySelector('.tr-in'), btn = c.querySelector('.tr-send');
-      const hint = c.querySelector('.tr-hint');
-      if (hint) hint.addEventListener('pointerdown', ev => { ev.stopPropagation(); inp.value = target; inp.focus(); });
-      const done = () => {
-        const v = inp.value.trim();
-        if (!v) return;
-        c.innerHTML = `<div class="tr-done${dead ? ' dead' : ''}">已入机——${this.mark(`「${v}」`)}${dead && stamp ? `<span class="tr-stamp">${stamp}</span>` : ''}</div>`;
-        if (dead) this.audio.page();
-        res(v);
+      const els = [];
+      const pick = i => {
+        c.style.pointerEvents = 'none';
+        if (options[i] === target) {
+          c.innerHTML = `<div class="tr-done${dead ? ' dead' : ''}">已入机——${this.mark(`「${options[i]}」`)}${dead && stamp ? `<span class="tr-stamp">${stamp}</span>` : ''}</div>`;
+          if (dead) this.audio.page();
+        } else {
+          els[i]?.classList.add('wrong'); // 听岔了：朱线划掉，底单上留着错痕
+        }
+        res(i);
       };
-      btn.addEventListener('pointerdown', ev => { ev.stopPropagation(); done(); });
-      inp.addEventListener('keydown', ev => { ev.stopPropagation(); if (ev.isComposing || ev.keyCode === 229) return; if (ev.key === 'Enter') done(); });
-      setTimeout(() => { inp.classList.add('in'); if (!this.auto) inp.focus(); }, 400);
-      if (this.auto) setTimeout(() => { inp.value = target; done(); }, this.fast ? 50 : 1200);
+      options.forEach((text, i) => {
+        const d = document.createElement('div');
+        d.className = 'opt';
+        d.innerHTML = `<span class="branch"></span><span class="txt">${this.mark(text)}</span>`;
+        d.addEventListener('pointerdown', ev => { ev.stopPropagation(); pick(i); });
+        c.appendChild(d); els.push(d);
+        setTimeout(() => d.classList.add('in'), 400 + i * 400);
+      });
+      if (this.auto) {
+        const ai = options.indexOf(target);
+        setTimeout(() => pick(ai >= 0 ? ai : 0), this.fast ? 50 : 1200);
+      }
     });
   }
 
@@ -281,12 +354,13 @@ export class Stage {
     await sleep(this.auto ? 0 : 250);
   }
   reset() {
-    this.flow.innerHTML = ''; this.lines.length = 0; this.off = 0;
+    this.flow.innerHTML = ''; this.lines.length = 0; this.off = 0; this.panY = 0;
     this.flow.style.transform = 'translate(-50%, 0)';
     // 瞬态舞台层（印章/声纹卡/章节卡/峰值拍）挂在 #stage 根上，换幕必须一并清场——
     // 否则印章等点击时切存档/重开，旧印章残留画面叠成一层红
     this.root.querySelectorAll('.sealwrap,.charcard,.chcard,.desk,.coll,.rt').forEach(el => el.remove());
     this.pendingGate = null; this.revealing = false; this.fast = false;
+    this._setBack(false);
     this.hint(false);
   }
 

@@ -1,7 +1,7 @@
 // 引擎内核场景测试：推进、选择、守卫、flag、确定性、存档回放。
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { createRun, advance, choose, stateOf, serializeRun, loadRun, submit } from '../engine/state.mjs';
+import { createRun, advance, choose, stateOf, serializeRun, loadRun, submitPick, transcribeOk } from '../engine/state.mjs';
 import { compileGame } from '../tools/compile-scenario.mjs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -168,7 +168,44 @@ describe('场景：转写交互（g01）', () => {
     assert.equal(advance(r, g01).nodeId, r.nodeId, 'advance 越过了转写节点');
   });
 
-  it('submit：正确→tr.* 点亮并推进；错误→原地计数', () => {
+  it('submitPick（选择题）：首条无历史为单项确认；干扰项只取本局已入机旧留言（零剧透）；miss 后顺序不变', () => {
+    assert.ok(g01);
+    let r = createRun(g01), guard = 0, seen = 0;
+    while (guard++ < 800) {
+      const st = stateOf(g01, r);
+      if (st.kind === 'ending') break;
+      if (st.kind === 'choice') { r = choose(r, g01, 0); continue; }
+      if (st.kind !== 'transcribe') { r = advance(r, g01); continue; }
+
+      seen++;
+      assert.ok(st.options.includes(st.target), '正确项必须在选项里');
+      assert.equal(new Set(st.options).size, st.options.length, '选项不得重复');
+      if (seen === 1) {
+        // 首条转写：本局还没有已入机留言，退化为单项确认
+        assert.equal(st.options.length, 1, '首条转写应为单项确认');
+      } else {
+        // 之后每条：干扰项必须全部来自已完成转写的 target（绝不引用未读内容）
+        const done = new Set(Object.values(r.trLog));
+        for (const o of st.options) {
+          if (o !== st.target) assert.ok(done.has(o), `干扰项 "${o}" 不是本局已入机的留言（剧透）`);
+        }
+        // 选错 → 原地计 miss，选项顺序不变；选对 → 点亮 tr.* 并推进
+        const wrongIdx = st.options.findIndex(o => o !== st.target);
+        assert.ok(wrongIdx >= 0, '有历史留言时应出干扰项');
+        const miss = submitPick(r, g01, wrongIdx);
+        assert.equal(miss.nodeId, r.nodeId, '选错不得推进');
+        assert.ok((miss.trMisses[st.tid] ?? 0) >= 1, '选错应计数');
+        assert.deepEqual(stateOf(g01, miss).options, st.options, 'miss 后选项顺序不得跳位');
+        r = miss;
+      }
+      r = submitPick(r, g01, st.options.indexOf(st.target));
+      assert.ok(r.flags[`tr.${st.tid}`], '选对应点亮 tr.* flag');
+      assert.notEqual(r.nodeId, st.id, '选对后应推进');
+    }
+    assert.ok(seen >= 3, `choose(0) 主线路应至少经过 3 条转写，实际 ${seen}`);
+  });
+
+  it('submitPick 越界与停点外拒绝', () => {
     assert.ok(g01);
     let r = createRun(g01), guard = 0;
     while (guard++ < 800) {
@@ -176,40 +213,19 @@ describe('场景：转写交互（g01）', () => {
       if (st.kind === 'ending') assert.fail('未遇到转写停点');
       if (st.kind === 'choice') { r = choose(r, g01, 0); continue; }
       if (st.kind === 'transcribe') {
-        const wrong = submit(r, g01, '完全不相干的话');
-        assert.equal(wrong.nodeId, r.nodeId, '错误提交不得推进');
-        assert.ok((wrong.trMisses[st.tid] ?? 0) >= 1, '错误应计数');
-        const ok = submit(wrong, g01, st.target);
-        assert.ok(ok.flags[`tr.${st.tid}`], '成功应点亮 tr.* flag');
-        assert.notEqual(ok.nodeId, r.nodeId, '成功后应推进');
+        assert.throws(() => submitPick(r, g01, st.options.length), /越界/);
+        assert.throws(() => submitPick(r, g01, -1), /越界/);
         return;
       }
       r = advance(r, g01);
     }
   });
 
-  it('submit 判定容错：照呼入原话全文可过，去标点可过，漏关键字不过（打字跟人声走）', () => {
-    assert.ok(g01);
-    let r = createRun(g01), guard = 0;
-    while (guard++ < 800) {
-      const st = stateOf(g01, r);
-      if (st.kind === 'ending') assert.fail('未遇到 t1 转写停点');
-      if (st.kind === 'choice') { r = choose(r, g01, 0); continue; }
-      if (st.kind === 'transcribe' && st.tid === 't1') {
-        // 张嬢嬢的呼入原话全文照打（含语气词，标点不同）→ 应通过
-        const full = submit(r, g01, '呼我儿——降温了哈，被子换成厚的，莫要嘴硬。你老汉儿风湿又犯了，念你。');
-        assert.notEqual(full.nodeId, r.nodeId, '照呼入原话全文打应通过');
-        assert.ok(full.flags['tr.t1'], '全文照打应点亮 tr.t1');
-        // 目标裸文去标点 → 应通过
-        const bare = submit(r, g01, '降温了被子换成厚的念你');
-        assert.notEqual(bare.nodeId, r.nodeId, '去标点裸文应通过');
-        // 漏掉「念你」 → 不得推进
-        const miss = submit(r, g01, '降温了，被子换成厚的。');
-        assert.equal(miss.nodeId, r.nodeId, '漏掉关键字不得推进');
-        assert.ok((miss.trMisses['t1'] ?? 0) >= 1, '漏关键字应计数');
-        return;
-      }
-      r = advance(r, g01);
-    }
+  it('transcribeOk 溯源尺（内容 lint 同尺）：全文可敲出，去标点可敲出，漏关键字敲不出', () => {
+    const quote = '呼我儿——降温了哈，被子换成厚的，莫要嘴硬。你老汉儿风湿又犯了，念你。';
+    const target = '降温了，被子换成厚的。念你。';
+    assert.ok(transcribeOk(quote, target), '照呼入原话全文应可敲出 target');
+    assert.ok(transcribeOk('降温了被子换成厚的念你', target), '去标点裸文应可敲出');
+    assert.ok(!transcribeOk('降温了，被子换成厚的。', target), '漏掉「念你」敲不出');
   });
 });

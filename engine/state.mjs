@@ -34,16 +34,34 @@ export function stateOf(ir, run) {
   };
   if (n.type === 'line') return { ...base, kind: 'line', speaker: n.speaker ?? null, text: n.text };
   if (n.type === 'choice') return { ...base, kind: 'choice', options: visibleOptions(run, n).map(o => ({ label: o.label })) };
-  if (n.type === 'transcribe') return { ...base, kind: 'transcribe', id: n.id, tid: n.transId, caller: n.caller ?? null, caller_char: n.callerChar ?? null, target: n.target, misses: run.trMisses[n.transId] ?? 0 };
+  if (n.type === 'transcribe') return { ...base, kind: 'transcribe', id: n.id, tid: n.transId, caller: n.caller ?? null, caller_char: n.callerChar ?? null, target: n.target, misses: run.trMisses[n.transId] ?? 0, options: transcribeOptions(ir, run, n) };
   if (n.type === 'ending') return { ...base, kind: 'ending', endingId: n.endingId, title: n.title };
   return { ...base, kind: 'beat' };
+}
+
+/** 转写选项（玩家只做选择题）：正确项 + 至多两条干扰项。
+ *  干扰项只取本局已完成转写的历史留言（trLog，最新在前）——绝不引用未读内容，零剧透；
+ *  全序按 (seed, tid) 确定性旋转，正确项不恒在首位，同 run 重试选项不跳位。 */
+export function transcribeOptions(ir, run, node) {
+  const byTid = new Map(Object.values(ir.nodes).filter(n => n.type === 'transcribe').map(n => [n.transId, n]));
+  const pool = [];
+  for (const tid of Object.keys(run.trLog).reverse()) {
+    if (pool.length >= 2) break;
+    const t = byTid.get(tid)?.target;
+    if (t && t !== node.target && !pool.includes(t)) pool.push(t);
+  }
+  const opts = [node.target, ...pool];
+  let h = Math.imul(run.seed | 0, 2654435761) >>> 0;
+  for (const ch of node.transId) h = (Math.imul(h, 31) + ch.codePointAt(0)) >>> 0;
+  const rot = opts.length > 1 ? h % opts.length : 0;
+  return rot ? [...opts.slice(rot), ...opts.slice(0, rot)] : opts;
 }
 
 /** 转写文本规整：去空白与全部中英标点符号，只留内容字。 */
 const norm = s => String(s).replace(/[\s\p{P}\p{S}]/gu, '');
 
-/** 转写判定：目标内容字须按序包含于玩家输入——照呼入原话全文可过，漏关键字不过。
- *  打字跟人声走：人可以多打，不可以漏（g01 接线员合同）。导出给内容 lint 复用同一把尺。 */
+/** 转写溯源判定：目标内容字须按序包含于同章上文引语——内容 lint 复用同一把尺。
+ *  （交互已改选择题；此尺只管剧本侧「target 必须敲得出来」的溯源合同。） */
 export function transcribeOk(input, target) {
   const t = norm(target);
   if (!t) return true;
@@ -60,12 +78,16 @@ export function advance(run, ir) {
   const cur = ir.nodes[run.nodeId];
   if (!cur) return cloneRun(run);
   if (cur.type === 'choice' || cur.type === 'ending' || cur.type === 'transcribe') return cloneRun(run);
-  const nr = cloneRun(run);
-  let nextId = cur.next ?? null, guard = 0;
+  return walkToStop(cloneRun(run), ir, cur.next ?? null);
+}
+
+/** 从 nextId 起走到下一停点（advance/submitPick 共用的尾巴）。 */
+function walkToStop(nr, ir, nextId) {
+  let guard = 0;
   while (nextId) {
-    if (++guard > 10000) throw new Error('advance: 节点遍历超限（疑似环）');
+    if (++guard > 10000) throw new Error('walkToStop: 节点遍历超限（疑似环）');
     const n = ir.nodes[nextId];
-    if (!n) throw new Error(`advance: 节点不存在 ${nextId}`);
+    if (!n) throw new Error(`walkToStop: 节点不存在 ${nextId}`);
     if (n.type === 'line' || n.type === 'choice' || n.type === 'transcribe') {
       nr.nodeId = nextId; applyEnter(nr, n); return nr;
     }
@@ -79,34 +101,21 @@ export function advance(run, ir) {
   return nr;
 }
 
-/** 转写提交：目标内容字按序含于提交文本（可多打不漏字）→ 记录、点亮 tr.<id>、推进；
- *  不通过 → 原地计一次 miss（不推进）。转写是带提交语义的停点。 */
-export function submit(run, ir, text) {
+/** 转写提交（选择题）：选中正确项 → 记录、点亮 tr.<id>、推进；选错 → 原地计一次 miss。
+ *  判定以选项文本为准，选项由 transcribeOptions 确定（同 run 同选项，miss 不改变顺序）。 */
+export function submitPick(run, ir, index) {
   const cur = ir.nodes[run.nodeId];
-  if (!cur || cur.type !== 'transcribe') throw new Error('submit: 当前节点不是转写');
+  if (!cur || cur.type !== 'transcribe') throw new Error('submitPick: 当前节点不是转写');
+  const opts = transcribeOptions(ir, run, cur);
+  if (!Number.isInteger(index) || index < 0 || index >= opts.length) throw new Error(`submitPick: 选项越界 ${index}`);
   const nr = cloneRun(run);
-  if (!transcribeOk(text, cur.target)) {
+  if (opts[index] !== cur.target) {
     nr.trMisses[cur.transId] = (nr.trMisses[cur.transId] ?? 0) + 1;
     return nr;
   }
-  nr.trLog[cur.transId] = String(text);
+  nr.trLog[cur.transId] = cur.target;
   nr.flags[`tr.${cur.transId}`] = true;
-  let nextId = cur.next ?? null, guard = 0;
-  while (nextId) {
-    if (++guard > 10000) throw new Error('submit: 节点遍历超限（疑似环）');
-    const n = ir.nodes[nextId];
-    if (!n) throw new Error(`submit: 节点不存在 ${nextId}`);
-    if (n.type === 'line' || n.type === 'choice' || n.type === 'transcribe') {
-      nr.nodeId = nextId; applyEnter(nr, n); return nr;
-    }
-    if (n.type === 'ending') {
-      nr.nodeId = nextId; applyEnter(nr, n); nr.ended = n.endingId; return nr;
-    }
-    applyEnter(nr, n);
-    nextId = n.type === 'jump' ? n.goto : (n.next ?? null);
-  }
-  nr.nodeId = null;
-  return nr;
+  return walkToStop(nr, ir, cur.next ?? null);
 }
 
 export function choose(run, ir, index) {

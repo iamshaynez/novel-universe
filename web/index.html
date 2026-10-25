@@ -21,7 +21,7 @@
   html,body{height:100%;overscroll-behavior:none}
   body{position:fixed;inset:0;background:var(--bg);color:var(--ink);font-family:var(--serif);overflow:hidden}
   #stage{position:relative;height:100vh;overflow:hidden;user-select:none;
-    -webkit-touch-callout:none;touch-action:manipulation}
+    -webkit-touch-callout:none;touch-action:none}
   /* 档案室空气:全屏纸纹颗粒 + 暗角 */
   #stage::before{content:"";position:absolute;inset:0;z-index:30;pointer-events:none;
     opacity:.07;mix-blend-mode:soft-light;
@@ -86,18 +86,24 @@
   #flow{position:absolute;left:50%;width:min(760px,78vw);
     transform:translate(-50%,0);
     transition:transform .95s cubic-bezier(.22,.8,.24,1),opacity .85s ease}
-  .ln{font-size:clamp(17px,1.05vw + 1.1vh,26px);line-height:2.05;letter-spacing:.06em;
+  /* 正文字号单源：流内所有拍型共享（导语/引语块按倍率放大），改一处全流生效 */
+  #flow{--ln-size:clamp(20px,1.2vw + 1.5vh,32px)}
+  .ln{font-size:var(--ln-size);line-height:2.05;letter-spacing:.06em;
     color:var(--paper-ink);
     opacity:0;transform:translateY(14px) translateX(var(--dx,0));filter:blur(3px);
     transition:opacity .7s ease,transform .7s ease,filter .7s ease}
   .ln.in{opacity:1;transform:none;filter:none}
   .ln.old1{opacity:.55}.ln.old2{opacity:.3}.ln.old3{opacity:.14}
+  /* 回看模式（往回滑动后）：淡化是运镜，回看要可读——历史行恢复浓墨 */
+  #tape.back .ln.old1{opacity:.92}
+  #tape.back .ln.old2{opacity:.85}
+  #tape.back .ln.old3{opacity:.8}
   /* 日期章（@date 章内跳变）：卷宗眉批——细线夹戏中日期，时间一换就钉一针 */
   .ln.dline{display:flex;align-items:center;gap:1em;margin:.4em 0 .2em;
-    font-family:var(--kai);font-size:14px;letter-spacing:.34em;color:#8f8567}
+    font-family:var(--kai);font-size:16px;letter-spacing:.34em;color:#8f8567}
   .ln.dline i{flex:1;height:1px;background:linear-gradient(90deg,transparent,#8f856778,transparent)}
-  /* 段落导语：每段首拍略放大加重——杂志排版的节奏头 */
-  .ln.lead{font-size:1.08em;font-weight:600;letter-spacing:.12em;color:var(--ink-deep)}
+  /* 段落导语：每段首拍略放大加重——杂志排版的节奏头（对 --ln-size 取倍率，不受父级字号影响） */
+  .ln.lead{font-size:calc(var(--ln-size)*1.08);font-weight:600;letter-spacing:.12em;color:var(--ink-deep)}
   /* 跨拍引语块：纸上引文——楷体 + 朱线，连续拍连成一整段引文栏 */
   .ln.qb{font-family:var(--kai);color:rgba(36,31,20,.92);
     border-left:2px solid rgba(158,58,43,.42);padding-left:.55em}
@@ -144,19 +150,23 @@
     border-left:3px solid currentColor;padding-left:.5em}
   .ln.dlg{color:var(--ink-deep)}
   .ln.dlg.lslide{--dx:-16px}
-  .ln.choice{display:flex;flex-direction:column;gap:.5em;padding:.5em 0 .2em;pointer-events:auto}
-  .opt{display:flex;align-items:center;gap:.9em;cursor:pointer;padding:.32em .2em;
+  .ln.choice{display:flex;flex-direction:column;gap:.55em;padding:.5em 0 .2em;pointer-events:auto}
+  .opt{display:flex;align-items:baseline;gap:.9em;cursor:pointer;padding:.34em .2em;
     color:var(--paper-ink);opacity:0;transform:translateX(-14px);
     transition:opacity .6s ease,transform .6s ease,color .25s}
   .opt.in{opacity:1;transform:none}
   .opt:hover{color:var(--blood);transform:translateX(6px)}
-  .opt .branch{flex:none;width:2.2em;height:1px;
+  .opt .branch{flex:none;width:2.2em;height:1px;align-self:center;
     background:linear-gradient(90deg,transparent,var(--blood));transition:width .25s}
   .opt:hover .branch{width:3.2em}
+  /* 转写选错：朱线划掉留在底单上（听岔的痕） */
+  .opt.wrong{pointer-events:none}
+  .opt.wrong .txt{text-decoration:line-through;text-decoration-color:rgba(158,58,43,.75);
+    text-decoration-thickness:2px;opacity:.5}
 
   /* 角色锚点(分侧):档案室墙上的竖排名条 */
   .anchor{position:absolute;top:50%;transform:translateY(-50%);
-    writing-mode:vertical-rl;letter-spacing:.55em;font-size:15px;font-weight:700;
+    writing-mode:vertical-rl;letter-spacing:.55em;font-size:16px;font-weight:700;
     font-family:var(--kai);
     opacity:0;transition:opacity 1.4s ease;pointer-events:none;z-index:3}
   .anchor.on{opacity:.85}
@@ -262,7 +272,7 @@
     box-shadow:0 4px 14px rgba(0,0,0,.5)}
 
   #hint{position:absolute;bottom:3.4vh;left:50%;transform:translateX(-50%);
-    font-family:var(--sans);font-size:12px;letter-spacing:.34em;color:#8f8567;
+    font-family:var(--sans);font-size:13px;letter-spacing:.34em;color:#8f8567;
     opacity:0;transition:opacity .6s;z-index:6;pointer-events:none}
   #hint.on{opacity:.9}
 
@@ -300,6 +310,8 @@
 
   /* 侧面板统一交互（关闭钮/互斥/点外关闭见 player.mjs）：标题行 flex 让出关闭钮 */
   .sidepanel h3{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  /* 舞台 touch-action:none 让位给拖拽回看；面板与纸卡内部恢复原生滚动 */
+  .sidepanel,.ec-paper,.ap-paper{touch-action:pan-y}
   #stage button.armed{border-color:var(--blood);color:#e8b8ae;background:#5a221a;letter-spacing:.1em}
   .pnl-x{flex:none;background:transparent;border:1px solid #9b8a65;border-radius:2px;color:#655c48;
     font:16px/1 var(--sans);padding:6px 12px;min-height:34px;min-width:34px;cursor:pointer;letter-spacing:0}
@@ -441,24 +453,18 @@
     .desk-row,.coll-wave,.rt-key,.who.split,.rt-key.cut::after{transition-duration:.25s!important;animation-duration:.25s!important}
   }
 
-/* 转写交互（g01 原语）:呼机留言纸带 */
-.tr{display:flex;flex-direction:column;gap:8px;padding:14px 18px;max-width:560px;margin:6px auto 0;
+/* 转写拍（g01 原语·选择题）:呼机留言纸带——呼入者报话，玩家选出该入机的那条 */
+.tr{display:flex;flex-direction:column;gap:8px;padding:14px 18px;max-width:640px;margin:6px auto 0;
     border:1px solid #a8946a;border-radius:2px;background:rgba(255,252,242,.5);
-    opacity:0;transform:translateY(8px);transition:all .5s;position:relative}
+    position:relative}
 .tr::before{content:"";position:absolute;left:8px;right:8px;top:4px;border-top:1px dashed rgba(124,112,79,.5)}
-.tr.in{opacity:1;transform:none}
-.tr-caller{font-size:12px;color:var(--blood,#9e3a2b);letter-spacing:2px;font-family:var(--kai)}
+.tr-caller{font-size:14px;color:var(--blood,#9e3a2b);letter-spacing:2px;font-family:var(--kai)}
   /* 呼入者迷你声纹：中性墨小波形——形状即线索，不标数字（播种层公平证据） */
   .tr-wave{display:inline-block;vertical-align:-4px;width:64px;height:16px;margin-left:.55em;opacity:.9}
   .tr-wave path{fill:none;stroke:rgba(51,46,33,.6);stroke-width:1.3;stroke-linecap:round}
   .tr-row .tr-wave{width:56px;height:14px;vertical-align:-3px}
-.tr-in{font:inherit;font-size:16px;color:#332e21;background:rgba(51,46,33,.06);border:1px solid #8b7f5e;border-radius:2px;padding:9px 12px;outline:none}
-.tr-in:focus{border-color:var(--accent-cold,#4e7d87)}
-.tr-send{align-self:flex-end;font:inherit;font-size:14px;color:#f0ead8;background:var(--accent-cold,#4e7d87);border:none;border-radius:2px;padding:7px 16px;cursor:pointer;letter-spacing:2px;font-family:var(--kai)}
-.tr-send:hover{background:#5b8e99;color:#fff}
-.tr-hint{font-size:12px;color:rgba(110,101,73,.85);cursor:pointer}
-  .tr-hint:hover{color:#9e3a2b}
-.tr-done{font-size:14px;color:rgba(46,40,24,.9);padding:10px 4px;letter-spacing:1px}
+.tr-rule{font-size:13px;color:rgba(110,101,73,.9);letter-spacing:.1em}
+.tr-done{font-size:16px;color:rgba(46,40,24,.9);padding:10px 4px;letter-spacing:1px}
 
   /* —— 峰值拍（@peak，舞台合同 v1 首片）——回报拍专用，播种拍保持安静 —— */
   /* 死单拍：氛围压暗（#ambient 已有 filter 过渡）+ 回执朱砂化 + 戏中时间戳 */

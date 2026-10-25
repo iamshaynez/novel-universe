@@ -164,15 +164,22 @@ export function createApp({ db, games, webDir }) {
 
     if (req.method === 'GET' && a === 'games' && !b) {
       return json(res, 200, Object.values(games).map(g => ({
-        id: g.ir.id, code: g.ir.code, title: g.ir.title, subtitle: g.ir.subtitle,
+        id: g.ir.id, code: g.ir.code, title: g.ir.title, subtitle: g.ir.subtitle, hook: g.ir.hook,
         chapters: g.ir.chapters, endings: g.ir.endings,
       })));
     }
     if (req.method === 'GET' && a === 'games' && b && !c) {
       const g = games[b];
       if (!g) throw httpError(404, `游戏不存在 ${b}`);
-      return json(res, 200, { id: g.ir.id, code: g.ir.code, title: g.ir.title, subtitle: g.ir.subtitle,
+      return json(res, 200, { id: g.ir.id, code: g.ir.code, title: g.ir.title, subtitle: g.ir.subtitle, hook: g.ir.hook,
         chapters: g.ir.chapters, endings: g.ir.endings, ir: g.ir });
+    }
+    if (req.method === 'GET' && a === 'games' && b && c === 'endings') {
+      // 结局档案：用户 × 游戏级收集（标题页/结局卡回读入口，无需挂靠某个存档）
+      const g = games[b];
+      if (!g) throw httpError(404, `游戏不存在 ${b}`);
+      const user = requireUser(req);
+      return json(res, 200, listEndingsByGame(db, g.ir.id, user.id));
     }
     if (req.method === 'POST' && a === 'games' && b && c === 'saves') {
       const g = games[b];

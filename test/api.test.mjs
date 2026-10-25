@@ -18,11 +18,14 @@ before(async () => {
   base.url = `http://127.0.0.1:${server.address().port}`;
   base.server = server;
   base.db = db;
+  // 播放器 boot 合同：先 me 建立会话（游客），此后所有存档操作带 cookie
+  const boot = await fetch(base.url + '/api/auth/me');
+  base.sid = boot.headers.get('set-cookie').match(/nu_sid=([^;]+)/)[1];
 });
 after(() => { base.server.close(); base.db.close(); });
 
-const j = async (path, opts) => {
-  const res = await fetch(base.url + path, opts);
+const j = async (path, opts = {}) => {
+  const res = await fetch(base.url + path, { ...opts, headers: { ...opts.headers, Cookie: `nu_sid=${base.sid}` } });
   const body = await res.json().catch(() => ({}));
   return { status: res.status, body };
 };
@@ -92,8 +95,9 @@ describe('存档 API', () => {
     assert.equal(status, 404);
   });
 
-  it('结局收集是游戏级：两个存档各通一个结局，任一存档都能看到两个', async () => {
-    // 玩家的收集进度不该因为「再来一局」清零——那是收集型三结局的命根
+  it('结局收集是玩家级：同一用户两个存档各通一个结局，任一存档都能看到两个', async () => {
+    // 玩家的收集进度不该因为「再来一局」清零——那是收集型三结局的命根；
+    // 但收集范围是「用户 × 游戏」，跨用户不得串档（auth.test 另有隔离用例）
     const walk = async choices => {
       const start = await post('/api/games/g00-demo/saves', { player: 'collect' });
       let state = start.body.state, queue = [...choices], guard = 0;
@@ -127,5 +131,34 @@ describe('静态资源与安全', () => {
   it('路径穿越被拒', async () => {
     const res = await fetch(base.url + '/%2e%2e/%2e%2e/package.json');
     assert.ok([403, 404].includes(res.status));
+  });
+});
+
+describe('游戏元数据与结局档案', () => {
+  it('游戏列表与详情携带封面钩子 hook', async () => {
+    const list = await j('/api/games');
+    const g00 = list.body.find(g => g.id === 'g00-demo');
+    assert.equal(typeof g00.hook, 'string');
+    const detail = await j('/api/games/g00-demo');
+    assert.equal(detail.body.hook, g00.hook);
+  });
+
+  it('GET /api/games/:id/endings：无会话 401；有会话返回本人收集', async () => {
+    assert.equal((await fetch(base.url + '/api/games/g00-demo/endings')).status, 401);
+    const mine = await j('/api/games/g00-demo/endings');
+    assert.equal(mine.status, 200);
+    // 本套件先前的用例已用同一会话通到两个结局——玩家级聚合应原样可见
+    const ids = mine.body.map(e => e.ending_id);
+    assert.ok(ids.includes('END_WAIT') && ids.includes('END_TRUTH'), `应含先前收集，实际 ${ids}`);
+    assert.equal((await j('/api/games/nope/endings')).status, 404);
+  });
+});
+
+describe('图鉴：时代词条与人物档案', () => {
+  it('GET /api/games/:id/cards：无会话 401；入档跨存档持久（玩家级）', async () => {
+    assert.equal((await fetch(base.url + '/api/games/g00-demo/cards')).status, 401);
+    const mine = await j('/api/games/g00-demo/cards');
+    assert.equal(mine.status, 200);
+    assert.ok(mine.body.includes('char.momo'), '先前对局的人物自动入档应持久化');
   });
 });

@@ -1,5 +1,7 @@
 # ch1-rooftop
 @bg rooftop time=dusk
+@date 五月二十日 · 黄昏
+@card letter
 
 黄昏时分的旧校舍天台，风里混着铁锈和一点樱花的味道。
 口袋里那封匿名信已经被摩挲得发烫——「放学后，天台见。想解开十年前的事，就来。」
@@ -20,6 +22,7 @@
 
 # ch1-ask-past
 @fact ev-rooftop-2019
+@set card.momo.faces
 
 小桃：「十年前……你终于肯问了。」
 她的笑容一点点淡下去，像被云吃掉一半的太阳。

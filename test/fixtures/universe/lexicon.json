@@ -1,0 +1,22 @@
+{
+  "entries": [
+    {
+      "id": "letter",
+      "kind": "物件",
+      "name": "匿名信",
+      "aliases": [],
+      "kicker": "纸面时代的邀约",
+      "body": "没有落款的信。在手机尚未普及的年代，邀约与告白都靠邮筒递达——收信人无从回拨，只能赴约。",
+      "layer": "public"
+    },
+    {
+      "id": "future-rel",
+      "kind": "物件",
+      "name": "未来物",
+      "aliases": [],
+      "kicker": "x",
+      "body": "y",
+      "disclosed_in": "g99"
+    }
+  ]
+}

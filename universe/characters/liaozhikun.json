@@ -21,5 +21,21 @@
       "fact": "三个回电号都是他——号码两张脸，嗓子一张。",
       "revealed_in": "g01"
     }
-  ]
+  ],
+  "dossier": {
+    "masked_as": "他",
+    "name_unlock": "card.lzk.name",
+    "fields": [
+      {
+        "label": "号码的脸",
+        "text": "三个回电号，一张嗓子——号码两张脸，嗓子一张。",
+        "unlock": "card.lzk.oneman"
+      },
+      {
+        "label": "怕的事",
+        "text": "他怕自己的四句话连起来，成一张「教唆」的纸。人不是他推的，但话是他的。",
+        "unlock": "card.lzk.oneman"
+      }
+    ]
+  }
 }

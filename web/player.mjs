@@ -25,7 +25,7 @@ const api = {
 
 const app = {
   ir: null, saveId: null, gameId: null, user: null,
-  prev: { chapter: null, bgKey: null },
+  prev: { chapter: null, bgKey: null, date: null },
   met: new Set(), facts: new Set(), timelineBuilt: false, running: false,
   sheet: new Map(), // 转写底单：tid -> {caller, target}（本局回看）
   trByTid: new Map(), // tid -> 转写节点（证物拍/并轨拍的呈堂材料）
@@ -58,9 +58,9 @@ function peakRows(tids) {
 
 function resetRun() {
   app.gen++;
-  app.prev = { chapter: null, bgKey: null };
+  app.prev = { chapter: null, bgKey: null, date: null };
   app.met = new Set(); app.facts = new Set(); app.timelineBuilt = false; app.sheet.clear();
-  stage.reset(); stage.clearClues(); stage.clearAnchors();
+  stage.reset(); stage.clearClues(); stage.clearAnchors(); stage.clearDateLabel();
   $('#timeline').classList.remove('on');
   $('#chapterLabel').classList.remove('on');
   $('#sheetPanel').classList.remove('on');
@@ -69,16 +69,23 @@ function resetRun() {
 /** 渲染一个停点;返回下一停点状态(结局/选择后返回其状态),终局返回 null。 */
 async function renderBeat(s) {
   const gen = app.gen;
-  // 章节切换 → 清场 + 章节卡
+  // 章节切换 → 清场 + 章节卡（带本章起始日期——双时间线在章卡上就亮明年代）
   if (s.chapter !== app.prev.chapter) {
     const idx = Math.max(0, app.ir.chapters.findIndex(c => c.id === s.chapter));
     const ch = app.ir.chapters[idx];
     const num = CN[idx] ?? String(idx + 1);
     await stage.wipe();
-    await stage.chapterCard(`第${num}章`, ch.title);
+    await stage.chapterCard(`第${num}章`, ch.title, s.date ?? null);
     stage.setChapterLabel(`第${num}章 · ${ch.title}`);
+    if (s.date) { stage.setDateLabel(s.date); app.prev.date = s.date; } // 章卡已示日期，流内不再重复盖章
     app.prev.chapter = s.chapter;
     app.prev.bgKey = null;
+  }
+  // 章内时间跳变（@date 变更）→ HUD 罗盘换日 + 流内日期章：回拨/前跳都被钉在纸上
+  if (s.date && s.date !== app.prev.date) {
+    stage.setDateLabel(s.date);
+    await stage.dateLine(s.date);
+    app.prev.date = s.date;
   }
   // 地点或昼夜切换 → 氛围层 + 印章（白日/夜翻面本身是场景信号，同地点也要换）
   const bgId = s.view?.bg?.id ?? null;
@@ -246,18 +253,62 @@ async function openSaves() {
 // ---- HUD 按钮 ----
 $('#btnSaves').onclick = openSaves;
 // 底单回看：本局转写记录（悬疑玩家要翻回去对时间戳与号码）
+// 同频聚簇：同形声纹相邻并列——形状即线索，不标数字（播种层公平证据的回看强化）
 $('#btnSheet').onclick = () => {
   const panel = $('#sheetPanel'), list = $('#sheetList');
   const items = [...app.sheet.values()];
   list.innerHTML = items.length ? '' : '<div style="color:#6e6549;font-size:12px">还没有转写记录</div>';
+  const byHz = new Map(), groups = [];
   for (const it of items) {
-    const div = document.createElement('div');
-    div.className = 'tr-row';
-    div.innerHTML = `<span class="tr-row-caller">${it.caller ?? '呼入'}${it.hz ? Stage.waveChip(it.hz) : ''}</span><span class="tr-row-text">${stage.mark(it.target)}</span>`;
-    list.appendChild(div);
+    const k = it.hz ?? 0;
+    if (!byHz.has(k)) { byHz.set(k, []); groups.push(byHz.get(k)); }
+    byHz.get(k).push(it);
   }
+  groups.forEach((grp, gi) => {
+    if (gi > 0) { const sep = document.createElement('hr'); sep.className = 'tr-sep'; list.appendChild(sep); }
+    for (const it of grp) {
+      const div = document.createElement('div');
+      div.className = 'tr-row';
+      div.innerHTML = `<span class="tr-row-caller">${it.caller ?? '呼入'}${it.hz ? Stage.waveChip(it.hz) : ''}</span><span class="tr-row-text">${stage.mark(it.target)}</span>`;
+      list.appendChild(div);
+    }
+  });
   panel.classList.toggle('on');
 };
+
+// ---- 结局档案：已归档回读全文（IR 静态提取，不重跑舞台）；未归档只给暗示 ----
+function endingBody(eid) {
+  let id = app.ir.scenes[eid], out = '', guard = 0;
+  while (id && ++guard < 500) {
+    const n = app.ir.nodes[id];
+    if (!n || n.type === 'ending') break;
+    if (n.type === 'line') out += `<p>${n.speaker ? `<i>${n.speaker}：</i>` : ''}${stage.mark(n.text)}</p>`;
+    else if (n.type === 'transcribe') out += `<p class="end-tr">【转写】${n.caller ?? '呼入'}：${stage.mark(n.target)}</p>`;
+    id = n.next;
+  }
+  return out;
+}
+async function openEnds() {
+  if (!app.gameId) { stage.toast('先开始游戏'); return; }
+  const seen = await api.j(`/api/games/${app.gameId}/endings`).catch(() => []);
+  const seenIds = new Set(seen.map(e => e.ending_id));
+  const box = $('#endsList');
+  box.innerHTML = '';
+  for (const e of app.ir.endings) {
+    const div = document.createElement('div');
+    if (seenIds.has(e.id)) {
+      div.className = 'end-item';
+      div.innerHTML = `<div class="end-title">◆ ${e.title}</div><div class="end-body">${endingBody(e.id)}</div>`;
+    } else {
+      div.className = 'end-item locked';
+      div.innerHTML = `<div class="end-title">◇ 未归档</div><div class="end-hint">${e.hint ?? '——还没走到这一页'}</div>`;
+    }
+    box.appendChild(div);
+  }
+  $('#endsPanel').classList.toggle('on');
+}
+$('#btnEnds').onclick = openEnds;
+$('#btnEnds2').onclick = () => { $('#endcard').classList.remove('on'); openEnds(); };
 // 破坏性操作二次确认：第一次点击只亮「确认？」，2.5s 内再点才执行——防误触毁档
 function armConfirm(btn, fn) {
   btn.onclick = () => {
@@ -331,7 +382,7 @@ $('#apSubmit').onclick = async () => {
     const row = document.createElement('div');
     row.style.cssText = 'display:flex;gap:8px;align-items:center;justify-content:center';
     const b = document.createElement('button');
-    b.innerHTML = `${g.title}<span class="g-sub">${g.subtitle ?? ''}</span>`;
+    b.innerHTML = `${g.title}<span class="g-sub">${g.subtitle ?? ''}</span>${g.hook ? `<span class="g-hook">${g.hook}</span>` : ''}`;
     b.onclick = () => startGame(g.id);
     row.appendChild(b);
     // 「继续上次」：任何 reload/误触都不再是灾难——一键回到最近的进行中存档

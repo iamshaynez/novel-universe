@@ -133,3 +133,23 @@ describe('静态资源与安全', () => {
     assert.ok([403, 404].includes(res.status));
   });
 });
+
+describe('游戏元数据与结局档案', () => {
+  it('游戏列表与详情携带封面钩子 hook', async () => {
+    const list = await j('/api/games');
+    const g00 = list.body.find(g => g.id === 'g00-demo');
+    assert.equal(typeof g00.hook, 'string');
+    const detail = await j('/api/games/g00-demo');
+    assert.equal(detail.body.hook, g00.hook);
+  });
+
+  it('GET /api/games/:id/endings：无会话 401；有会话返回本人收集', async () => {
+    assert.equal((await fetch(base.url + '/api/games/g00-demo/endings')).status, 401);
+    const mine = await j('/api/games/g00-demo/endings');
+    assert.equal(mine.status, 200);
+    // 本套件先前的用例已用同一会话通到两个结局——玩家级聚合应原样可见
+    const ids = mine.body.map(e => e.ending_id);
+    assert.ok(ids.includes('END_WAIT') && ids.includes('END_TRUTH'), `应含先前收集，实际 ${ids}`);
+    assert.equal((await j('/api/games/nope/endings')).status, 404);
+  });
+});

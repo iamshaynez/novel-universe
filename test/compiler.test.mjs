@@ -205,3 +205,46 @@ describe('编译：错误路径', () => {
       'public 地点应进入 canon 块并携带 mood');
   });
 });
+
+describe('编译：@date 戏中日期（双时间线界面信号）', () => {
+  const { ir } = makeGame({
+    'chapters/ch1.md': [
+      '# a',
+      '@bg rooftop',
+      '@date 一九九九年 · 六月四日',
+      '六月的第一夜。',
+      '-> b',
+      '# b',
+      '@date 十一月三日',
+      '冬天的线索。',
+      '-> c',
+      '# c',
+      '仍是一一月三日。（继承）',
+      '== ending END_A A 线结局 | 孤证不敢拍上桌',
+    ].join('\n'),
+  }).compile();
+
+  it('@date 折送到停点并沿阅读顺序绝对化（继承直至改写）', () => {
+    assert.equal(ir.nodes[ir.scenes['a']].adate, '一九九九年 · 六月四日');
+    assert.equal(ir.nodes[ir.scenes['b']].adate, '十一月三日');
+    assert.equal(ir.nodes[ir.scenes['c']].adate, '十一月三日', '后续场景应继承最近一次 @date');
+  });
+
+  it('stateOf 透传 date 字段（引擎纯透传，演出归 web）', () => {
+    const run = { nodeId: ir.scenes['b'], flags: {}, affinity: {}, choiceLog: [], seed: 1, ended: null, trLog: {}, trMisses: {} };
+    assert.equal(stateOf(ir, run).date, '十一月三日');
+  });
+
+  it('结局行可选暗示（| 后文本），无暗示不产生字段', () => {
+    assert.equal(ir.endings.find(e => e.id === 'END_A').hint, '孤证不敢拍上桌');
+    const plain = makeGame({ 'chapters/ch1.md': '# a\n旁白。\n== ending END_B B 线结局\n' }).compile().ir;
+    assert.equal('hint' in plain.endings[0], false);
+  });
+
+  it('manifest.hook 透传进 IR（封面钩子文案）', () => {
+    const g = makeGame({ 'chapters/ch1.md': '# a\n旁白。\n== ending END_A A 线结局\n' }, m => ({ ...m, hook: '一座城市把秘密排进你的耳机。' }));
+    assert.equal(g.compile().ir.hook, '一座城市把秘密排进你的耳机。');
+    const noHook = makeGame({ 'chapters/ch1.md': '# a\n旁白。\n== ending END_A A 线结局\n' }).compile().ir;
+    assert.equal(noHook.hook, '', '缺省 hook 应为空串，不炸');
+  });
+});

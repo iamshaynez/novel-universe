@@ -18,8 +18,8 @@
     --sans:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
   }
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  html,body{height:100%}
-  body{background:var(--bg);color:var(--ink);font-family:var(--serif);overflow:hidden}
+  html,body{height:100%;overscroll-behavior:none}
+  body{position:fixed;inset:0;background:var(--bg);color:var(--ink);font-family:var(--serif);overflow:hidden}
   #stage{position:relative;height:100vh;overflow:hidden;user-select:none;
     -webkit-touch-callout:none;touch-action:manipulation}
   /* 档案室空气:全屏纸纹颗粒 + 暗角 */
@@ -300,6 +300,7 @@
 
   /* 侧面板统一交互（关闭钮/互斥/点外关闭见 player.mjs）：标题行 flex 让出关闭钮 */
   .sidepanel h3{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  #stage button.armed{border-color:var(--blood);color:#e8b8ae;background:#5a221a;letter-spacing:.1em}
   .pnl-x{flex:none;background:transparent;border:1px solid #9b8a65;border-radius:2px;color:#655c48;
     font:16px/1 var(--sans);padding:6px 12px;min-height:34px;min-width:34px;cursor:pointer;letter-spacing:0}
   .pnl-x:hover{border-color:var(--blood);color:var(--blood)}

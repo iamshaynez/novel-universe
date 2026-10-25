@@ -128,9 +128,26 @@ describe('静态资源与安全', () => {
     assert.match(res.headers.get('content-type'), /text\/html/);
   });
 
+  it('静态资源带 no-cache：部署后手机不得吃到过期缓存（footer 追踪的前提）', async () => {
+    const res = await fetch(base.url + '/');
+    assert.match(res.headers.get('cache-control') ?? '', /no-cache/i);
+  });
+
   it('路径穿越被拒', async () => {
     const res = await fetch(base.url + '/%2e%2e/%2e%2e/package.json');
     assert.ok([403, 404].includes(res.status));
+  });
+});
+
+describe('版本指纹（footer 部署追踪）', () => {
+  it('GET /api/version 返回版本、sha、起服与当前时间', async () => {
+    const { status, body } = await j('/api/version');
+    assert.equal(status, 200);
+    assert.match(body.version, /^\d+\.\d+\.\d+$/, 'semver 版本号');
+    assert.ok(typeof body.sha === 'string' && body.sha.length >= 4, 'sha 或其兜底');
+    assert.ok(!Number.isNaN(Date.parse(body.boot)), '起服时间可解析');
+    assert.ok(!Number.isNaN(Date.parse(body.now)), '服务器时间可解析');
+    assert.ok(Date.parse(body.boot) <= Date.parse(body.now), '起服不晚于当前');
   });
 });
 

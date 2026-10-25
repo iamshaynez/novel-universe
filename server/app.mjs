@@ -2,8 +2,10 @@
 // 设计：服务端驱动引擎（advance/choose 在服务端执行并落库），客户端只渲染状态。
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { extname, join, resolve as resolvePath } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { compileGame } from '../tools/compile-scenario.mjs';
 import { createRun, advance, choose, stateOf, loadRun, submitPick } from '../engine/state.mjs';
 import { validateGraph } from '../engine/graph.mjs';
@@ -16,6 +18,19 @@ import {
   SESSION_COOKIE, SESSION_TTL_SECONDS, newSessionToken, hashPassword, verifyPassword,
   credentialError, guestUsername, parseCookies, sessionCookie, clearSessionCookie,
 } from './auth.mjs';
+
+// ---- 版本指纹（footer 部署追踪）：package 版本 + git sha + 起服时刻。
+// sha 兜底链：env NU_SHA（Dockerfile ARG 注入）→ git（源码直跑）→ snapshot（无 .git 的镜像）。
+const BOOT_AT = new Date();
+const PKG_VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
+const detectSha = () => {
+  try {
+    return execFileSync('git', ['rev-parse', '--short=7', 'HEAD'], { cwd: fileURLToPath(new URL('..', import.meta.url)) }).toString().trim();
+  } catch {
+    return process.env.NU_SHA ?? 'snapshot';
+  }
+};
+const GIT_SHA = detectSha();
 
 export function loadGames(gamesRoot, universeDir) {
   const games = {};
@@ -70,7 +85,11 @@ export function createApp({ db, games, webDir }) {
     }
     if (!file || !existsSync(file)) throw httpError(404, `未找到 ${pathname}`);
     const data = await readFile(file);
-    res.writeHead(200, { 'Content-Type': MIME[extname(file)] ?? 'application/octet-stream' });
+    // 前端零打包直出：静态层一律 no-cache（每次回源），部署后手机不得吃到过期缓存
+    res.writeHead(200, {
+      'Content-Type': MIME[extname(file)] ?? 'application/octet-stream',
+      'Cache-Control': 'no-cache',
+    });
     res.end(data);
   }
 
@@ -119,6 +138,11 @@ export function createApp({ db, games, webDir }) {
 
   async function api(req, res, pathname, query) {
     const [,, a, b, c] = pathname.split('/'); // 跳过 '' 与 'api'
+
+    // ---- 版本指纹（无需会话）：footer 部署追踪 ----
+    if (req.method === 'GET' && a === 'version' && !b) {
+      return json(res, 200, { version: PKG_VERSION, sha: GIT_SHA, boot: BOOT_AT.toISOString(), now: new Date().toISOString() });
+    }
 
     // ---- 认证 ----
     if (req.method === 'GET' && a === 'auth' && b === 'me' && !c) {

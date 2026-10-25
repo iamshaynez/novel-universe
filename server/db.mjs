@@ -57,17 +57,55 @@ export function migrationStatus(db, migrationsDir) {
     .map(f => ({ file: f, applied: applied.has(parseInt(f.slice(0, 3), 10)) }));
 }
 
+// ---- 用户与会话 CRUD ----
+export function createUser(db, username, passwordHash) {
+  const r = db.prepare('INSERT INTO users(username, password_hash) VALUES (?, ?)')
+    .run(username, passwordHash ?? null);
+  return Number(r.lastInsertRowid);
+}
+export function getUserByName(db, username) {
+  return db.prepare('SELECT * FROM users WHERE username = ?').get(username) ?? null;
+}
+/** 游客升级/改名：保 user id，存档归属不动。 */
+export function setUserCredentials(db, id, username, passwordHash) {
+  db.prepare('UPDATE users SET username = ?, password_hash = ? WHERE id = ?')
+    .run(username, passwordHash, id);
+}
+/** 过期判定与续期都交给 SQLite 的 datetime('now')：与写入同一时钟，避免时区/格式错位。
+ *  ttlSeconds 为负表示直接造过期会话（测试用）。 */
+const ttlModifier = ttlSeconds => (ttlSeconds < 0 ? `${ttlSeconds}` : `+${ttlSeconds}`) + ' seconds';
+export function createSession(db, userId, token, ttlSeconds) {
+  db.prepare(`INSERT INTO sessions(token, user_id, expires_at) VALUES (?, ?, datetime('now', ?))`)
+    .run(token, userId, ttlModifier(ttlSeconds));
+}
+export function refreshSession(db, token, ttlSeconds) {
+  db.prepare(`UPDATE sessions SET expires_at = datetime('now', ?) WHERE token = ?`)
+    .run(ttlModifier(ttlSeconds), token);
+}
+export function getSessionUser(db, token) {
+  return db.prepare(`SELECT u.id AS id, u.username AS username, u.password_hash AS password_hash
+    FROM sessions s JOIN users u ON u.id = s.user_id
+    WHERE s.token = ? AND s.expires_at > datetime('now')`).get(token) ?? null;
+}
+export function deleteSession(db, token) {
+  db.prepare('DELETE FROM sessions WHERE token = ?').run(token);
+}
+export function purgeExpiredSessions(db) {
+  db.prepare(`DELETE FROM sessions WHERE expires_at <= datetime('now')`).run();
+}
+
 // ---- 存档 CRUD ----
-export function createSave(db, gameId, player, run) {
-  const r = db.prepare('INSERT INTO saves(game_id, player, node_id, run_json) VALUES (?, ?, ?, ?)')
-    .run(gameId, player ?? '无名', run.nodeId, JSON.stringify(run));
+export function createSave(db, gameId, player, run, userId = null) {
+  const r = db.prepare('INSERT INTO saves(game_id, player, node_id, run_json, user_id) VALUES (?, ?, ?, ?, ?)')
+    .run(gameId, player ?? '无名', run.nodeId, JSON.stringify(run), userId);
   return Number(r.lastInsertRowid);
 }
 export function getSave(db, id) {
   return db.prepare('SELECT * FROM saves WHERE id = ?').get(id) ?? null;
 }
-export function listSaves(db, gameId) {
-  return db.prepare('SELECT id, game_id, player, node_id, ended, created_at, updated_at FROM saves WHERE game_id = ? ORDER BY id DESC LIMIT 50').all(gameId);
+export function listSaves(db, gameId, userId) {
+  return db.prepare(`SELECT id, game_id, player, node_id, ended, created_at, updated_at
+    FROM saves WHERE game_id = ? AND user_id IS ? ORDER BY id DESC LIMIT 50`).all(gameId, userId);
 }
 export function updateSave(db, id, run) {
   db.prepare('UPDATE saves SET node_id = ?, run_json = ?, ended = ?, updated_at = datetime(\'now\') WHERE id = ?')
@@ -79,9 +117,21 @@ export function recordEnding(db, saveId, endingId) {
 export function listEndings(db, saveId) {
   return db.prepare('SELECT ending_id, seen_at FROM endings_seen WHERE save_id = ? ORDER BY seen_at').all(saveId);
 }
-/** 结局收集是游戏级：跨存档聚合（同一玩家的「再来一局」不清零收集）。 */
-export function listEndingsByGame(db, gameId) {
+/** 结局收集是玩家级：同一用户跨存档聚合（「再来一局」不清零收集），但不与其他用户串档。 */
+export function listEndingsByGame(db, gameId, userId) {
   return db.prepare(`SELECT es.ending_id AS ending_id, MIN(es.seen_at) AS seen_at
     FROM endings_seen es JOIN saves s ON s.id = es.save_id
-    WHERE s.game_id = ? GROUP BY es.ending_id ORDER BY seen_at`).all(gameId);
+    WHERE s.game_id = ? AND s.user_id IS ? GROUP BY es.ending_id ORDER BY seen_at`).all(gameId, userId);
+}
+
+// ---- 图鉴入档（时代词条 / 人物档案）：玩家级、跨存档幂等 ----
+/** 把 run.flags 里所有 card.* 键剥前缀落库（INSERT OR IGNORE 幂等）。 */
+export function recordCards(db, userId, gameId, flags) {
+  const keys = Object.keys(flags ?? {}).filter(k => k.startsWith('card.')).map(k => k.slice(5));
+  if (!keys.length) return;
+  const stmt = db.prepare('INSERT OR IGNORE INTO cards_seen(user_id, game_id, key) VALUES (?, ?, ?)');
+  for (const k of keys) stmt.run(userId, gameId, k);
+}
+export function listCards(db, userId, gameId) {
+  return db.prepare('SELECT key FROM cards_seen WHERE user_id = ? AND game_id = ?').all(userId, gameId).map(r => r.key);
 }

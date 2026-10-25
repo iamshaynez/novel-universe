@@ -91,6 +91,10 @@
     transition:opacity .7s ease,transform .7s ease,filter .7s ease}
   .ln.in{opacity:1;transform:none;filter:none}
   .ln.old1{opacity:.55}.ln.old2{opacity:.3}.ln.old3{opacity:.14}
+  /* 日期章（@date 章内跳变）：卷宗眉批——细线夹戏中日期，时间一换就钉一针 */
+  .ln.dline{display:flex;align-items:center;gap:1em;margin:.4em 0 .2em;
+    font-family:var(--kai);font-size:14px;letter-spacing:.34em;color:#8f8567}
+  .ln.dline i{flex:1;height:1px;background:linear-gradient(90deg,transparent,#8f856778,transparent)}
   /* 段落导语：每段首拍略放大加重——杂志排版的节奏头 */
   .ln.lead{font-size:1.08em;font-weight:600;letter-spacing:.12em;color:var(--ink-deep)}
   /* 跨拍引语块：纸上引文——楷体 + 朱线，连续拍连成一整段引文栏 */
@@ -120,6 +124,8 @@
   .eo{font-family:var(--kai);font-weight:600;color:var(--accent-ink);font-size:.94em;
     letter-spacing:.12em;padding:.02em .16em;margin:0 .05em;
     border-block:1px solid rgba(125,98,38,.55)}
+  /* 时代词条（ADR-006 图鉴）：淡墨点线——「这是个老词，卷宗里有它的档案」 */
+  .et{border-bottom:1px dotted rgba(51,46,33,.45);cursor:help}
   /* 关键信息（日期/时刻/号码）：dateline 数字块——无衬线 + 表格数字，字落后再着墨 */
   .ek{font-family:var(--sans);font-weight:700;color:var(--accent-ink);font-size:.92em;
     letter-spacing:.05em;font-variant-numeric:tabular-nums;
@@ -219,6 +225,8 @@
   .chcard .ch-bar{width:1px;height:24vh;background:linear-gradient(rgba(158,58,43,0),rgba(158,58,43,.6),rgba(158,58,43,0))}
   .chcard .ch-title{writing-mode:vertical-rl;font-family:var(--kai);
     font-size:clamp(16px,2.6vh,24px);letter-spacing:.55em;color:#6e6549}
+  .chcard .ch-date{writing-mode:vertical-rl;font-family:var(--kai);
+    font-size:12px;letter-spacing:.4em;color:#8f8567;opacity:.9}
   .chcard .ch-seal{display:flex;align-items:center;justify-content:center;
     width:44px;height:58px;border:2px solid var(--blood);color:var(--blood);
     font-family:var(--kai);font-size:26px;transform:rotate(-6deg);opacity:.8;
@@ -228,7 +236,10 @@
   #hud{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;
     padding:2.2vh 2.4vw;pointer-events:none;font-family:var(--sans);z-index:6}
   #hudL .uni{font-size:11px;letter-spacing:.32em;color:#a2956f}
-  #hudL .ch{font-size:13px;letter-spacing:.22em;color:var(--ink-dim);margin-top:.55em;opacity:0;transition:opacity 1.2s}
+  #hudL .dt{font-size:11px;letter-spacing:.3em;color:#c9a15f;margin-top:.45em;font-family:var(--kai);
+    opacity:0;transition:opacity 1.2s}
+  #hudL .dt.on{opacity:.92}
+  #hudL .ch{font-size:13px;letter-spacing:.22em;color:var(--ink-dim);margin-top:.4em;opacity:0;transition:opacity 1.2s}
   #hudL .ch.on{opacity:1}
   #hudR{display:flex;flex-direction:column;align-items:flex-end;gap:.55em}
   .bag{display:flex;align-items:center;gap:.6em;font-size:11px;color:#8f8567;letter-spacing:.22em;min-height:22px}
@@ -283,6 +294,7 @@
     transition:transform .2s,background .2s,box-shadow .2s}
   #gameList button:hover{background:#f2e8cc;transform:translateY(-2px);box-shadow:0 6px 18px rgba(20,15,8,.25);color:#2e2818}
   #gameList .g-sub{display:block;font-family:var(--sans);font-size:.55em;color:#7c704f;margin-top:.4em;letter-spacing:.2em}
+  #gameList .g-hook{display:block;font-family:var(--kai);font-size:.58em;color:#5d543e;margin-top:.55em;letter-spacing:.12em}
   .t-foot{font-family:var(--sans);color:#857a5b;font-size:11px;letter-spacing:.3em}
 
   /* 底单回看:抽屉里的转写纸带 */
@@ -295,6 +307,11 @@
   .tr-row{display:flex;gap:10px;padding:7px 4px;border-bottom:1px dashed rgba(124,112,79,.35);font-size:13px;align-items:baseline}
   .tr-row-caller{flex:none;color:#9e3a2b;font-family:var(--kai);letter-spacing:.1em}
   .tr-row-text{color:#2e2818}
+  /* 同频分组：底单回看按声纹聚簇——同形波相邻并列，形状即线索（不标数字，保播种公平） */
+  .tr-row .tr-wave{width:76px;height:18px;vertical-align:-4px}
+  .tr-sep{border:none;border-top:2px dashed rgba(158,58,43,.4);margin:4px 0}
+  .tr-note{font-size:11px;color:#8f8567;letter-spacing:.18em;margin:6px 0 2px;font-family:var(--kai)}
+  .tr-rule{font-size:11px;color:rgba(110,101,73,.9);letter-spacing:.1em}
 
   /* 存档:档案室抽屉里的纸片 */
   #savesPanel{position:absolute;right:2%;top:10%;width:min(360px,92vw);max-height:70%;overflow:auto;display:none;
@@ -306,6 +323,43 @@
   .save{padding:8px;border-radius:2px;cursor:pointer;font-size:13px;display:flex;justify-content:space-between;gap:8px;
     border-bottom:1px dashed rgba(124,112,79,.4)}
   .save:hover{background:rgba(124,112,79,.12)}
+
+  /* 图鉴:时代词条与人物档案的收集页（已入档可读，未入档悬影，案卷字段逐条解锁） */
+  #codexPanel{position:absolute;right:2%;top:10%;width:min(460px,92vw);max-height:74%;overflow:auto;display:none;
+    background:linear-gradient(150deg,#e9dcbd,#ddd0a9);border:1px solid #a8946a;border-radius:3px;padding:14px;z-index:21;
+    font-family:var(--sans);color:#2e2818;
+    box-shadow:0 24px 70px rgba(0,0,0,.7),inset 0 0 0 4px rgba(23,19,13,.10)}
+  #codexPanel.on{display:block}
+  #codexPanel h3{font-size:13px;color:#7c704f;margin:0 0 8px;letter-spacing:.28em;font-family:var(--kai)}
+  .cx-sec{font-size:11px;color:#9e3a2b;letter-spacing:.3em;margin:10px 0 4px;font-family:var(--kai);
+    border-bottom:1px solid rgba(158,58,43,.3);padding-bottom:3px}
+  .cx-item{border-bottom:1px dashed rgba(124,112,79,.35);padding:8px 2px}
+  .cx-name{font-family:var(--kai);font-size:16px;letter-spacing:.2em;font-weight:700;color:#2e2818}
+  .cx-item.ghost .cx-name{color:#8f8567;letter-spacing:.5em}
+  .cx-kicker{font-size:11px;color:#8f8567;letter-spacing:.18em;margin-top:2px}
+  .cx-body{font-family:var(--serif);font-size:13px;line-height:1.9;color:#332e21;margin-top:5px}
+  .cx-field{display:flex;gap:8px;font-size:12.5px;margin-top:5px;align-items:baseline}
+  .cx-field b{flex:none;font-family:var(--kai);color:#7c704f;font-weight:600}
+  .cx-field span{color:#332e21}
+  .cx-field.locked span{color:#a8946a;letter-spacing:.3em}
+  .cx-kind{display:inline-block;font-size:10px;color:#8f8567;border:1px solid #a8946a;border-radius:2px;
+    padding:0 .4em;margin-left:.5em;letter-spacing:.15em;vertical-align:2px}
+
+  /* 结局档案:已归档可回读全文,未归档只给暗示（收集引导，不泄内容） */
+  #endsPanel{position:absolute;right:2%;top:10%;width:min(460px,92vw);max-height:74%;overflow:auto;display:none;
+    background:linear-gradient(150deg,#e9dcbd,#ddd0a9);border:1px solid #a8946a;border-radius:3px;padding:14px;z-index:21;
+    font-family:var(--sans);color:#2e2818;
+    box-shadow:0 24px 70px rgba(0,0,0,.7),inset 0 0 0 4px rgba(23,19,13,.10)}
+  #endsPanel.on{display:block}
+  #endsPanel h3{font-size:13px;color:#7c704f;margin-bottom:10px;letter-spacing:.28em;font-family:var(--kai)}
+  .end-item{border-bottom:1px dashed rgba(124,112,79,.4);padding:10px 2px}
+  .end-title{font-family:var(--kai);font-size:16px;letter-spacing:.22em;color:#2e2818;font-weight:700}
+  .end-item.locked .end-title{color:#8f8567}
+  .end-hint{font-family:var(--kai);font-size:13px;color:#9e3a2b;letter-spacing:.08em;margin-top:6px}
+  .end-body{margin-top:8px;font-family:var(--serif);font-size:13px;line-height:1.95;color:#332e21}
+  .end-body p{margin:.1em 0}
+  .end-body i{font-style:normal;font-family:var(--kai);font-weight:700;margin-right:.6em}
+  .end-body .end-tr{color:#7c2f24;background:rgba(158,58,43,.06);padding:.15em .5em;margin:.2em 0}
 
   /* 结局:朱批结案 */
   #endcard{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
@@ -330,6 +384,34 @@
   .ec-btns button:hover{background:#87392c;border-color:#d49a6d;color:#f6e8c4}
   .ec-btns #btnBackTitle{background:transparent;border-color:#8d8063;color:#655c48}
   .ec-btns #btnBackTitle:hover{color:#2e2a20;background:#d9cba4}
+
+  /* 账籍:封面下缘的身份批注（游客可玩，注册留存进度） */
+  .t-auth{display:flex;align-items:center;gap:10px;justify-content:center;margin-top:1vh;
+    font-family:var(--sans);font-size:12px;color:#857a5b;letter-spacing:.14em}
+  .t-auth button{background:transparent;border:1px solid #9b8a65;border-radius:2px;color:#655c48;
+    padding:.35em 1em;font-size:12px;font-family:var(--kai);letter-spacing:.2em;cursor:pointer;
+    transition:color .2s,border-color .2s}
+  .t-auth button:hover{border-color:var(--blood);color:var(--blood)}
+  #authPanel{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    background:rgba(12,9,5,.84);opacity:0;pointer-events:none;transition:opacity .5s;z-index:23}
+  #authPanel.on{opacity:1;pointer-events:auto}
+  .ap-paper{position:relative;display:flex;flex-direction:column;align-items:center;
+    width:min(380px,92vw);padding:4vh 7vw 3.5vh;gap:1.6vh;
+    background:linear-gradient(150deg,#e9dcbd,#ddd0a9);
+    box-shadow:0 30px 90px rgba(0,0,0,.7),inset 0 0 0 4px rgba(23,19,13,.10),inset 0 0 0 5px rgba(168,148,106,.5)}
+  .ap-seal{display:flex;align-items:center;justify-content:center;width:44px;height:58px;
+    color:var(--blood);border:2px solid var(--blood);border-radius:3px;
+    font-family:var(--kai);font-size:28px;transform:rotate(-6deg);opacity:.85;
+    box-shadow:inset 0 0 0 1px rgba(158,58,43,.3)}
+  .ap-kicker{font-family:var(--kai);color:#7c704f;font-size:14px;letter-spacing:.32em}
+  .ap-in{width:100%;padding:.6em .8em;background:rgba(255,252,242,.5);border:1px solid #8b7f5e;
+    border-radius:2px;font:inherit;font-size:15px;color:#332e21;outline:none}
+  .ap-in:focus{border-color:var(--accent-cold)}
+  .ap-err{min-height:1.5em;font-size:12px;color:var(--blood);font-family:var(--sans);text-align:center}
+  .ap-btns{display:flex;gap:1em}
+  .ap-switch{font-size:12px;color:#7c704f;cursor:pointer;font-family:var(--sans);
+    text-decoration:underline dotted;text-underline-offset:4px}
+  .ap-switch:hover{color:var(--blood)}
 
   #toast{position:absolute;top:9%;left:50%;transform:translateX(-50%);
     background:#e9dcbd;border:1px solid #a8946a;border-left:3px solid var(--blood);border-radius:2px;
@@ -462,12 +544,15 @@
   <div id="hud">
     <div id="hudL">
       <div class="uni" id="worldLabel"></div>
+      <div class="dt" id="dateLabel"></div>
       <div class="ch" id="chapterLabel"></div>
     </div>
     <div id="hudR">
       <div class="bag"><span>证物</span><span class="chips" id="clues"></span></div>
       <div class="topbtns">
         <button id="btnSheet">底单</button>
+        <button id="btnEnds">结案</button>
+        <button id="btnCodex">图鉴</button>
         <button id="btnSaves">存档</button>
         <button id="btnRestart">重新开始</button>
         <button id="btnMute">♪ 音效</button>
@@ -487,11 +572,14 @@
       <h1>档 案 库</h1>
       <div class="t-rule"><i></i><span>卷</span><i></i></div>
       <div id="gameList"></div>
+      <div class="t-auth" id="authBar"></div>
       <div class="t-foot">灯下摊开的卷宗 · 点击与空格推进</div>
     </div>
   </div>
 
   <div id="savesPanel"><h3>读取存档</h3><div id="savesList"></div></div>
+  <div id="endsPanel"><h3>结案档案 · 已归档结局</h3><div id="endsList"></div></div>
+  <div id="codexPanel"><h3>卷宗图鉴 · 时代与人物</h3><div id="codexList"></div></div>
   <div id="sheetPanel"><h3>转写底单 · 本局</h3><div id="sheetList"></div></div>
 
   <div id="endcard">
@@ -503,8 +591,25 @@
       <div id="endCollected"></div>
       <div class="ec-btns">
         <button id="btnAgain">翻页重开</button>
+        <button id="btnEnds2">结案档案</button>
         <button id="btnBackTitle">回到封面</button>
       </div>
+    </div>
+  </div>
+
+  <div id="authPanel">
+    <div class="ap-paper">
+      <div class="ppgrain"></div>
+      <div class="ap-seal">籍</div>
+      <div class="ap-kicker" id="apTitle">注册 · 留存进度</div>
+      <input id="apUser" class="ap-in" placeholder="用户名（2-24 字）" autocomplete="username" maxlength="24">
+      <input id="apPass" class="ap-in" type="password" placeholder="密码（至少 8 位）" autocomplete="current-password">
+      <div class="ap-err" id="apErr"></div>
+      <div class="ap-btns">
+        <button id="apSubmit">立档</button>
+        <button id="apClose">取消</button>
+      </div>
+      <div class="ap-switch" id="apSwitch">已有档案？直接登录</div>
     </div>
   </div>
 

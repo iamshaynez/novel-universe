@@ -31,6 +31,7 @@ const app = {
   sheet: new Map(), // 转写底单：tid -> {caller, target}（本局回看）
   trByTid: new Map(), // tid -> 转写节点（证物拍/并轨拍的呈堂材料）
   gen: 0,           // 换代令牌：切档/重开时 +1，旧渲染循环立即退场，防止双驱动
+  forceUpdate: false, // 服务器指纹已变：最近的停点自动换版重载
 };
 
 /** IR 就绪时重建索引：转写节点按 tid 一张表（峰值拍的呈堂材料）。 */
@@ -209,6 +210,8 @@ async function runLoop(s0) {
   let s = s0;
   while (s) {
     if (gen !== app.gen) break; // 换幕/换档：旧循环退场
+    // 指纹哨兵落地：揭示不打断，拍与拍之间的停点换版（进度在服务端，无损）
+    if (app.forceUpdate && !stage.revealing) { reloadForUpdate(); return; }
     s = await renderBeat(s);
   }
   if (gen === app.gen) app.running = false;
@@ -489,15 +492,40 @@ $('#apSubmit').onclick = async () => {
 
 // ---- 版本指纹（footer 部署追踪）：v版本 · sha · 起服 · 服务器时间，30s 对时 ----
 // 看不到这条 = 浏览器还在吃旧缓存；时间不走 = 会话挂在旧实例上。
+// 指纹哨兵：本页所属指纹与轮询结果不一致 = 服务器已换版 → 强制换版
+//（局内等最近停点，不打断揭示；进度全在服务端，回来点「继续存档」即续）。
 const fmtClock = iso => {
   const d = new Date(iso), p = n => String(n).padStart(2, '0');
   return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 };
+const FP_RELOADED = 'nu.server.fp.reloaded';
+const fpOf = v => `${v.version}|${v.sha}|${v.boot}`;
+let fpBase = null; // 本页代码的出身指纹（页面生命周期内变量：每次加载重新认定，跨重载不残留）
+function reloadForUpdate() {
+  try { sessionStorage.setItem('nu.reload.cause', 'server-updated'); } catch { /* 静默 */ }
+  location.reload();
+}
+function armForceUpdate(fpNew) {
+  if (AUTO) return; // 冒烟不自戕
+  try {
+    if (sessionStorage.getItem(FP_RELOADED) === fpNew) return; // 此版已换过：防环
+    sessionStorage.setItem(FP_RELOADED, fpNew);
+  } catch { /* 静默 */ }
+  stage.toast('服务器已更新——即将自动载入新版');
+  if (!app.running && !$('#endcard').classList.contains('on')) {
+    setTimeout(reloadForUpdate, 800); // 封面/无局：直接换版（toast 露个脸）
+    return;
+  }
+  app.forceUpdate = true; // 局内/结案页：最近的停点换版
+  if (!stage.revealing) setTimeout(reloadForUpdate, 1200); // 已停在等待拍/选项：这里就是停点，就地换版
+}
 async function tickVtag() {
   const v = await api.j('/api/version').catch(() => null);
-  $('#vtag').textContent = v
-    ? `v${v.version} · ${v.sha} · 起 ${fmtClock(v.boot)} · 服务器 ${fmtClock(v.now)}`
-    : 'v? · /api/version 不可达';
+  if (!v) { $('#vtag').textContent = 'v? · /api/version 不可达'; return; }
+  $('#vtag').textContent = `v${v.version} · ${v.sha} · 起 ${fmtClock(v.boot)} · 服务器 ${fmtClock(v.now)}`;
+  const fp = fpOf(v);
+  if (fpBase === null) fpBase = fp; // 出身指纹：本页加载时服务器是谁
+  else if (fpBase !== fp) armForceUpdate(fp);
 }
 tickVtag();
 setInterval(tickVtag, 30000);
@@ -542,6 +570,7 @@ setInterval(tickVtag, 30000);
     try {
       const cause = sessionStorage.getItem('nu.reload.cause');
       if (cause === 'browser') { sessionStorage.removeItem('nu.reload.cause'); stage.toast('页面被浏览器刷新（下拉刷新/系统回收）——进度在存档里，点「继续存档」即可回来'); }
+      else if (cause === 'server-updated') { sessionStorage.removeItem('nu.reload.cause'); stage.toast('服务器已更新——已自动换到新版，点「继续存档」回到刚才的进度'); }
       else if (cause) { sessionStorage.removeItem('nu.reload.cause'); }
     } catch { /* 静默 */ }
   }

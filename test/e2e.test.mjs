@@ -24,15 +24,22 @@ before(async () => {
   await new Promise(r => server.listen(0, r));
   base.url = `http://127.0.0.1:${server.address().port}`;
   base.server = server; base.db = db;
+  const boot = await fetch(base.url + '/api/auth/me');
+  base.sid = boot.headers.get('set-cookie').match(/nu_sid=([^;]+)/)[1];
 });
 after(() => { base.server.close(); base.db.close(); });
 
+const cookie = () => ({ Cookie: `nu_sid=${base.sid}` });
 async function post(path, data) {
   const res = await fetch(base.url + path, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    method: 'POST', headers: { 'Content-Type': 'application/json', ...cookie() },
     body: JSON.stringify(data ?? {}),
   });
   return { status: res.status, body: await res.json() };
+}
+async function get(path) {
+  const res = await fetch(base.url + path, { headers: cookie() });
+  return res.json();
 }
 
 describe('e2e：g00《雨夜来信》全分支', () => {
@@ -65,12 +72,10 @@ describe('e2e：g00《雨夜来信》全分支', () => {
 
       assert.equal(state.endingId, route.ending, '结局应与静态枚举一致');
       // 结局落库
-      const res = await fetch(`${base.url}/api/saves/${saveId}/endings`);
-      const endings = await res.json();
+      const endings = await get(`/api/saves/${saveId}/endings`);
       assert.ok(endings.some(e => e.ending_id === route.ending), 'endings_seen 应登记');
       // 存档持久的 run 快照与该路径 flag 一致
-      const saveRes = await fetch(`${base.url}/api/saves/${saveId}`);
-      const save = await saveRes.json();
+      const save = await get(`/api/saves/${saveId}`);
       assert.equal(save.state.endingId, route.ending);
       for (const [k, v] of Object.entries(route.flags)) {
         assert.equal(save.state.flags[k], v, `flag ${k} 应持久化`);
@@ -156,8 +161,7 @@ describe('e2e：g01《接线员》', () => {
         }
       }
       assert.equal(state.endingId, e);
-      const saveRes = await fetch(`${base.url}/api/saves/${saveId}`);
-      const save = await saveRes.json();
+      const save = await get(`/api/saves/${saveId}`);
       const trFlags = Object.keys(save.state.flags).filter(k => k.startsWith('tr.'));
       assert.ok(trCount >= 8, `该线路转写应≥8 次，实际 ${trCount}`);
       assert.equal(trFlags.length, trCount, 'tr.* flag 应与转写次数一致并持久化');

@@ -331,6 +331,34 @@
   .ec-btns #btnBackTitle{background:transparent;border-color:#8d8063;color:#655c48}
   .ec-btns #btnBackTitle:hover{color:#2e2a20;background:#d9cba4}
 
+  /* 账籍:封面下缘的身份批注（游客可玩，注册留存进度） */
+  .t-auth{display:flex;align-items:center;gap:10px;justify-content:center;margin-top:1vh;
+    font-family:var(--sans);font-size:12px;color:#857a5b;letter-spacing:.14em}
+  .t-auth button{background:transparent;border:1px solid #9b8a65;border-radius:2px;color:#655c48;
+    padding:.35em 1em;font-size:12px;font-family:var(--kai);letter-spacing:.2em;cursor:pointer;
+    transition:color .2s,border-color .2s}
+  .t-auth button:hover{border-color:var(--blood);color:var(--blood)}
+  #authPanel{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    background:rgba(12,9,5,.84);opacity:0;pointer-events:none;transition:opacity .5s;z-index:23}
+  #authPanel.on{opacity:1;pointer-events:auto}
+  .ap-paper{position:relative;display:flex;flex-direction:column;align-items:center;
+    width:min(380px,92vw);padding:4vh 7vw 3.5vh;gap:1.6vh;
+    background:linear-gradient(150deg,#e9dcbd,#ddd0a9);
+    box-shadow:0 30px 90px rgba(0,0,0,.7),inset 0 0 0 4px rgba(23,19,13,.10),inset 0 0 0 5px rgba(168,148,106,.5)}
+  .ap-seal{display:flex;align-items:center;justify-content:center;width:44px;height:58px;
+    color:var(--blood);border:2px solid var(--blood);border-radius:3px;
+    font-family:var(--kai);font-size:28px;transform:rotate(-6deg);opacity:.85;
+    box-shadow:inset 0 0 0 1px rgba(158,58,43,.3)}
+  .ap-kicker{font-family:var(--kai);color:#7c704f;font-size:14px;letter-spacing:.32em}
+  .ap-in{width:100%;padding:.6em .8em;background:rgba(255,252,242,.5);border:1px solid #8b7f5e;
+    border-radius:2px;font:inherit;font-size:15px;color:#332e21;outline:none}
+  .ap-in:focus{border-color:var(--accent-cold)}
+  .ap-err{min-height:1.5em;font-size:12px;color:var(--blood);font-family:var(--sans);text-align:center}
+  .ap-btns{display:flex;gap:1em}
+  .ap-switch{font-size:12px;color:#7c704f;cursor:pointer;font-family:var(--sans);
+    text-decoration:underline dotted;text-underline-offset:4px}
+  .ap-switch:hover{color:var(--blood)}
+
   #toast{position:absolute;top:9%;left:50%;transform:translateX(-50%);
     background:#e9dcbd;border:1px solid #a8946a;border-left:3px solid var(--blood);border-radius:2px;
     padding:6px 18px;font-size:13px;font-family:var(--sans);color:#2e2818;
@@ -487,6 +515,7 @@
       <h1>档 案 库</h1>
       <div class="t-rule"><i></i><span>卷</span><i></i></div>
       <div id="gameList"></div>
+      <div class="t-auth" id="authBar"></div>
       <div class="t-foot">灯下摊开的卷宗 · 点击与空格推进</div>
     </div>
   </div>
@@ -505,6 +534,22 @@
         <button id="btnAgain">翻页重开</button>
         <button id="btnBackTitle">回到封面</button>
       </div>
+    </div>
+  </div>
+
+  <div id="authPanel">
+    <div class="ap-paper">
+      <div class="ppgrain"></div>
+      <div class="ap-seal">籍</div>
+      <div class="ap-kicker" id="apTitle">注册 · 留存进度</div>
+      <input id="apUser" class="ap-in" placeholder="用户名（2-24 字）" autocomplete="username" maxlength="24">
+      <input id="apPass" class="ap-in" type="password" placeholder="密码（至少 8 位）" autocomplete="current-password">
+      <div class="ap-err" id="apErr"></div>
+      <div class="ap-btns">
+        <button id="apSubmit">立档</button>
+        <button id="apClose">取消</button>
+      </div>
+      <div class="ap-switch" id="apSwitch">已有档案？直接登录</div>
     </div>
   </div>
 

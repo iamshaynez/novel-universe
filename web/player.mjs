@@ -24,7 +24,7 @@ const api = {
 };
 
 const app = {
-  ir: null, saveId: null, gameId: null,
+  ir: null, saveId: null, gameId: null, user: null,
   prev: { chapter: null, bgKey: null },
   met: new Set(), facts: new Set(), timelineBuilt: false, running: false,
   sheet: new Map(), // 转写底单：tid -> {caller, target}（本局回看）
@@ -205,7 +205,7 @@ async function startGame(gameId) {
   app.ir = info.ir; app.gameId = gameId;
   stage.setLexicon(app.ir); // 行内签名词典随 IR 重建（ADR-005）
   indexIr();
-  const r = await api.post(`/api/games/${gameId}/saves`, { player: '玩家' });
+  const r = await api.post(`/api/games/${gameId}/saves`); // player 缺省=服务端取会话用户名
   app.saveId = r.saveId;
   $('#title').style.display = 'none';
   $('#endcard').classList.remove('on');
@@ -283,8 +283,49 @@ $('#btnMute').onclick = e => {
 };
 document.addEventListener('pointerdown', () => audio.ensure(), { once: true });
 
+// ---- 账籍（游客优先：boot 的 me 自动发游客会话；注册=游客补录凭据，进度归属不动）----
+const authMode = { now: 'register' }; // register | login
+function renderAuthBar() {
+  const bar = $('#authBar');
+  if (!app.user) { bar.innerHTML = ''; return; }
+  // 用户名经服务端字符白名单校验（文字/数字/._-），不含标记字符，innerHTML 安全
+  bar.innerHTML = app.user.guest
+    ? `<span>游客进度仅存本机</span><button id="btnAuth">注册留存</button>`
+    : `<span>档案 · ${app.user.username}</span><button id="btnLogout">退出</button>`;
+  if (app.user.guest) $('#btnAuth').onclick = () => openAuth('register');
+  else $('#btnLogout').onclick = async () => { await api.post('/api/auth/logout'); location.reload(); };
+}
+function openAuth(mode) {
+  authMode.now = mode;
+  $('#apTitle').textContent = mode === 'register' ? '注册 · 留存进度' : '登录 · 调取档案';
+  $('#apSubmit').textContent = mode === 'register' ? '立档' : '登录';
+  $('#apSwitch').textContent = mode === 'register' ? '已有档案？直接登录' : '还没有档案？注册一个';
+  $('#apErr').textContent = '';
+  $('#apPass').value = '';
+  $('#authPanel').classList.add('on');
+  $('#apUser').focus();
+}
+$('#apClose').onclick = () => $('#authPanel').classList.remove('on');
+$('#authPanel').onclick = e => { if (e.target.id === 'authPanel') $('#authPanel').classList.remove('on'); };
+$('#apSwitch').onclick = () => openAuth(authMode.now === 'register' ? 'login' : 'register');
+$('#apPass').onkeydown = e => { if (e.key === 'Enter') $('#apSubmit').click(); };
+$('#apSubmit').onclick = async () => {
+  try {
+    const r = await api.post(`/api/auth/${authMode.now}`, {
+      username: $('#apUser').value.trim(), password: $('#apPass').value,
+    });
+    app.user = r.user;
+    stage.toast(authMode.now === 'register' ? `已立档：${r.user.username}，进度已留存` : `档案调取：${r.user.username}`);
+    $('#authPanel').classList.remove('on');
+    renderAuthBar();
+  } catch (e) { $('#apErr').textContent = e.message; }
+};
+
 // ---- 启动:标题页游戏列表;?auto=1 冒烟 ----
 (async () => {
+  const me = await api.j('/api/auth/me'); // 播放器 boot 合同：先立会话，存档从此有归属
+  app.user = me.user;
+  renderAuthBar();
   const games = await api.j('/api/games');
   for (const g of games) {
     const row = document.createElement('div');

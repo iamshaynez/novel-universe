@@ -219,7 +219,8 @@ async function showEnding(s) {
   $('#endTitle').textContent = s.title;
   $('#endCollected').innerHTML = `已收集结局 ${seen.length}/${app.ir.endings.length}` +
     (names.length ? `<br>${names.join(' · ')}` : '');
-  $('#endcard').classList.add('on');
+  $('#endcard').classList.add('on', 'settle'); // 安静期：整局养成的连点惯性不得当场命中「回到封面」
+  setTimeout(() => $('#endcard').classList.remove('settle'), 1200);
 }
 
 async function startGame(gameId) {
@@ -435,7 +436,7 @@ function armConfirm(btn, fn) {
 armConfirm($('#btnRestart'), () => app.gameId && startGame(app.gameId));
 armConfirm($('#btnTitle'), () => location.reload());
 $('#btnAgain').onclick = () => startGame(app.gameId);
-$('#btnBackTitle').onclick = () => location.reload();
+armConfirm($('#btnBackTitle'), () => location.reload()); // 回到封面=重载：与「标题」同级的二次确认
 $('#btnMute').onclick = e => {
   audio.muted = !audio.muted;
   e.currentTarget.textContent = audio.muted ? '♪ 已静' : '♪ 音效';

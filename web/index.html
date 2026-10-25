@@ -297,6 +297,12 @@
   #gameList .g-hook{display:block;font-family:var(--kai);font-size:.58em;color:#5d543e;margin-top:.55em;letter-spacing:.12em}
   .t-foot{font-family:var(--sans);color:#857a5b;font-size:11px;letter-spacing:.3em}
 
+  /* 侧面板统一交互（关闭钮/互斥/点外关闭见 player.mjs）：标题行 flex 让出关闭钮 */
+  .sidepanel h3{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .pnl-x{flex:none;background:transparent;border:1px solid #9b8a65;border-radius:2px;color:#655c48;
+    font:16px/1 var(--sans);padding:2px 8px;cursor:pointer;letter-spacing:0}
+  .pnl-x:hover{border-color:var(--blood);color:var(--blood)}
+
   /* 底单回看:抽屉里的转写纸带 */
   #sheetPanel{position:absolute;right:2%;top:10%;width:min(400px,92vw);max-height:70%;overflow:auto;display:none;
     background:linear-gradient(150deg,#e9dcbd,#ddd0a9);border:1px solid #a8946a;border-radius:3px;padding:14px;z-index:21;
@@ -577,10 +583,10 @@
     </div>
   </div>
 
-  <div id="savesPanel"><h3>读取存档</h3><div id="savesList"></div></div>
-  <div id="endsPanel"><h3>结案档案 · 已归档结局</h3><div id="endsList"></div></div>
-  <div id="codexPanel"><h3>卷宗图鉴 · 时代与人物</h3><div id="codexList"></div></div>
-  <div id="sheetPanel"><h3>转写底单 · 本局</h3><div id="sheetList"></div></div>
+  <div id="savesPanel" class="sidepanel"><h3>读取存档<button class="pnl-x" aria-label="关闭">×</button></h3><div id="savesList"></div></div>
+  <div id="endsPanel" class="sidepanel"><h3>结案档案 · 已归档结局<button class="pnl-x" aria-label="关闭">×</button></h3><div id="endsList"></div></div>
+  <div id="codexPanel" class="sidepanel"><h3>卷宗图鉴 · 时代与人物<button class="pnl-x" aria-label="关闭">×</button></h3><div id="codexList"></div></div>
+  <div id="sheetPanel" class="sidepanel"><h3>转写底单 · 本局<button class="pnl-x" aria-label="关闭">×</button></h3><div id="sheetList"></div></div>
 
   <div id="endcard">
     <div class="ec-paper">

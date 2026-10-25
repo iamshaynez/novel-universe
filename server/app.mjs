@@ -1,7 +1,7 @@
 // HTTP 应用：静态资源 + 游戏 API。node:http 原生，零依赖。
 // 设计：服务端驱动引擎（advance/choose 在服务端执行并落库），客户端只渲染状态。
 import { createServer } from 'node:http';
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { extname, join, resolve as resolvePath } from 'node:path';
@@ -76,7 +76,7 @@ async function readBody(req) {
 }
 
 export function createApp({ db, games, webDir }) {
-  async function serveStatic(res, pathname) {
+  async function serveStatic(res, pathname, req) {
     let file = null;
     if (pathname === '/') file = join(webDir, 'index.html');
     else {
@@ -84,11 +84,19 @@ export function createApp({ db, games, webDir }) {
       if (!file.startsWith(resolvePath(webDir))) throw httpError(403, '路径越界');
     }
     if (!file || !existsSync(file)) throw httpError(404, `未找到 ${pathname}`);
+    // no-cache = 每次回源校验（部署必达手机）；ETag/304 让校验零成本。
+    // 前端零打包直出，静态层绝不给可过期的宽限。
+    const st = await stat(file);
+    const etag = `"${st.size}-${Math.round(st.mtimeMs)}"`;
+    if (req?.headers?.['if-none-match'] === etag) {
+      res.writeHead(304, { ETag: etag, 'Cache-Control': 'no-cache' });
+      return res.end();
+    }
     const data = await readFile(file);
-    // 前端零打包直出：静态层一律 no-cache（每次回源），部署后手机不得吃到过期缓存
     res.writeHead(200, {
       'Content-Type': MIME[extname(file)] ?? 'application/octet-stream',
       'Cache-Control': 'no-cache',
+      ETag: etag,
     });
     res.end(data);
   }
@@ -282,7 +290,7 @@ export function createApp({ db, games, webDir }) {
     const pathname = decodeURIComponent(url.pathname);
     try {
       if (pathname.startsWith('/api/')) return await api(req, res, pathname, url.searchParams);
-      return await serveStatic(res, pathname);
+      return await serveStatic(res, pathname, req);
     } catch (e) {
       json(res, e.status ?? 500, { error: e.message });
     }

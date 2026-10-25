@@ -215,6 +215,7 @@ export class Stage {
         c.appendChild(d);
         setTimeout(() => d.classList.add('in'), 500 + i * 400);
       });
+      this.relayout(); // 卡是空壳入卷的：填满选项后补一次重排，末项不得被锚点甩出屏
     });
   }
 
@@ -249,6 +250,7 @@ export class Stage {
         c.appendChild(d); els.push(d);
         setTimeout(() => d.classList.add('in'), 400 + i * 400);
       });
+      this.relayout(); // 卡是空壳入卷的：填满候选后补一次重排，第三项不得被锚点甩出屏外
       if (this.auto) {
         const ai = options.indexOf(target);
         setTimeout(() => pick(ai >= 0 ? ai : 0), this.fast ? 50 : 1200);

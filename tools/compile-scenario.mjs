@@ -43,7 +43,7 @@ function parseKV(toks) {
 
 function parseChapter(text, ch) {
   const nodes = {}, order = [], scenes = {}, endings = [];
-  let pendingLabels = [], pendingView = {}, pendingEnter = [], pendingPeak = null;
+  let pendingLabels = [], pendingView = {}, pendingEnter = [], pendingPeak = null, pendingDate = null;
   let prevId = null, afterChoice = false, currentScene = null, ctr = 0;
   const nid = () => `${ch.id}-n${++ctr}`;
 
@@ -62,7 +62,8 @@ function parseChapter(text, ch) {
     if (Object.keys(pendingView).length) node.view = { ...pendingView };
     if (pendingEnter.length) node.enter = [...pendingEnter];
     if (pendingPeak) node.peak = pendingPeak;
-    pendingView = {}; pendingEnter = []; pendingPeak = null;
+    if (pendingDate) node.date = pendingDate;
+    pendingView = {}; pendingEnter = []; pendingPeak = null; pendingDate = null;
     if (prevId) nodes[prevId].next = node.id;
     nodes[node.id] = node;
     order.push(node.id);
@@ -113,6 +114,12 @@ function parseChapter(text, ch) {
         if (!toks[0]) throw new Error(`${ch.id}: @peak 缺少 kind`);
         pendingPeak = { kind: toks[0], args: toks.slice(1).join(',').split(',').map(s => s.trim()).filter(Boolean) };
       }
+      else if (cmd === 'date') {
+        // @date <戏中日期文本>（双时间线界面信号）：折叠到下一停点，沿阅读顺序绝对化（adate）。
+        // 章内时间跳变由 HUD 日期行与流内日期章呈现，剧本仍零演出标注（ADR-003 增补）。
+        if (!rest.trim()) throw new Error(`${ch.id}: @date 缺少日期文本`);
+        pendingDate = rest.trim();
+      }
       else if (cmd === 'transcribe') {
         // @transcribe <id> caller=<呼入方> target=<留言文本> —— 转写是带提交语义的停点节点
         if (!toks[0]) throw new Error(`${ch.id}: @transcribe 缺少 id`);
@@ -130,10 +137,12 @@ function parseChapter(text, ch) {
     }
 
     if (line.startsWith('== ending')) {
-      const m = line.match(/^== ending ([A-Za-z0-9_]+)\s*(.*)$/);
+      // == ending <ID> <标题> [| <暗示>]：暗示供结局档案面板的未归档提示（收集引导，不泄结局内容）
+      const m = line.match(/^== ending ([A-Za-z0-9_]+)\s*([^|]*?)\s*(?:\|\s*(.+))?$/);
       if (!m) throw new Error(`${ch.id}: 结局行语法错误: ${line}`);
-      attach({ type: 'ending', endingId: m[1], title: m[2] || m[1] });
-      endings.push({ id: m[1], title: m[2] || m[1] });
+      const [, eid, title, hint] = m;
+      attach({ type: 'ending', endingId: eid, title: title || eid });
+      endings.push({ id: eid, title: title || eid, ...(hint ? { hint } : {}) });
       continue;
     }
 
@@ -179,12 +188,14 @@ export function compileGame(gameDir, universeDir) {
     if (n.type === 'jump') n.goto = resolveTarget(n.goto);
   }
 
-  // 视图绝对化：沿创作（阅读）顺序滚动合并；读档幂等重渲染
-  let running = {};
+  // 视图/日期绝对化：沿创作（阅读）顺序滚动合并；读档幂等重渲染
+  let running = {}, runningDate = null;
   for (const id of order) {
     const n = nodes[id];
     if (n.view) running = { ...running, ...n.view };
     n.aview = { ...running };
+    if (n.date) runningDate = n.date;
+    n.adate = runningDate;
   }
 
   // 说话者 / 角色登记（文字舞台：角色以台词登场，声线与站位来自正典）
@@ -243,6 +254,7 @@ export function compileGame(gameDir, universeDir) {
   const ir = {
     id: manifest.id, code: manifest.code, title: manifest.title,
     subtitle: manifest.subtitle ?? '',
+    hook: manifest.hook ?? '',
     chapters: manifest.chapters.map(c => ({ id: c.id, title: c.title })),
     entry: results[0].entry,
     nodes, scenes,

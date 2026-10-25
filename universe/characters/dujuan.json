@@ -14,5 +14,14 @@
   "first_appearance": "g01",
   "universe_role": "g01 白班同事——话密的活字典，K4 证词载体。",
   "bio_public": "锦声传呼台白班接线员，记性好，爱带叶儿粑。",
-  "bio_secret": []
+  "bio_secret": [],
+  "dossier": {
+    "fields": [
+      {
+        "label": "行规",
+        "text": "「耳朵头过的话，百分之九十九莫得意义。」——剩下的百分之一，她请你吃茶叶蛋。",
+        "unlock": "card.dj.percent"
+      }
+    ]
+  }
 }

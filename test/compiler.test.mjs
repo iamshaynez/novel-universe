@@ -248,3 +248,35 @@ describe('编译：@date 戏中日期（双时间线界面信号）', () => {
     assert.equal(noHook.hook, '', '缺省 hook 应为空串，不炸');
   });
 });
+
+describe('编译：时代词条与人物案卷（图鉴）', () => {
+  const { ir } = compileGame(fixtureGame, fixtureUniverse);
+
+  it('canon 块携带纪元过滤后的时代词条（public 直通；别作私有不得进）', () => {
+    assert.ok(ir.canon.lexicon.some(e => e.id === 'letter' && e.body.length > 10));
+    assert.ok(!ir.canon.lexicon.some(e => e.id === 'future-rel'), 'disclosed_in 他作的词条不得进本作 canon 块');
+  });
+
+  it('@card 编译为入档 flag card.<id>；未知词条编译错', () => {
+    const node = ir.nodes[ir.scenes['ch1-rooftop']];
+    assert.ok(node.enter.some(op => op.op === 'flag' && op.name === 'card.letter'));
+    const bad = makeGame({ 'chapters/ch1.md': '# a\n@card nope\n旁白。\n== ending END_A A 线结局\n' });
+    assert.throws(bad.compile, /@card 未知词条/);
+  });
+
+  it('人物首次说话自动入档 card.char.<id>（与声纹卡同拍）', () => {
+    const first = Object.values(ir.nodes).find(n => n.scene === 'ch1-rooftop' && n.type === 'line' && n.speaker === '小桃');
+    assert.ok(first?.enter?.some(op => op.op === 'flag' && op.name === 'card.char.momo'), '小桃开口首拍应自动入档');
+    const earlier = ir.nodes[ir.scenes['ch1-rooftop']]; // 场景首拍是旁白：不该有人物入档
+    assert.ok(!earlier.enter.some(op => op.name?.startsWith('card.char.')), '旁白拍不得提前入档');
+  });
+
+  it('dossier 随 canon 人物透传；unlock 悬空（本作从不置位）编译错', () => {
+    const momo = ir.canon.characters.find(c => c.id === 'momo');
+    assert.ok(momo.dossier?.fields?.length >= 1, 'dossier 应随 canon 块透传');
+    const dangling = makeGame({
+      'chapters/ch1.md': '# a\n小桃：「你好。」\n== ending END_A A 线结局\n',
+    }, m => ({ ...m, code: 'g00' }));
+    assert.throws(dangling.compile, /悬空/, 'unlock flag 未在本作任何 @set/@card 置位应编译失败');
+  });
+});

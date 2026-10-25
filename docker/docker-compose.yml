@@ -1,8 +1,10 @@
 # gb-test 服务器 /opt/apps/novel-universe/docker-compose.yml 的版本化副本——改动两处同步。
-# 服务器布局：/opt/apps/novel-universe/{docker-compose.yml, deploy.sh, data/}
+# 服务器布局：/opt/apps/novel-universe/{docker-compose.yml, build.sh, deploy.sh, .env, data/}
 # 镜像来自阿里云 ACR（与 app41 同实例，命名空间 xiaowenz）。
-# 服务器侧需 docker login 该 ACR 一次（compose pull 用，凭据与 CI 推送相同）。
-# 主机端口 18090（避开 app41 的 18083）；CF 侧 chengdu.xiaowenz.com → 源站 127.0.0.1:18090。
+# 接入层：openresty 反代 chengdu.xiaowenz.com → 容器名 novel-universe:3000，
+# 经共享 apps 网络（本文件底部 networks 段完成接入）；CF 当前 Flexible（回源 80），
+# 源站 443 块与 le.crt SAN 已备好，随时可切 Full(strict)。
+# 本机 18090 端口保留作运维/冒烟后门（deploy.sh 冒烟即打它）。
 services:
   novel:
     image: ${ACR_REGISTRY}/xiaowenz/novel-universe:main
@@ -10,7 +12,7 @@ services:
     init: true
     restart: unless-stopped
     ports:
-      - "127.0.0.1:18090:3000"   # 只绑回环：对外一律走 CF，不直接暴露公网
+      - "127.0.0.1:18090:3000"   # 只绑回环：对外一律走 openresty/CF，不直接暴露公网
     environment:
       PORT: "3000"
       DB_PATH: /data/novel.db
@@ -23,3 +25,9 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
+
+# 接入层：与 openresty（1Panel）共享 apps 网络，nginx 以容器名反代
+networks:
+  default:
+    name: apps
+    external: true

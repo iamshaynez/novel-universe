@@ -48,6 +48,7 @@ export class Stage {
     this.revealing = false;
     this.fast = false;
     this.pendingGate = null;
+    this.epoch = 0;   // 纪元令牌：reset 即换代——演出中途切档，旧循环不得再碰共享状态
     this.rngSeed = 2049;
     this.lex = buildLexicon({}); // 空词典兜底：IR 加载前只标数字与引语
     this._bindGesture();
@@ -173,6 +174,7 @@ export class Stage {
   }
 
   async tell(text) {
+    const ep = this.epoch;
     this.revealing = true;
     const segs = segment(text);
     for (let i = 0; i < segs.length; i++) {
@@ -181,10 +183,12 @@ export class Stage {
       this._append((i === 0 ? 'lead' : '') + (p.q ? ' qb' : ''), this.mark(p.text));
       this.audio.narr((this._rnd() - .5) * .06);
       await this.pause(Stage.pauseOf(p.text, false));
+      if (ep !== this.epoch) return; // 已切档/重开：旧循环就地退场，gate/揭示状态归新主
     }
     this.revealing = false; this.fast = false;
   }
   async say(name, text, { theme = 'var(--accent)', hz = 218, dir = 'r', split = false } = {}) {
+    const ep = this.epoch;
     this.revealing = true;
     const who = inkify(theme);
     // 分身拍（你→她）：首拍签条中性墨起笔、个体色慢渗入——代词分裂在排版层可见
@@ -199,6 +203,7 @@ export class Stage {
       first = false;
       this.audio.blip(hz);
       await this.pause(Stage.pauseOf(p.text, true));
+      if (ep !== this.epoch) return;
     }
     this.revealing = false; this.fast = false;
   }
@@ -266,6 +271,7 @@ export class Stage {
   /** 内声拍：全游戏唯一「带声音的叙述行」——叙述首次携带声纹（玩家自己的声线），
    *  浓墨底带慢入场。身份揭秘那一拍，心里的话第一次有了 Hz。 */
   async tellInner(text, hz) {
+    const ep = this.epoch;
     this.revealing = true;
     const segs = segment(text);
     for (let i = 0; i < segs.length; i++) {
@@ -279,6 +285,7 @@ export class Stage {
         setTimeout(() => this.audio.blip(hz), this.fast ? 40 : 340);
       } else this.audio.narr((this._rnd() - .5) * .06);
       await this.pause(Math.round(Stage.pauseOf(p.text, false) * 1.25));
+      if (ep !== this.epoch) return;
     }
     this.revealing = false; this.fast = false;
   }
@@ -286,6 +293,7 @@ export class Stage {
   /** 证物拍：玩家自己转过的底单并排成案——caller · 手描声纹 · Hz · 留言，
    *  相同声纹依次点亮朱砂。Hz 数字只在回报拍出现（播种拍只给形状）。 */
   async desk(rows) {
+    const ep = this.epoch;
     const w = document.createElement('div');
     w.className = 'desk';
     w.innerHTML = `<div class="desk-kicker">证物 · 并排连线</div>` +
@@ -294,20 +302,25 @@ export class Stage {
         `<span class="desk-hz">${r.hz}<i>Hz</i></span><span class="desk-text">${this.mark(r.target)}</span></div>`).join('');
     this.root.appendChild(w);
     await sleep(this.auto ? 60 : 420);
+    if (ep !== this.epoch) return w.remove();
     w.querySelectorAll('.desk-row').forEach((row, i) =>
       setTimeout(() => row.classList.add('in'), this.auto ? 0 : 240 * i));
     await sleep(this.auto ? 60 : 240 * rows.length + 400);
+    if (ep !== this.epoch) return w.remove();
     w.querySelectorAll('.desk-wave').forEach((sv, i) =>
       setTimeout(() => sv.classList.add('same'), this.auto ? 0 : 170 * i));
     await sleep(this.auto ? 60 : 170 * rows.length + 1600);
+    if (ep !== this.epoch) return w.remove();
     w.style.opacity = '0';
     await sleep(this.auto ? 30 : 700);
+    if (ep !== this.epoch) return w.remove();
     w.remove();
   }
 
   /** 并轨拍：四条呼入波形从四角滑入、叠合成一根——「四声一模一样」的视觉证明。
    *  四声 blip 收敛为一声；随后「他」的遮罩声纹卡与这根波同形。 */
   async collapse(rows) {
+    const ep = this.epoch;
     const hz = rows[0]?.hz ?? 96;
     const w = document.createElement('div');
     w.className = 'coll';
@@ -315,47 +328,64 @@ export class Stage {
       `<svg class="coll-wave p${i}" viewBox="0 0 180 36"><path d="${Stage.voiceprint(r.hz)}"/></svg>`).join('') +
       `<svg class="coll-wave one" viewBox="0 0 180 36"><path d="${Stage.voiceprint(hz)}"/></svg>`;
     this.root.appendChild(w);
-    for (let i = 0; i < rows.length; i++) { this.audio.blip(rows[i].hz); await sleep(this.auto ? 30 : 320); }
+    for (let i = 0; i < rows.length; i++) {
+      this.audio.blip(rows[i].hz);
+      await sleep(this.auto ? 30 : 320);
+      if (ep !== this.epoch) return w.remove();
+    }
     await sleep(this.auto ? 30 : 380);
+    if (ep !== this.epoch) return w.remove();
     w.classList.add('merge');
     await sleep(this.auto ? 30 : 950);
+    if (ep !== this.epoch) return w.remove();
     w.classList.add('merged');
     this.audio.blip(hz);
     await sleep(this.auto ? 60 : 1700);
+    if (ep !== this.epoch) return w.remove();
     w.style.opacity = '0';
     await sleep(this.auto ? 30 : 600);
+    if (ep !== this.epoch) return w.remove();
     w.remove();
   }
 
   /** 复键拍：一个词键出 → 朱线划除 → 重打——「最该停下来的半秒钟」。 */
   async retype(word) {
+    const ep = this.epoch;
     const w = document.createElement('div');
     w.className = 'rt';
     w.innerHTML = `<span class="rt-key a">${word}</span>`;
     this.root.appendChild(w);
     await sleep(this.auto ? 30 : 320);
+    if (ep !== this.epoch) return w.remove();
     const a = w.querySelector('.a');
     a.classList.add('in'); this.audio.narr(.04);
     await sleep(this.auto ? 30 : 620);
+    if (ep !== this.epoch) return w.remove();
     a.classList.add('cut'); this.audio.narr(-.03);
     await sleep(this.auto ? 30 : 700);
+    if (ep !== this.epoch) return w.remove();
     const b = document.createElement('span');
     b.className = 'rt-key b'; b.textContent = word;
     w.appendChild(b); reflow(b); b.classList.add('in'); this.audio.narr(.06);
     await sleep(this.auto ? 30 : 950);
+    if (ep !== this.epoch) return w.remove();
     w.style.opacity = '0';
     await sleep(this.auto ? 30 : 500);
+    if (ep !== this.epoch) return w.remove();
     w.remove();
   }
 
   async wipe() {
+    const ep = this.epoch;
     this.flow.style.opacity = '0';
     await sleep(this.auto ? 60 : 900);
+    if (ep !== this.epoch) return; // 换代：清场由接管的 reset 完成
     this.reset();
     this.flow.style.opacity = '1';
     await sleep(this.auto ? 0 : 250);
   }
   reset() {
+    this.epoch++;  // 换代令牌：所有在途演出循环在下一个 await 边界就地退场
     this.flow.innerHTML = ''; this.lines.length = 0; this.off = 0; this.panY = 0;
     this.flow.style.transform = 'translate(-50%, 0)';
     // 瞬态舞台层（印章/声纹卡/章节卡/峰值拍）挂在 #stage 根上，换幕必须一并清场——
@@ -393,6 +423,7 @@ export class Stage {
     return `<svg class="tr-wave" viewBox="0 0 96 20" aria-hidden="true"><path d="${Stage.voiceprint(hz, 96, 20)}"/></svg>`;
   }
   async charCard({ name, hz, side, theme, bio }) {
+    const ep = this.epoch;
     const ink = inkify(theme);
     const card = document.createElement('div');
     card.className = `charcard ${side === 'l' ? 'l' : 'r'}`;
@@ -407,12 +438,14 @@ export class Stage {
     p.style.transition = 'stroke-dashoffset 1s ease .25s'; p.style.strokeDashoffset = '0';
     this.audio.blip(hz);
     await sleep(this.auto ? 60 : 1400);
+    if (ep !== this.epoch) card.remove(); // 切档：卡随旧幕退场（reset 的兜底清场之外的在途卡）
     return card;
   }
   dismissCard(card) { if (card) { card.classList.remove('on'); setTimeout(() => card.remove(), 900); } }
 
   // ---------- 地点:印章 + 氛围层 ----------
   async seal(name, caption) {
+    const ep = this.epoch;
     // 同屏只允许一枚印章：切换中的残留一律先撤
     this.root.querySelectorAll('.sealwrap').forEach(w => w.remove());
     const parts = name.split('·').map(s => s.trim()).filter(Boolean);
@@ -421,12 +454,16 @@ export class Stage {
     w.innerHTML = `<div class="seal">${lines.join('<br>')}</div><div class="seal-cap">${caption}</div>`;
     this.root.appendChild(w);
     await sleep(this.auto ? 60 : 550);
+    if (ep !== this.epoch) return w.remove();
     w.querySelector('.seal').classList.add('in'); this.audio.stamp();
     await sleep(this.auto ? 60 : 650);
+    if (ep !== this.epoch) return w.remove();
     w.querySelector('.seal-cap').classList.add('in');
     await this.gate();
+    if (ep !== this.epoch) return w.remove(); // 切档瞬间停在 gate：残留即撤，不得劫持新幕
     w.style.opacity = '0';
     await sleep(this.auto ? 60 : 800);
+    if (ep !== this.epoch) return w.remove();
     w.remove();
   }
 
@@ -512,16 +549,20 @@ export class Stage {
   }
   clearClues() { $('#clues').innerHTML = ''; }
   async chapterCard(numText, title, date = null) {
+    const ep = this.epoch;
     const w = document.createElement('div');
     w.className = 'chcard';
     w.innerHTML = `<div class="ch-num">${numText}</div><div class="ch-bar"></div>
       <div class="ch-title">${title}</div>${date ? `<div class="ch-date">${date}</div>` : ''}<div class="ch-seal">章</div>`;
     this.root.appendChild(w);
     await sleep(this.auto ? 60 : 400);
+    if (ep !== this.epoch) return w.remove();
     w.style.opacity = '1';
     await sleep(this.auto ? 400 : 2700);
+    if (ep !== this.epoch) return w.remove();
     w.style.opacity = '0';
     await sleep(this.auto ? 60 : 650);
+    if (ep !== this.epoch) return w.remove();
     w.remove();
   }
   setChapterLabel(text) {

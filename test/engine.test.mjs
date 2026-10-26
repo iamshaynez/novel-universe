@@ -151,6 +151,7 @@ describe('场景：转写交互（g01）', () => {
     assert.equal(st(byTid('t3')).caller_char, 'liaozhikun', '陈先生 → 廖志坤');
     assert.equal(st(byTid('t4')).caller_char, 'liaozhikun', '刘先生 → 廖志坤');
     assert.equal(st(byTid('t9')).caller_char, 'liaozhikun', '终章前最后一条 → 廖志坤');
+    assert.equal(st(byTid('t10')).caller_char, 'liaozhikun', 'E3 新号 → 廖志坤（第三个回电号，同一嗓子：声纹形状不得说谎）');
     assert.equal(st(byTid('t1')).caller_char, null, '张嬢嬢刻意无档');
   });
 

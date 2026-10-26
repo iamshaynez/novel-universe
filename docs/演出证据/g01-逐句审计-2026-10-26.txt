@@ -1,0 +1,80 @@
+g01《接线员》逐句审计与叙事连续性修订证据
+日期：2026-10-26 · 分支 fix/g01-narrative-audit · canon 0.13.0
+
+一、修订范围与验收口径
+
+1. 保留五章、双「你」、非他杀道德悬疑、三结局及转写/底单/轻咳/「就这样」母题。
+   未新增依赖，未改 disclosed_in / first_appearance / assumes，未改引擎或播放器逻辑。
+2. 逐句处理：同月相对日期、22:00—08:00 夜班、22:47 邀约争辩、E3 白班时间、
+   双「你」知识边界、青禾主体性、借条/担保、原件/手抄本/底稿/汇总纸/复印件物品流、
+   无副本上交反馈、结局 HUD 日期与舞台昼夜、重复解释与后置修辞。
+3. 旧「上个月」「十一点动身」「三百二由苏晚无来源说出」「E3 深夜」等口径已移除。
+   青禾出门后的路线与落水经过保持未确证，不追加凶手。
+4. storyline/接线员-小说脚本/02、03 已标为 v1 历史档案；
+   storyline/1A 与 01-结构与预算 已更新到现版真相及 v3 实测合同。
+
+二、TDD 与全量门
+
+- 新增 test/g01-narrative.test.mjs：首批 10 个场景在旧版 0 pass / 10 fail（红测证据）。
+- 逐句复核追加座席数量、夜班连续时间、时间轴依赖及 HUD 昼夜断言，现共 15 个场景全绿。
+- 真实引擎逐条回放 2160 条选项路线，逐条核对转写、选择、结局及旗标，非仅静态枚举。
+- npm test：207/207 全绿。
+- npm run verify：[PASS] g01-jiexianyuan，结局 E1/E2/E3，路径 2160 条。
+- npm run migrate:status：001/002/003 全 applied，迁移已是最新；本次无 schema 变更。
+- 设定集 web/canon.html 已重建，漂移守卫通过。
+
+三、确定性代表路线（seed=7；停点序列含正文、选项、日期与舞台时间）
+
+E1-锁柜上交：
+  choices 0→0→0→0→0→0→0→0；转写 9；步数 339
+  trace md5 3b9edc7ad015ed2ba427dc66c83ac154
+  flags can_indict + copy_locker + evidence_submitted
+
+E2-杜鹃副本烧掉：
+  choices 0→0→0→0→0→1→0→1；转写 9；步数 339
+  trace md5 06fda69e2c565ff91888f800298e5ac7
+  flags can_indict + copy_dj + copies_resolved + evidence_burned
+
+E2-无副本尝试后烧掉：
+  choices 0→0→0→0→0→2→0→0→0；转写 9；步数 348
+  trace md5 c12dd5b4c08ab7dd9bf2689e6346b80b
+  flags no_copy + indict_attempted + copies_resolved + evidence_burned
+
+E3-锁柜交易：
+  choices 0→0→0→0→0→0→0→2；转写 10；步数 339
+  trace md5 2499f874f21d7b64d3496c6b1827fce3
+  flags can_indict + copy_locker + copies_resolved + evidence_surrendered
+
+四路线汇总 combined md5：e9db627c1fac95af043b3065655e88c7
+设定集 web/canon.html md5：e611b0a2a491f8db90fb2068f349a1ec
+
+四、真实浏览器证据
+
+1) g01-逐句审计-E3夏季白天转写.png
+   存档 #109；t10 实际 state.date=二〇〇〇年 · 夏，view.bg.params.time=day。
+   画面确认夏季 HUD、白日舞台及新号三候选转写同时成立。
+   png md5 5134150b37c79f8d7db35d897a653096
+
+2) g01-逐句审计-无副本上交反馈.png
+   存档 #107；no_copy + indict_attempted。
+   画面确认「只有这一份原件？」、唯一原始底单不能当场脱手，以及烧掉/交易后续选择。
+   png md5 5fac985432ef21680b1349d313420548
+
+3) g01-逐句审计-杜鹃副本回收.png
+   存档 #108；copy_dj + copies_resolved。
+   画面确认苏晚从杜鹃饭盒取回复印件后才进入 E2 焚烧段。
+   png md5 e83dc72ce864ddd05e608347d5a9e472
+
+五、现版数据
+
+- 正文与选项汉字 7409（不含 DSL 指令、场景 id、结局登记；含分支差分）。
+- 选择节点 9；转写节点 10（E1/E2 经历 9 次，E3 经历 10 次）。
+- 路径：E1 432、E2 864、E3 864，共 2160。
+- 关键旗标：copy_locker / copy_dj / no_copy / can_indict / indict_attempted /
+  copies_resolved / evidence_submitted / evidence_burned / evidence_surrendered。
+
+六、明确保留的限制
+
+- 转写仍是「当前原句 + 历史留言」的文字选择题，不是自由打字、听辨或节奏操作。
+- 调查选择仍主要提供短差分后合流；底单与图鉴可回看，但尚未形成玩家主动连线、指认和推理验证系统。
+- 本轮修复的是文本、视角、因果、证物、结局反馈及其回归合同，不据此宣称作品已自动成为优秀互动推理游戏。

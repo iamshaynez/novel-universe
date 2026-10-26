@@ -126,7 +126,10 @@ describe('e2e：g01《接线员》', () => {
     const e1Routes = routes.filter(r => r.ending === 'E1');
     assert.ok(e1Routes.length > 0);
     for (const r of e1Routes) assert.ok(r.flags.can_indict, 'E1 路径应带 can_indict');
-    for (const r of routes.filter(r => r.ending !== 'E1')) assert.ok(!r.flags.can_indict || true); // 恒真占位：can_indict 只来自 R4a/b
+    for (const r of routes) {
+      if (r.flags.no_copy) assert.notEqual(r.ending, 'E1', '无副本的尝试不得直接成为完整 E1');
+      if (r.flags.copy_locker || r.flags.copy_dj) assert.ok(r.flags.can_indict, '安全副本应解锁 E1');
+    }
   });
 
   // 三个结局各取一条代表路径，走真实 HTTP（转写停点自动提交 target）

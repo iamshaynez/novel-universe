@@ -53,6 +53,28 @@ describe('build-wiki：设定集页面', () => {
     }
   });
 
+  it('剧集人物独立成区，且全员扩展档案（背景/动机/性格/语气/故事线）渲染出来', () => {
+    assert.ok(html.includes('剧集人物'), '缺剧集人物区');
+    assert.ok(html.indexOf('宇宙级隐藏人物') < html.indexOf('剧集人物'), '宇宙级原型应排在剧集人物前');
+    for (const label of ['背景', '动机', '性格', '语气', '故事线']) {
+      assert.ok(html.includes(`<dt>${label}</dt>`), `人物卡缺扩展档案字段 ${label}`);
+    }
+    for (const f of readdirSync(join(root, 'universe/characters')).filter(f => f.endsWith('.json'))) {
+      const c = JSON.parse(readFileSync(join(root, 'universe/characters', f), 'utf8'));
+      assert.ok(html.includes(c.name), `缺人物 ${c.name}`);
+      assert.ok(html.includes(c.profile.speech.sample.slice(0, 8)), `${c.id} 示例台词未渲染`);
+    }
+  });
+
+  it('引子登记簿区：每条引子的名称、埋设作与状态出现', () => {
+    const seeds = JSON.parse(readFileSync(join(root, 'universe/seeds.json'), 'utf8')).seeds;
+    assert.ok(html.includes('引子登记簿'), '缺引子登记簿区');
+    for (const s of seeds) {
+      assert.ok(html.includes(s.name), `缺引子 ${s.name}`);
+      assert.ok(html.includes(`埋于 ${s.planted_in}`), `${s.id} 缺埋设作标注`);
+    }
+  });
+
   it('漂移守卫：已提交的 web/canon.html 与当前正典构建一致', () => {
     const committed = readFileSync(join(root, 'web/canon.html'), 'utf8');
     assert.equal(committed, html, 'canon.html 过期：请运行 npm run build:wiki 重新构建');

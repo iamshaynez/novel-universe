@@ -1,7 +1,7 @@
 {
   "name": "锦江悬疑宇宙",
   "world": "成都",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "epoch": "g01",
   "released_games": [
     "g01"
@@ -19,9 +19,24 @@
     "atlas": "universe/atlas.json · 水系/片区/走廊与变迁（含 geo 坐标）",
     "locations": "universe/locations/*.json · 17 个（15 公共 + 2 私有：传呼台/河音，随 g01 出道）",
     "orgs": "universe/orgs/*.json · 9 个真实机构企业（信息层，暂无 DSL 引用通道）",
-    "characters": "universe/characters/*.json · 14 位（6 位宇宙级原型人物[class:universe] + 8 位 g01 剧集人物[class:cast]）",
+    "characters": "universe/characters/*.json · 14 位（6 位宇宙级原型人物[class:universe] + 8 位 g01 剧集人物[class:cast]）；全员带扩展档案 profile{background,motive,temperament,speech,arc}（背景/动机/性格/语气/故事线），cast 同样带 persona_anchors",
     "map": "universe/map.json · 年代地图册：定位层(中轴/环线/POI) + 六阶段城市快照（WGS-84 街区级精度）",
-    "hearts": "universe/hearts.json · 3 颗心脏事件（六千点[主]/非典之春/足球纪元[储备]）——或然结局载体，历史不可改写、人心分支"
+    "hearts": "universe/hearts.json · 3 颗心脏事件（六千点[主]/非典之春/足球纪元[储备]）——或然结局载体，历史不可改写、人心分支",
+    "seeds": "universe/seeds.json · 引子登记簿：已发行作品正文里埋下、尚未兑付的叙事线头（planted_in/shown/truth/points_to/status/constraints）。后续作品引用前先查此簿；兑付后标 paid"
   },
-  "notes": "宇宙名为暂名，终名待定（见 docs/宇宙-成都-v0.md 待决清单）。真实城市+真实年代；无超自然为当前创作约束。公共层（真实历史/真实地点）免剧透纪元；私有层（虚构事件/虚构地点/人物秘密）须 disclosed_in/first_appearance ∈ assumes ∪ {本作}。"
+  "conventions": {
+    "first_appearance": "人物/地点的 first_appearance 是纪元可用性标记——自该作起可被引用，不等于在该作实际登场。实际登场以剧本中的说话者（line）或转写呼入者（transcribe）为准。g01 的六位宇宙级原型中，仅向启以氛围方式露面（ch1 提及、E1 灯箱），其余五位标 g01 只表示「自 g01 纪元起可引用」。",
+    "voice_kinship": "声线 voice_hz 与主题色 stage.theme 允许跨人物复用，复用即构成「声纹亲缘」，是设计约定而非撞车：廖志坤↔蔡峰（96 Hz · #e0523f，递话人是处理人网络伸到台前的手）、老金↔向启（128 Hz）；五对色系亲缘 苏晚↔向启 / 贺青禾↔潇文 / 杜鹃↔崔涛 / 秦姐↔王磊 / 廖志坤↔蔡峰（每位剧集人物各有一位原型人物的影子）。硬约束：同频人物不得在同一作品中同场出声，除非「听声误认」本身是公平线索且案卷可回溯；不得为消除撞频改动已发行作品人物的 voice_hz（会改变离线渲染校验）。详见 seeds.json「同一把嗓子」。",
+    "uncredited_voices": "刻意无档的呼入者（张嬢嬢及其子、小柯、罗老三、房东嬢嬢、戴电子表的年轻人）留在剧本层，不在 universe/characters 建档。编译器对解析不到的 transcribe caller 显式置 null，一旦建档即改变 IR 的声纹绑定与图鉴入档，等于改写已发行作品。若后续作品需要他们开口（line），以兑付作为 first_appearance 新建档案，不回填 g01。",
+    "or_endings": {
+      "g01": {
+        "status": "或然 · 未钉死",
+        "rule": "历史不可改写，人心分支：贺青禾坠河（ev-g01-heqinghe）与最后一条留言（ev-g01-message）在三支结局中皆为既定事实，不可改写；三支结局只改变苏晚、廖志坤、老金、老彭四人在事件之后的位置与命运。后续作品引用 g01 人物时，须在立项提案里声明假设哪一支（或明确写法兼容三支），并在 game.json 的 assumes 中含 g01。",
+        "E1": "上交 —— 案子重启，廖志坤网上追逃（广州或北站绿皮车，去向未定），老金记大过，苏晚辞职回电大读会计，杜鹃知情，秦姐描新字条、《告别》成非卖品。约束：老彭经历了结错案被翻，盘口线在茶馆后头断掉。",
+        "E2": "烧掉 —— 1999-10-26 底单与转写底稿在物理上不存在；廖志坤带走他的一半，自问「都该拦」；苏晚多干半年夜班，不再点铅笔点，2000 年底台并掉。约束：世界上没有任何纸证明那一晚，所有知情止于两人。",
+        "E3": "交易 —— 两半底单被廖志坤卷走，苏晚转白班，2000 年夏为新号呼 6688-31 发出「钱放老地方」。约束：苏晚成为递话链条一环，是三支中唯一让她「入行」的支线（见 seeds「这一行缺人」）。"
+      }
+    }
+  },
+  "notes": "宇宙名为暂名，终名待定（见 docs/宇宙-成都-v0.md 待决清单）。真实城市+真实年代；无超自然为当前创作约束。公共层（真实历史/真实地点）免剧透纪元；私有层（虚构事件/虚构地点/人物秘密）须 disclosed_in/first_appearance ∈ assumes ∪ {本作}。0.12.0：新增 seeds 引子登记簿、conventions 正典约定、全员 profile 扩展档案（minor：只增字段，不改含义）。"
 }

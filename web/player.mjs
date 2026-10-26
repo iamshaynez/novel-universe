@@ -71,6 +71,7 @@ function resetRun() {
 /** 渲染一个停点;返回下一停点状态(结局/选择后返回其状态),终局返回 null。 */
 async function renderBeat(s) {
   const gen = app.gen;
+  const dead = () => gen !== app.gen; // 切档/重开令牌：舞台层只保演出干净，推进权归新代
   // 章节切换 → 清场 + 章节卡（带本章起始日期——双时间线在章卡上就亮明年代）
   if (s.chapter !== app.prev.chapter) {
     const idx = Math.max(0, app.ir.chapters.findIndex(c => c.id === s.chapter));
@@ -78,6 +79,7 @@ async function renderBeat(s) {
     const num = CN[idx] ?? String(idx + 1);
     await stage.wipe();
     await stage.chapterCard(`第${num}章`, ch.title, s.date ?? null);
+    if (dead()) return null; // 卡播到一半被切档：不再触碰新幕
     stage.setChapterLabel(`第${num}章 · ${ch.title}`);
     if (s.date) { stage.setDateLabel(s.date); app.prev.date = s.date; } // 章卡已示日期，流内不再重复盖章
     app.prev.chapter = s.chapter;
@@ -87,6 +89,7 @@ async function renderBeat(s) {
   if (s.date && s.date !== app.prev.date) {
     stage.setDateLabel(s.date);
     await stage.dateLine(s.date);
+    if (dead()) return null;
     app.prev.date = s.date;
   }
   // 地点或昼夜切换 → 氛围层 + 印章（白日/夜翻面本身是场景信号，同地点也要换）
@@ -98,6 +101,7 @@ async function renderBeat(s) {
     const time = ({ day: '白日', dusk: '黄昏', night: '夜' })[bgTime];
     stage.setAmbient(bgId, loc?.mood ?? {}, s.view.bg.params ?? {});
     if (loc) await stage.seal(loc.name, app.ir.canon.world + (time ? ` · ${time}` : ''));
+    if (dead()) return null; // 旧幕的印章等完：新档已接管，旧循环不得再往新舞台渲染
     app.prev.bgKey = bgKey;
   }
   // 正典事实差分 → 时间轴点亮 + 线索解锁
@@ -136,6 +140,7 @@ async function renderBeat(s) {
   if (peak?.kind === 'desk') await stage.desk(peakRows(peak.args));
   if (peak?.kind === 'collapse') await stage.collapse(peakRows(peak.args));
   if (peak?.kind === 'retype') await stage.retype(peak.args[0] ?? '……');
+  if (dead()) return null; // 峰值演出中切档：新幕不被旧拍污染
 
   if (s.kind === 'line') {
     let card = null;
@@ -150,6 +155,7 @@ async function renderBeat(s) {
       if (c && !app.met.has(c.id)) {
         app.met.add(c.id);
         card = await stage.charCard({ name: masked ? s.speaker : c.name, hz, side, theme, bio: masked ? '' : c.bio_public });
+        if (dead()) { stage.dismissCard(card); return null; }
       }
       if (c) stage.setAnchor(masked ? s.speaker : c.name, side, theme);
       await stage.say(s.speaker, s.text, { theme, hz, dir: side, split: peak?.kind === 'split' });

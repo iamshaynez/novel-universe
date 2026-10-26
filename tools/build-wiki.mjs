@@ -2,7 +2,7 @@
 // 地点图案 = 文字舞台演出词汇（ADR-004）：氛围层调色板 + 印章 + 大字 + 雨意。
 // 运行：npm run build:wiki（产物提交入库；漂移守卫见 test/build-wiki.test.mjs）。
 import { createHash } from 'node:crypto';
-import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { readFileSync, readdirSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname, resolve as resolvePath } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -80,6 +80,16 @@ export function buildWikiHtml(universeDir) {
   .heart .status{font-size:12px;color:var(--blood);letter-spacing:1px}
   .heart .cycle{color:#6e6549;font-size:13px;margin:4px 0}
   .heart .cf{display:inline-block;border:1px solid #a8946a;color:#4a4232;font-size:12px;padding:1px 9px;margin:4px 4px 0 0;background:rgba(255,252,242,.4)}
+  .char .sample{color:#4a4232;font-size:13px;font-family:var(--kai);margin-top:4px}
+  .seed{border:1px solid #a8946a;border-left:4px solid var(--cold);margin-bottom:18px;padding:12px 16px;background:linear-gradient(150deg,#e9dcbd,#ddd0a9);
+    box-shadow:inset 0 0 0 4px rgba(23,19,13,.1);color:#2e2818}
+  .seed.paid{border-left-color:#6e6549;opacity:.75}
+  .seed h3{margin:0 0 2px;font-size:17px;font-family:var(--kai);letter-spacing:2px}
+  .seed .status{font-size:12px;color:var(--cold);letter-spacing:1px}
+  .seed .cycle{color:#6e6549;font-size:13px;margin:4px 0}
+  .seed .cf{display:inline-block;border:1px solid #a8946a;color:#4a4232;font-size:12px;padding:1px 9px;margin:4px 4px 0 0;background:rgba(255,252,242,.4)}
+  .seed dl{margin:8px 0 0}
+  .seed .secret{color:var(--blood)}
   .body h2{margin:14px 16px 2px;font-size:20px;letter-spacing:2px;font-family:var(--kai)}
   .meta{color:#7c704f;font-size:13px;margin:0 16px}
   .chips{margin:8px 16px 0}
@@ -147,6 +157,11 @@ export function buildWikiHtml(universeDir) {
     const hooks = (c.timeline_hooks ?? []).map(h => `<span>${esc(h)}</span>`).join('');
     const secrets = (c.bio_secret ?? []).map(s =>
       `<div class="secret">${s.big ? '★ 大秘密 · ' : '⊘ '}${esc(s.fact)}${s.big ? '' : '（披露作品未指派）'}</div>`).join('');
+    // 扩展档案（背景/动机/性格/语气/故事线）：创作内部的人物五要素，不进 IR
+    const p = c.profile ?? {};
+    const speech = p.speech
+      ? `<div>${esc(p.speech.register ?? '')}</div><div class="anchors">${(p.speech.tics ?? []).map(t => `<span>${esc(t)}</span>`).join('')}</div><div class="sample">「${esc(p.speech.sample ?? '')}」</div>`
+      : '';
     return `
   <section class="char" style="--c:${c.stage?.theme ?? 'var(--dim)'}">
     <h3>${esc(c.name)} <span class="aka">${esc((c.aliases ?? []).join(' · '))}</span></h3>
@@ -156,12 +171,44 @@ export function buildWikiHtml(universeDir) {
       ${field('生年', `${c.birth_year}（1997 年 ${1997 - c.birth_year} 岁 / 2023 年 ${2023 - c.birth_year} 岁）`)}
       ${field('声线', `${c.voice_hz} Hz · ${c.stage?.side === 'left' ? '左侧站位' : '右侧站位'}`)}
       ${field('公开人设', esc(c.bio_public ?? ''))}
-      ${field('年代阶段', `<div class="stages">${stages}</div>`)}
-      ${field('事件织入', `<div class="anchors">${hooks}</div>`)}
-      ${field('秘密档案', secrets)}
+      ${field('背景', esc(p.background ?? ''))}
+      ${field('动机', esc(p.motive ?? ''))}
+      ${field('性格', esc(p.temperament ?? ''))}
+      ${field('语气', speech)}
+      ${field('故事线', esc(p.arc ?? ''))}
+      ${stages ? field('年代阶段', `<div class="stages">${stages}</div>`) : ''}
+      ${hooks ? field('事件织入', `<div class="anchors">${hooks}</div>`) : ''}
+      ${field('秘密档案', secrets || '<span style="color:#7c704f">（无）</span>')}
     </dl>
   </section>`;
   };
+
+  // 引子登记簿：已发行作品埋下、尚未兑付的叙事线头（可缺省：脚手架宇宙不一定有）
+  const seedsFile = join(universeDir, 'seeds.json');
+  const seeds = existsSync(seedsFile) ? JSON.parse(readFileSync(seedsFile, 'utf8')).seeds : [];
+  const seedHtml = s => {
+    const refs = [
+      ...(s.points_to?.characters ?? []).map(r => `人物 ${r}`),
+      ...(s.points_to?.locations ?? []).map(r => `地点 ${r}`),
+      ...(s.points_to?.events ?? []).map(r => `事件 ${r}`),
+    ].map(r => `<span class="cf">${esc(r)}</span>`).join('');
+    return `
+  <section class="seed${s.status === 'paid' ? ' paid' : ''}">
+    <h3>${esc(s.name)} <span class="status">埋于 ${esc(s.planted_in)} · ${s.status === 'paid' ? `已兑付于 ${esc(s.paid_in ?? '')}` : '未兑付'}${s.or_ending ? ` · 仅 ${esc(s.or_ending)} 为真` : ''}</span></h3>
+    <p class="cycle">${esc(s.where)}</p>
+    <dl>
+      <div><dt>玩家所见</dt><dd>${esc(s.shown)}</dd></div>
+      <div><dt>宇宙定论</dt><dd class="secret">${esc(s.truth)}</dd></div>
+      <div><dt>指向</dt><dd>${refs}</dd></div>
+      <div><dt>引用约束</dt><dd>${esc(s.constraints)}</dd></div>
+    </dl>
+  </section>`;
+  };
+
+  const universeChars = chars.filter(c => c.class === 'universe');
+  const castChars = chars.filter(c => c.class !== 'universe');
+  const conv = canon.conventions ?? {};
+  const orEndings = Object.entries(conv.or_endings ?? {});
 
   return `<!doctype html>
 <html lang="zh-CN">
@@ -175,7 +222,7 @@ export function buildWikiHtml(universeDir) {
 <div class="wrap">
   <header>
     <h1>${esc(canon.name)} · 地点</h1>
-    <p class="sub">canon ${esc(canon.version)} · 主窗 ${esc(canon.era.main.join('–'))} · ${locations.length} 个锚点地点（${locations.filter(l => l.layer !== 'public').length} 个私有）· ${chars.length} 位宇宙级隐藏人物 · 图案为文字舞台演出词汇（ADR-004）</p>
+    <p class="sub">canon ${esc(canon.version)} · 主窗 ${esc(canon.era.main.join('–'))} · ${locations.length} 个锚点地点（${locations.filter(l => l.layer !== 'public').length} 个私有）· ${universeChars.length} 位宇宙级隐藏人物 + ${castChars.length} 位剧集人物 · ${seeds.length} 条引子 · 图案为文字舞台演出词汇（ADR-004）</p>
   </header>
   <nav class="phases">${phaseHtml}</nav>
   <h2 class="sec">心脏事件（或然结局载体 · 历史不动，人心分支）</h2>
@@ -183,8 +230,18 @@ export function buildWikiHtml(universeDir) {
   <h2 class="sec">地点</h2>
   ${locations.map(locHtml).join('\n')}
   <h2 class="sec">宇宙级隐藏人物（永不主角）</h2>
-  ${chars.map(charHtml).join('\n')}
-  <footer>数据源 universe/（内容即数据）· 构建：npm run build:wiki · 印章与氛围层由 tokens.json 舞台令牌对齐 · 人物卡片含秘密档案，仅限创作内部使用</footer>
+  ${universeChars.map(charHtml).join('\n')}
+  <h2 class="sec">剧集人物（class: cast · 随出道作登场）</h2>
+  ${castChars.map(charHtml).join('\n')}
+  <h2 class="sec">引子登记簿（已发行作品埋下的线头 · 引用前先查）</h2>
+  ${seeds.map(seedHtml).join('\n')}
+  ${orEndings.length ? `<h2 class="sec">或然结局政策</h2>${orEndings.map(([g, p]) => `
+  <section class="seed">
+    <h3>${esc(g)} <span class="status">${esc(p.status ?? '')}</span></h3>
+    <p style="font-size:14px;margin:4px 0">${esc(p.rule ?? '')}</p>
+    <dl>${Object.entries(p).filter(([k]) => /^E\d+$/.test(k)).map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>
+  </section>`).join('\n')}` : ''}
+  <footer>数据源 universe/（内容即数据）· 构建：npm run build:wiki · 印章与氛围层由 tokens.json 舞台令牌对齐 · 人物卡片含秘密档案与引子定论，仅限创作内部使用</footer>
 </div>
 </body>
 </html>

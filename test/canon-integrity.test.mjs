@@ -93,6 +93,93 @@ describe('正典完整性：人物档案（universe 原型 / cast 剧集双层�
       for (const r of c.timeline_hooks ?? []) if (!eventIds.has(r)) bad.push(`${c.id}→${r}`);
     assert.deepEqual(bad, []);
   });
+
+  // 人物丰满度的完成定义：背景 / 动机 / 性格 / 语气 / 故事线五要素齐备，
+  // 任何新建人物（universe 或 cast）缺一项即红——档案只写一句「公开人设」不算立住。
+  it('全员扩展档案 profile：背景/动机/性格/语气/故事线五要素齐备', () => {
+    for (const c of chars) {
+      const p = c.profile;
+      assert.ok(p && typeof p === 'object', `${c.id} 缺扩展档案 profile`);
+      for (const f of ['background', 'motive', 'temperament', 'arc']) {
+        assert.ok(typeof p[f] === 'string' && p[f].length >= 20, `${c.id} profile.${f} 缺失或过短（≥20 字）`);
+      }
+      assert.ok(p.speech && typeof p.speech === 'object', `${c.id} 缺语气档案 profile.speech`);
+      assert.ok(typeof p.speech.register === 'string' && p.speech.register.length >= 6, `${c.id} speech.register 缺失`);
+      assert.ok(Array.isArray(p.speech.tics) && p.speech.tics.length >= 1, `${c.id} speech.tics 至少一条口头特征`);
+      assert.ok(typeof p.speech.sample === 'string' && p.speech.sample.length >= 4, `${c.id} speech.sample 缺示例台词`);
+    }
+  });
+
+  it('cast 剧集人物同样具备特征锚（persona_anchors ≥ 2）——登场即立得住', () => {
+    for (const c of castChars) {
+      assert.ok((c.persona_anchors ?? []).length >= 2, `${c.id} 特征锚至少两条`);
+    }
+  });
+});
+
+// 引子登记簿：已发行作品在正文里埋下、尚未兑付的叙事线头。
+// 未来作品引用前先查这里——引子指向的人物/地点/事件必须真实存在，兑付后标 paid 并写明兑付作品。
+describe('正典完整性：引子登记簿（seeds）', () => {
+  const canon = read(join(uni, 'canon.json'));
+  const seeds = read(join(uni, 'seeds.json')).seeds;
+  const charIds = new Set(chars.map(c => c.id));
+  const released = new Set(canon.released_games ?? []);
+
+  it('至少登记 g01 埋下的引子', () => {
+    assert.ok(seeds.length >= 6, `当前仅 ${seeds.length} 条引子`);
+    assert.ok(seeds.some(s => s.planted_in === 'g01'), '缺 g01 引子');
+  });
+
+  it('每条引子：id 唯一且按作品前缀、埋设作已发行、玩家可见文本/宇宙定论/引用约束齐备、状态合法', () => {
+    const seen = new Set();
+    for (const s of seeds) {
+      assert.ok(!seen.has(s.id), `引子 id 重复: ${s.id}`);
+      seen.add(s.id);
+      assert.match(s.id, /^seed-g\d{2}-[a-z0-9-]+$/, `引子 id 须形如 seed-gNN-slug: ${s.id}`);
+      assert.ok(s.name, `${s.id} 缺名称`);
+      assert.ok(released.has(s.planted_in), `${s.id} 埋设于未发行作品 ${s.planted_in}`);
+      assert.ok(s.id.startsWith(`seed-${s.planted_in}-`), `${s.id} 前缀与 planted_in=${s.planted_in} 不一致`);
+      for (const f of ['where', 'shown', 'truth', 'constraints']) {
+        assert.ok(typeof s[f] === 'string' && s[f].length >= 10, `${s.id} 缺 ${f}`);
+      }
+      assert.ok(['open', 'paid'].includes(s.status), `${s.id} 状态非法: ${s.status}`);
+      if (s.status === 'paid') assert.ok(typeof s.paid_in === 'string', `${s.id} 已兑付须写明 paid_in`);
+      if (s.or_ending) assert.match(s.or_ending, /^E\d+$/, `${s.id} or_ending 须为结局 id`);
+    }
+  });
+
+  it('引子的 points_to 都能解析到已注册的人物/地点/事件', () => {
+    const bad = [];
+    for (const s of seeds) {
+      const p = s.points_to ?? {};
+      assert.ok((p.characters ?? []).length + (p.locations ?? []).length + (p.events ?? []).length >= 1, `${s.id} 没有指向任何正典实体`);
+      for (const c of p.characters ?? []) if (!charIds.has(c)) bad.push(`${s.id}→人物 ${c}`);
+      for (const l of p.locations ?? []) if (!locationIds.has(l)) bad.push(`${s.id}→地点 ${l}`);
+      for (const e of p.events ?? []) if (!eventIds.has(e)) bad.push(`${s.id}→事件 ${e}`);
+    }
+    assert.deepEqual(bad, []);
+  });
+});
+
+// 或然结局政策：每部已发行作品的多结局，正典必须声明哪支是正典、或明确「未钉死」及各支约束。
+// 没有这条声明，后续作品引用该作人物时不知道该假设哪个未来。
+describe('正典完整性：发行作结局政策（conventions.or_endings）', () => {
+  const canon = read(join(uni, 'canon.json'));
+  it('每部已发行作品都有或然结局声明，且含 status 与 rule', () => {
+    const pol = canon.conventions?.or_endings ?? {};
+    for (const g of canon.released_games ?? []) {
+      assert.ok(pol[g], `已发行作品 ${g} 缺或然结局声明`);
+      assert.ok(typeof pol[g].status === 'string' && pol[g].status.length >= 2, `${g} 结局声明缺 status`);
+      assert.ok(typeof pol[g].rule === 'string' && pol[g].rule.includes('不可改写'), `${g} 结局声明须含「历史不可改写」规则`);
+    }
+  });
+
+  it('正典约定齐备：first_appearance 语义 / 声纹亲缘 / 无档呼入者', () => {
+    const conv = canon.conventions ?? {};
+    for (const k of ['first_appearance', 'voice_kinship', 'uncredited_voices']) {
+      assert.ok(typeof conv[k] === 'string' && conv[k].length >= 20, `conventions 缺 ${k}`);
+    }
+  });
 });
 
 describe('正典完整性：地点坐标', () => {

@@ -40,11 +40,14 @@ describe('首页被分享时，社交平台和读者看到的是同一张案卷�
     assert.match(html, /<meta name="twitter:image:alt" content="[^"]+">/);
   });
 
-  it('真实分享图是 1200×630 PNG，保留可读的中文案卷设计源文件', async () => {
+  it('真实分享图是 1200×630 PNG，明确呈现推理、悬疑、科幻的文学宇宙', async () => {
     const card = await readFile(web('og-card.png'));
     assert.deepEqual(pngSize(card), { width: 1200, height: 630 });
     const source = await text(web('og-card.svg'));
-    assert.match(source, /锦江悬疑宇宙/);
+    assert.match(source, /锦江文学宇宙/);
+    assert.match(source, /推理/);
+    assert.match(source, /悬疑/);
+    assert.match(source, /科幻/);
     assert.match(source, /接线员/);
   });
 });

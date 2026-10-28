@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <radialGradient id="room" cx="42%" cy="32%" r="86%">
+      <stop offset="0" stop-color="#2c2417"/>
+      <stop offset="0.58" stop-color="#1b160f"/>
+      <stop offset="1" stop-color="#100d09"/>
+    </radialGradient>
+    <linearGradient id="paper" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#eee2c4"/>
+      <stop offset="0.5" stop-color="#e4d6b3"/>
+      <stop offset="1" stop-color="#d5c49b"/>
+    </linearGradient>
+    <linearGradient id="waveInk" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#9e3a2b" stop-opacity="0.12"/>
+      <stop offset="0.5" stop-color="#9e3a2b"/>
+      <stop offset="1" stop-color="#9e3a2b" stop-opacity="0.12"/>
+    </linearGradient>
+    <pattern id="grain" width="13" height="13" patternUnits="userSpaceOnUse">
+      <path d="M0 1H13M1 0V13" stroke="#594a2f" stroke-opacity="0.045" stroke-width="1"/>
+    </pattern>
+    <filter id="shadow" x="-20%" y="-25%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="24" stdDeviation="24" flood-color="#050302" flood-opacity="0.66"/>
+    </filter>
+    <filter id="sealShadow" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#9e3a2b" flood-opacity="0.2"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#room)"/>
+  <path d="M0 82H1200M0 548H1200" stroke="#c9a15f" stroke-opacity="0.08"/>
+  <path d="M30 0V630M1170 0V630" stroke="#c9a15f" stroke-opacity="0.06"/>
+  <circle cx="1080" cy="92" r="210" fill="#4e7d87" opacity="0.035"/>
+  <circle cx="74" cy="600" r="240" fill="#9e3a2b" opacity="0.035"/>
+
+  <g filter="url(#shadow)" transform="rotate(-0.7 600 315)">
+    <rect x="64" y="52" width="1072" height="516" rx="3" fill="url(#paper)"/>
+    <rect x="64" y="52" width="1072" height="516" rx="3" fill="url(#grain)"/>
+    <rect x="77" y="65" width="1046" height="490" fill="none" stroke="#7d6226" stroke-opacity="0.34"/>
+    <path d="M92 92V78H106M1094 78H1108V92M92 528V542H106M1094 542H1108V528" fill="none" stroke="#a8905b" stroke-width="2"/>
+  </g>
+
+  <g font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif">
+    <text x="132" y="126" fill="#7d6226" font-size="17" letter-spacing="5">JINJIANG MYSTERY UNIVERSE</text>
+    <text x="950" y="126" fill="#7c704f" font-size="15" text-anchor="end" letter-spacing="3">NO. 001 / 1999</text>
+  </g>
+
+  <path d="M132 151H1068" stroke="#8f8567" stroke-opacity="0.45"/>
+  <path d="M132 151H248" stroke="#9e3a2b" stroke-width="3"/>
+
+  <g font-family="Songti SC, Noto Serif CJK SC, serif" fill="#2e2818">
+    <text x="126" y="260" font-size="76" font-weight="700" letter-spacing="7">锦江悬疑宇宙</text>
+    <text x="132" y="318" font-family="Kaiti SC, STKaiti, KaiTi, serif" font-size="30" letter-spacing="8" fill="#655c48">文字舞台 · 互动悬疑</text>
+    <text x="132" y="405" font-size="27" letter-spacing="2" fill="#4c4432">一座城市把秘密排进你的耳机。</text>
+    <text x="132" y="449" font-size="27" letter-spacing="2" fill="#4c4432">你只递话，不问话。</text>
+  </g>
+
+  <g transform="translate(132 502)" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="16" letter-spacing="3" fill="#7c704f">
+    <circle cx="5" cy="-5" r="4" fill="#9e3a2b"/>
+    <text x="22" y="0">调查证物</text>
+    <text x="150" y="0">·</text>
+    <text x="180" y="0">追踪声纹</text>
+    <text x="308" y="0">·</text>
+    <text x="338" y="0">选择结局</text>
+  </g>
+
+  <g transform="translate(812 187)">
+    <rect x="0" y="0" width="238" height="264" fill="#241f14" opacity="0.965"/>
+    <rect x="9" y="9" width="220" height="246" fill="none" stroke="#c9a15f" stroke-opacity="0.25"/>
+    <text x="30" y="42" font-family="PingFang SC, sans-serif" font-size="13" letter-spacing="4" fill="#a2956f">第一号档案</text>
+    <text x="30" y="103" font-family="Kaiti SC, STKaiti, KaiTi, serif" font-size="48" font-weight="700" letter-spacing="8" fill="#e6dabb">接线员</text>
+    <path d="M30 128H208" stroke="#c9a15f" stroke-opacity="0.35"/>
+    <path d="M30 169h12l6-18 8 41 9-68 9 91 10-72 9 45 8-27 8 12 10-31 9 52 10-74 10 91 9-65 9 38 9-19 8 8h17" fill="none" stroke="url(#waveInk)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="30" y="235" font-family="PingFang SC, sans-serif" font-size="10" letter-spacing="1.5" fill="#8f8567">VOICE · EVIDENCE · CHOICE</text>
+  </g>
+
+  <g transform="translate(1015 152) rotate(-7)" filter="url(#sealShadow)">
+    <rect x="-29" y="-35" width="58" height="70" rx="3" fill="#e4d6b3" stroke="#9e3a2b" stroke-width="3"/>
+    <rect x="-24" y="-30" width="48" height="60" rx="1" fill="none" stroke="#9e3a2b" stroke-opacity="0.65"/>
+    <text x="0" y="16" text-anchor="middle" font-family="Kaiti SC, STKaiti, KaiTi, serif" font-size="43" font-weight="700" fill="#9e3a2b">锦</text>
+  </g>
+
+  <text x="1134" y="607" text-anchor="end" font-family="PingFang SC, sans-serif" font-size="13" letter-spacing="2" fill="#8f8567">chengdu.xiaowenz.com</text>
+</svg>

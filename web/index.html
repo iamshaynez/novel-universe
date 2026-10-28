@@ -2,8 +2,34 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>锦江悬疑宇宙 · 文字舞台</title>
+<meta name="description" content="翻开锦江悬疑宇宙的案件档案，调查证物、追踪声纹，在文字舞台中亲手走到每一种结局。">
+<link rel="canonical" href="https://chengdu.xiaowenz.com/">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:site_name" content="锦江悬疑宇宙">
+<meta property="og:url" content="https://chengdu.xiaowenz.com/">
+<meta property="og:title" content="锦江悬疑宇宙 · 文字舞台">
+<meta property="og:description" content="一座城市把秘密排进你的耳机。翻开第一号档案《接线员》，调查证物、追踪声纹、选择结局。">
+<meta property="og:image" content="https://chengdu.xiaowenz.com/og-card.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="深夜档案室里，一册摊开的牛皮纸卷宗写着锦江悬疑宇宙；朱砂印章与声纹波标记第一号档案《接线员》。">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="锦江悬疑宇宙 · 文字舞台">
+<meta name="twitter:description" content="翻开第一号档案《接线员》：一座城市把秘密排进你的耳机。">
+<meta name="twitter:image" content="https://chengdu.xiaowenz.com/og-card.png">
+<meta name="twitter:image:alt" content="锦江悬疑宇宙的牛皮纸案卷、朱砂印章与《接线员》声纹卡。">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#17130d">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="锦江卷宗">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
 <style>
   /* 文字舞台播放器 —— 排版即运镜。
      案卷画风：深夜档案室，灯下一册摊开的卷宗。正文住纸上，演出词汇（印章/声纹/时间轴）皆为卷宗批注。
@@ -20,7 +46,7 @@
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{height:100%;overscroll-behavior:none}
   body{position:fixed;inset:0;background:var(--bg);color:var(--ink);font-family:var(--serif);overflow:hidden}
-  #stage{position:relative;height:100vh;overflow:hidden;user-select:none;
+  #stage{position:relative;height:100vh;height:100dvh;overflow:hidden;user-select:none;
     -webkit-touch-callout:none;touch-action:none}
   /* 档案室空气:全屏纸纹颗粒 + 暗角 */
   #stage::before{content:"";position:absolute;inset:0;z-index:30;pointer-events:none;
@@ -245,7 +271,8 @@
 
   /* HUD / 标题 / 存档 / 结局 */
   #hud{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;
-    padding:2.2vh 2.4vw;pointer-events:none;font-family:var(--sans);z-index:6}
+    padding:calc(2.2vh + env(safe-area-inset-top,0px)) calc(2.4vw + env(safe-area-inset-right,0px)) 2.2vh calc(2.4vw + env(safe-area-inset-left,0px));
+    pointer-events:none;font-family:var(--sans);z-index:6}
   #hudL .uni{font-size:11px;letter-spacing:.32em;color:#a2956f}
   #hudL .dt{font-size:11px;letter-spacing:.3em;color:#c9a15f;margin-top:.45em;font-family:var(--kai);
     opacity:0;transition:opacity 1.2s}
@@ -271,7 +298,7 @@
   #stage button:hover{border-color:var(--accent);color:#f0e6cd;transform:translateY(-1px);
     box-shadow:0 4px 14px rgba(0,0,0,.5)}
 
-  #hint{position:absolute;bottom:3.4vh;left:50%;transform:translateX(-50%);
+  #hint{position:absolute;bottom:calc(3.4vh + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);
     font-family:var(--sans);font-size:13px;letter-spacing:.34em;color:#8f8567;
     opacity:0;transition:opacity .6s;z-index:6;pointer-events:none}
   #hint.on{opacity:.9}
@@ -442,6 +469,24 @@
     text-decoration:underline dotted;text-underline-offset:4px}
   .ap-switch:hover{color:var(--blood)}
 
+  /* 可安装应用：封面只放一枚安静入口，原生提示不可用时给出主屏幕步骤 */
+  .t-install{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:.4vh;
+    font-family:var(--sans);font-size:11px;color:#857a5b;letter-spacing:.1em}
+  #title .t-install button{background:transparent;border-color:#9b8a65;color:#655c48;
+    padding:.35em 1em;font-size:12px;letter-spacing:.16em;box-shadow:none}
+  #title .t-install button:hover{border-color:var(--blood);color:var(--blood);transform:none}
+  #title .t-install button:disabled{opacity:.65;cursor:default;border-color:#a8946a;color:#7c704f}
+  #installHelp{width:min(430px,92vw);max-height:88vh;margin:auto;padding:0;border:1px solid #a8946a;border-radius:3px;
+    background:linear-gradient(150deg,#e9dcbd,#ddd0a9);color:#332e21;
+    box-shadow:0 30px 90px rgba(0,0,0,.7),inset 0 0 0 4px rgba(23,19,13,.10)}
+  #installHelp::backdrop{background:rgba(12,9,5,.84)}
+  .install-paper{display:flex;flex-direction:column;align-items:center;padding:30px 34px 26px;text-align:center}
+  .install-paper h2{margin:14px 0 16px;font:700 25px var(--kai);letter-spacing:.12em;color:#2e2818}
+  #installSteps{margin:0 0 16px;padding-left:1.5em;text-align:left;font:14px/2 var(--sans);color:#5d543e}
+  .install-note{font:11px/1.8 var(--sans);color:#857a5b;letter-spacing:.06em}
+  #installClose{margin-top:20px;padding:8px 24px;border:1px solid #7d6226;border-radius:2px;
+    background:#241e14;color:#e6dabb;font:14px var(--kai);letter-spacing:.16em;cursor:pointer}
+
   #toast{position:absolute;top:9%;left:50%;transform:translateX(-50%);
     background:#e9dcbd;border:1px solid #a8946a;border-left:3px solid var(--blood);border-radius:2px;
     padding:6px 18px;font-size:13px;font-family:var(--sans);color:#2e2818;
@@ -596,6 +641,10 @@
       <div class="t-rule"><i></i><span>卷</span><i></i></div>
       <div id="gameList"></div>
       <div class="t-auth" id="authBar"></div>
+      <div class="t-install">
+        <button id="btnInstall" type="button" aria-haspopup="dialog">安装到手机</button>
+        <span id="installNote">存入主屏幕 · 随时开卷</span>
+      </div>
       <div class="t-foot">灯下摊开的卷宗 · 点击与空格推进</div>
     </div>
   </div>
@@ -639,6 +688,16 @@
   <div id="toast"></div>
   <div id="vtag" aria-hidden="true"></div>
 </div>
+<dialog id="installHelp" aria-labelledby="installTitle">
+  <div class="install-paper">
+    <div class="ap-seal">锦</div>
+    <h2 id="installTitle">把卷宗放进手机</h2>
+    <ol id="installSteps"></ol>
+    <p class="install-note">安装只添加入口；剧情与存档仍安全保存在服务器。</p>
+    <button id="installClose" type="button">知道了</button>
+  </div>
+</dialog>
 <script type="module" src="/player.mjs"></script>
+<script type="module" src="/pwa.mjs"></script>
 </body>
 </html>

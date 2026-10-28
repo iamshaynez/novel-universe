@@ -10,10 +10,10 @@
       <stop offset="0.5" stop-color="#e4d6b3"/>
       <stop offset="1" stop-color="#d5c49b"/>
     </linearGradient>
-    <linearGradient id="waveInk" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#9e3a2b" stop-opacity="0.12"/>
-      <stop offset="0.5" stop-color="#9e3a2b"/>
-      <stop offset="1" stop-color="#9e3a2b" stop-opacity="0.12"/>
+    <linearGradient id="orbitInk" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4e7d87"/>
+      <stop offset="0.52" stop-color="#c9a15f"/>
+      <stop offset="1" stop-color="#9e3a2b"/>
     </linearGradient>
     <pattern id="grain" width="13" height="13" patternUnits="userSpaceOnUse">
       <path d="M0 1H13M1 0V13" stroke="#594a2f" stroke-opacity="0.045" stroke-width="1"/>
@@ -24,12 +24,15 @@
     <filter id="sealShadow" x="-40%" y="-40%" width="180%" height="180%">
       <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#9e3a2b" flood-opacity="0.2"/>
     </filter>
+    <filter id="nodeGlow" x="-200%" y="-200%" width="400%" height="400%">
+      <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#4e7d87" flood-opacity="0.8"/>
+    </filter>
   </defs>
 
   <rect width="1200" height="630" fill="url(#room)"/>
   <path d="M0 82H1200M0 548H1200" stroke="#c9a15f" stroke-opacity="0.08"/>
   <path d="M30 0V630M1170 0V630" stroke="#c9a15f" stroke-opacity="0.06"/>
-  <circle cx="1080" cy="92" r="210" fill="#4e7d87" opacity="0.035"/>
+  <circle cx="1080" cy="92" r="230" fill="#4e7d87" opacity="0.055"/>
   <circle cx="74" cy="600" r="240" fill="#9e3a2b" opacity="0.035"/>
 
   <g filter="url(#shadow)" transform="rotate(-0.7 600 315)">
@@ -39,38 +42,62 @@
     <path d="M92 92V78H106M1094 78H1108V92M92 528V542H106M1094 542H1108V528" fill="none" stroke="#a8905b" stroke-width="2"/>
   </g>
 
+  <circle cx="1000" cy="302" r="204" fill="#4e7d87" opacity="0.04"/>
+  <path d="M724 180v286M737 180v286" stroke="#4e7d87" stroke-opacity="0.08"/>
+
   <g font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif">
-    <text x="132" y="126" fill="#7d6226" font-size="17" letter-spacing="5">JINJIANG MYSTERY UNIVERSE</text>
-    <text x="950" y="126" fill="#7c704f" font-size="15" text-anchor="end" letter-spacing="3">NO. 001 / 1999</text>
+    <text x="132" y="126" fill="#7d6226" font-size="17" letter-spacing="4.5">JINJIANG LITERARY UNIVERSE</text>
+    <text x="950" y="126" fill="#7c704f" font-size="14" text-anchor="end" letter-spacing="3">MULTI-STORY CANON</text>
   </g>
 
   <path d="M132 151H1068" stroke="#8f8567" stroke-opacity="0.45"/>
   <path d="M132 151H248" stroke="#9e3a2b" stroke-width="3"/>
+  <path d="M248 151H316" stroke="#4e7d87" stroke-width="3"/>
 
-  <g font-family="Songti SC, Noto Serif CJK SC, serif" fill="#2e2818">
-    <text x="126" y="260" font-size="76" font-weight="700" letter-spacing="7">锦江悬疑宇宙</text>
-    <text x="132" y="318" font-family="Kaiti SC, STKaiti, KaiTi, serif" font-size="30" letter-spacing="8" fill="#655c48">文字舞台 · 互动悬疑</text>
-    <text x="132" y="405" font-size="27" letter-spacing="2" fill="#4c4432">一座城市把秘密排进你的耳机。</text>
-    <text x="132" y="449" font-size="27" letter-spacing="2" fill="#4c4432">你只递话，不问话。</text>
+  <text x="126" y="254" font-family="Songti SC, Noto Serif CJK SC, serif" font-size="74" font-weight="700" letter-spacing="6" fill="#2e2818">锦江文学宇宙</text>
+
+  <text x="130" y="334" font-family="Kaiti SC, STKaiti, KaiTi, serif" font-size="44" font-weight="700" letter-spacing="3.5">
+    <tspan fill="#9e3a2b">推理</tspan>
+    <tspan fill="#8f8567"> · </tspan>
+    <tspan fill="#2e2818">悬疑</tspan>
+    <tspan fill="#8f8567"> · </tspan>
+    <tspan fill="#3f6f79">科幻</tspan>
+  </text>
+
+  <g font-family="Songti SC, Noto Serif CJK SC, serif" fill="#4c4432">
+    <text x="132" y="404" font-size="25" letter-spacing="1.5">人物、时间与秘密，在不同作品中彼此回响。</text>
+    <text x="132" y="449" font-size="25" letter-spacing="1.5">每一部作品，都是通往同一宇宙的一扇门。</text>
   </g>
 
   <g transform="translate(132 502)" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="16" letter-spacing="3" fill="#7c704f">
-    <circle cx="5" cy="-5" r="4" fill="#9e3a2b"/>
-    <text x="22" y="0">调查证物</text>
+    <circle cx="5" cy="-5" r="4" fill="#4e7d87"/>
+    <text x="22" y="0">共享正典</text>
     <text x="150" y="0">·</text>
-    <text x="180" y="0">追踪声纹</text>
+    <text x="180" y="0">交错时间</text>
     <text x="308" y="0">·</text>
-    <text x="338" y="0">选择结局</text>
+    <text x="338" y="0">多结局叙事</text>
   </g>
 
-  <g transform="translate(812 187)">
-    <rect x="0" y="0" width="238" height="264" fill="#241f14" opacity="0.965"/>
-    <rect x="9" y="9" width="220" height="246" fill="none" stroke="#c9a15f" stroke-opacity="0.25"/>
-    <text x="30" y="42" font-family="PingFang SC, sans-serif" font-size="13" letter-spacing="4" fill="#a2956f">第一号档案</text>
-    <text x="30" y="103" font-family="Kaiti SC, STKaiti, KaiTi, serif" font-size="48" font-weight="700" letter-spacing="8" fill="#e6dabb">接线员</text>
-    <path d="M30 128H208" stroke="#c9a15f" stroke-opacity="0.35"/>
-    <path d="M30 169h12l6-18 8 41 9-68 9 91 10-72 9 45 8-27 8 12 10-31 9 52 10-74 10 91 9-65 9 38 9-19 8 8h17" fill="none" stroke="url(#waveInk)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-    <text x="30" y="235" font-family="PingFang SC, sans-serif" font-size="10" letter-spacing="1.5" fill="#8f8567">VOICE · EVIDENCE · CHOICE</text>
+  <g transform="translate(812 181)">
+    <rect x="0" y="0" width="238" height="282" fill="#1d1c17" opacity="0.975"/>
+    <rect x="9" y="9" width="220" height="264" fill="none" stroke="#4e7d87" stroke-opacity="0.35"/>
+    <text x="30" y="38" font-family="PingFang SC, sans-serif" font-size="11" letter-spacing="3.2" fill="#8f8567">SHARED UNIVERSE</text>
+
+    <g transform="translate(119 125)">
+      <circle r="65" fill="none" stroke="#c9a15f" stroke-opacity="0.24"/>
+      <ellipse rx="86" ry="38" fill="none" stroke="url(#orbitInk)" stroke-width="1.5" transform="rotate(-18)" opacity="0.85"/>
+      <ellipse rx="82" ry="32" fill="none" stroke="#4e7d87" stroke-width="1.2" transform="rotate(58)" opacity="0.65"/>
+      <path d="M-68-43L-25-61 48-49 72 19 28 63-52 47Z" fill="none" stroke="#4e7d87" stroke-opacity="0.32"/>
+      <circle cx="-68" cy="-43" r="4" fill="#4e7d87" filter="url(#nodeGlow)"/>
+      <circle cx="48" cy="-49" r="4" fill="#c9a15f"/>
+      <circle cx="72" cy="19" r="5" fill="#9e3a2b"/>
+      <circle cx="-52" cy="47" r="3.5" fill="#4e7d87"/>
+      <circle cx="28" cy="63" r="3" fill="#c9a15f"/>
+      <text x="0" y="23" text-anchor="middle" font-family="Kaiti SC, STKaiti, KaiTi, serif" font-size="66" font-weight="700" fill="#e6dabb">宇</text>
+    </g>
+
+    <path d="M30 216H208" stroke="#4e7d87" stroke-opacity="0.35"/>
+    <text x="119" y="250" text-anchor="middle" font-family="Kaiti SC, STKaiti, KaiTi, serif" font-size="18" letter-spacing="2" fill="#e6dabb">首部开卷 ·《接线员》</text>
   </g>
 
   <g transform="translate(1015 152) rotate(-7)" filter="url(#sealShadow)">

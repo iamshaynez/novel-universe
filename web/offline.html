@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#17130d">
+<title>连接已中断 · 锦江悬疑宇宙</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding:24px;
+    background:radial-gradient(ellipse at 50% 34%,#2a2114,#17130d 70%);color:#332e21;
+    font-family:"Songti SC","Noto Serif CJK SC",serif}
+  main{position:relative;width:min(520px,100%);padding:52px 36px 38px;text-align:center;
+    background:linear-gradient(150deg,#e9dcbd,#ddd0a9);box-shadow:0 30px 90px #0009,inset 0 0 0 4px #17130d1a,inset 0 0 0 5px #a8946a80}
+  .seal{width:48px;height:62px;display:grid;place-items:center;margin:0 auto 24px;border:2px solid #9e3a2b;
+    border-radius:3px;color:#9e3a2b;font:32px "Kaiti SC","STKaiti",serif;transform:rotate(-5deg)}
+  .kicker{font:12px "PingFang SC",sans-serif;letter-spacing:.35em;color:#7c704f}
+  h1{margin:18px 0 14px;font:700 34px "Kaiti SC","STKaiti",serif;letter-spacing:.16em;color:#2e2818}
+  p{font-size:16px;line-height:1.9;color:#655c48}
+  button{margin-top:28px;padding:10px 28px;border:1px solid #7d6226;border-radius:2px;background:#241e14;
+    color:#e6dabb;font:16px "Kaiti SC","STKaiti",serif;letter-spacing:.16em;cursor:pointer}
+  small{display:block;margin-top:24px;font:11px/1.8 "PingFang SC",sans-serif;color:#857a5b;letter-spacing:.08em}
+</style>
+</head>
+<body>
+<main>
+  <div class="seal">锦</div>
+  <div class="kicker">锦江悬疑宇宙 · 文字舞台</div>
+  <h1>连接已中断</h1>
+  <p>案卷还在服务器上，当前网络无法抵达。<br>联网后重新开卷，已有存档不会丢失。</p>
+  <button type="button" onclick="location.reload()">重新连接</button>
+  <small>本页仅用于断网提示；账号、游戏进度与存档 API 不做离线缓存。</small>
+</main>
+</body>
+</html>

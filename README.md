@@ -19,6 +19,11 @@ npm run demo        # 启动 http://127.0.0.1:3000(启动即迁移 + 编译,失�
 播放器:`npm run demo` 后打开 `http://127.0.0.1:3000`,点击/空格推进,揭示中点击快进。
 冒烟:`?auto=1` 自动开局推进到首个选择点(截图/CI 用)。
 
+首页点「安装到手机」可安装为独立窗口应用；Android/桌面 Chromium 使用原生安装提示，
+iPhone/iPad 会显示 Safari「分享 → 添加到主屏幕」步骤。断网只显示离线提示页，
+账号、进度与 `/api/` 响应不进入离线缓存。分享首页时使用 `web/og-card.png`（1200×630），
+对应 Open Graph 与 Twitter 大图元数据；可编辑源文件为 `web/og-card.svg`。
+
 ## 演出词汇(自动层,剧本零标注)
 
 | 实体 | 视觉签名 | 数据来源 |
@@ -81,3 +86,4 @@ docker run -p 3000:3000 -v nu-data:/data novel-universe
 | migrate.test.mjs | 迁移应用/幂等/事务回滚、CRUD |
 | api.test.mjs | 真实 HTTP 全路由、错误码、路径穿越防护 |
 | e2e.test.mjs | **全分支**:静态枚举 5 条路径逐条真机走通,结局/落库/确定性断言 |
+| share-and-install.test.mjs | 首页 OG/Twitter 分享卡、Manifest/图标、安装入口、离线壳与静态 MIME |

@@ -1,6 +1,6 @@
 // 文字舞台词汇模块:排版即运镜,演出单元全部内容无关化。
 // 由 IR + canon 摘要块驱动(ADR-004 舞台合同 v0);剧本零演出标注。
-// 行内实体签名(人物/地点/组织/关键信息/引语朱批)由 markup.mjs 从 canon 块自动推导(ADR-005)。
+// 行内实体签名(人物/地点/组织/事件/关键信息/引语朱批)由 markup.mjs 从 canon 块自动推导(ADR-005)。
 import { buildLexicon, segment, markupText } from './markup.mjs';
 const $ = s => document.querySelector(s);
 const reflow = el => { void el.offsetWidth; };
@@ -32,8 +32,28 @@ export function callerHz(name) {
 }
 
 // 推进提示双态：常态推进；回看未收起时，第一下轻点先归位（不推进）
-const HINT_LIVE = '点击 · 空格 —— 继续 ▸';
-const HINT_BACK = '回看前文 · 轻点回到现在 ▾';
+const HINT_LIVE = '滑动 / 滚轮回看 · 点击 / 空格继续 ▸';
+const HINT_BACK = '正在回看 · 轻点回到现在 ▾';
+
+/** 历史浏览键盘步长：方向键逐行，翻页键按视口高度缩放；其他按键交给原交互。 */
+export function historyKeyDelta(key, viewportHeight = 800) {
+  if (key === 'ArrowUp') return 72;
+  if (key === 'ArrowDown') return -72;
+  const page = Math.max(1, viewportHeight) * .75;
+  if (key === 'PageUp') return page;
+  if (key === 'PageDown') return -page;
+  return null;
+}
+
+/** 回看首行不得钻到 HUD 下面：桌面同样留白，小屏多行按钮按真实底边避让。 */
+export function historyTopInset(hudBottom = 0) {
+  return hudBottom > 0 ? Math.ceil(hudBottom) + 12 : 8;
+}
+
+/** 确认键服从可见界面状态：仍在回看就先归位，不能因位移/视口修正而误推进。 */
+export function historyNeedsSnap(back, panY) {
+  return back || panY > 8;
+}
 
 export class Stage {
   constructor(audio, { auto = false } = {}) {
@@ -64,7 +84,7 @@ export class Stage {
     // 停点交互控件不参与舞台手势（选项/面板/按钮各有各的 pointerdown）
     const INTERACTIVE = '.opt,.sidepanel,#endcard,#authPanel,#title,#hud';
     const act = () => {
-      if (this.panY > 8) return this.snapBack();
+      if (historyNeedsSnap(this._back, this.panY)) return this.snapBack();
       if (this.revealing) this.fast = true;
       else if (this.pendingGate) { const r = this.pendingGate; this.pendingGate = null; this.hint(false); r(); }
     };
@@ -97,6 +117,14 @@ export class Stage {
       this.panTo(this.panY - dy, false);
     }, { passive: true });
     addEventListener('keydown', e => {
+      const delta = historyKeyDelta(e.key, root.clientHeight);
+      if (delta !== null) {
+        if (e.target.closest?.(INTERACTIVE)) return;
+        if (delta < 0 && this.panY <= 0) return; // 已在现在：向下不劫持页面或控件按键
+        e.preventDefault();
+        this.panTo(this.panY + delta);
+        return;
+      }
       if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); act(); }
     });
     addEventListener('resize', () => this.relayout());
@@ -104,7 +132,7 @@ export class Stage {
   hint(on) {
     const h = $('#hint');
     h.classList.toggle('on', on && !this.auto);
-    h.textContent = this.panY > 8 ? HINT_BACK : HINT_LIVE;
+    h.textContent = historyNeedsSnap(this._back, this.panY) ? HINT_BACK : HINT_LIVE;
   }
   gate() {
     if (this.auto) return sleep(380);
@@ -118,7 +146,8 @@ export class Stage {
   _maxPan() {
     const first = this.lines[0];
     if (!first) return 0;
-    return Math.max(0, Math.round(8 - this.off - first.offsetTop)); // 首行顶最多下移到视口上缘 8px
+    const top = historyTopInset($('#hud')?.getBoundingClientRect().bottom ?? 0);
+    return Math.max(0, Math.round(top - this.off - first.offsetTop));
   }
   /** panY 夹取到 [0, maxPan] 并落位；animate=false 供拖拽逐帧跟手。 */
   panTo(v, animate = true) {

@@ -138,12 +138,14 @@
 
 # chR3a
 @set has_original
+@set original_locker
 
 更衣柜的钥匙，从此贴身放在口袋里。
 -> chR3c
 
 # chR3b
 @set has_original
+@set original_carry
 
 纸页贴着心口，一夜都是凉的。
 -> chR3c

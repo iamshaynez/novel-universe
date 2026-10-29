@@ -24,6 +24,7 @@ export function stateOf(ir, run) {
   const n = ir.nodes[run.nodeId];
   if (!n) return { kind: 'void', flags: { ...run.flags } };
   const base = {
+    node: run.nodeId,
     chapter: n.chapter,
     chapterTitle: ir.chapters.find(c => c.id === n.chapter)?.title ?? n.chapter,
     flags: { ...run.flags },

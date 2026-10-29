@@ -8,6 +8,88 @@
   "canon": ">=0.7 <1",
   "assumes": [],
   "player": { "name": "你", "voice_hz": 218 },
+  "reading": {
+    "tracks": [
+      {
+        "id": "record",
+        "label": "记录",
+        "symbol": "耳",
+        "stops": [
+          { "scene": "ch0-open", "label": "六月四日" },
+          { "scene": "chR1-bailu", "label": "九月十四日" },
+          { "scene": "chR2", "label": "九月二十八日" },
+          { "scene": "chR3", "label": "十月二十六日" },
+          { "scene": "chR4", "label": "十一月八日" }
+        ]
+      },
+      {
+        "id": "visit",
+        "label": "走访",
+        "symbol": "街",
+        "stops": [
+          { "scene": "chA1", "label": "十一月三日" },
+          { "scene": "chA2", "label": "十一月五日" },
+          { "scene": "chA3", "label": "十一月七日" }
+        ]
+      }
+    ],
+    "convergence": { "scene": "chF", "label": "档案室 · 汇流" },
+    "messages": {
+      "t3": { "date": "九月十四", "time": "23:40", "number": "333-1188", "cough": true },
+      "t4": { "date": "九月二十八", "time": "22:30", "number": "901-7544", "cough": true },
+      "t7": { "date": "十月二十六", "time": "22:00", "number": "333-1188", "cough": true },
+      "t9": { "date": "十月二十六", "time": "22:47", "appointment": "22:00", "number": "901-7544", "cough": true }
+    },
+    "evidence": [
+      {
+        "id": "original", "label": "十月二十六 · 原始底单", "kind": "original", "unlock": "has_original",
+        "variantFlags": ["original_locker", "original_carry"],
+        "holders": { "default": "苏晚 · 贴身", "original_locker": "更衣柜", "original_carry": "苏晚 · 贴身", "E1": "已上交", "E2": "已烧毁", "E3": "廖志坤" }
+      },
+      {
+        "id": "handbook", "label": "廖志坤的手抄本", "kind": "hand", "unlock": "paper.handbook",
+        "holders": { "default": "廖志坤", "E1": "已上交", "E2": "廖志坤带走", "E3": "廖志坤卷走" }
+      },
+      {
+        "id": "drafts", "label": "三晚转写底稿", "kind": "draft", "unlock": "paper.drafts",
+        "holders": { "default": "苏晚", "E1": "整理上交", "E2": "已烧毁", "E3": "廖志坤" }
+      },
+      {
+        "id": "summary", "label": "四留言汇总纸", "kind": "summary", "unlock": "paper.summary",
+        "holders": { "default": "苏晚", "E1": "整理上交", "E2": "已烧毁", "E3": "廖志坤" }
+      },
+      {
+        "id": "copy", "label": "原件复印件", "kind": "copy",
+        "anyUnlock": ["copy_locker", "copy_dj"], "emptyWhen": "no_copy", "emptyHolder": "未留复印件",
+        "holders": { "copy_locker": "更衣柜", "copy_dj": "杜鹃饭盒", "E1": "安全副本 · 场外", "E2": "已烧毁", "E3": "廖志坤" }
+      }
+    ],
+    "debt": {
+      "unlock": "aid.debt",
+      "rows": [
+        { "from": "贺国栋", "relation": "签借条", "to": "三万七 · 利滚利" },
+        { "from": "贺青禾", "relation": "签担保", "to": "同一笔债务" },
+        { "from": "廖志坤", "relation": "折价接账 → 全额收", "to": "中间差额" }
+      ]
+    },
+    "recap": [
+      { "id": "E1", "title": "上交", "evidence": "两半证据上交；安全副本留场外", "people": "苏晚读完电大；廖志坤被追逃", "point": "让第三方知道" },
+      { "id": "E2", "title": "烧掉", "evidence": "苏晚的纸证烧毁；廖带走手抄本", "people": "苏晚继续夜班，不再点铅笔点", "point": "不再面对" },
+      { "id": "E3", "title": "交易", "evidence": "全部纸证被廖卷走", "people": "苏晚转白班，继续为新号递话", "point": "从链上获利" }
+    ],
+    "map": {
+      "note": "示意 · 不按比例",
+      "lines": [
+        { "id": "taisheng", "label": "太升南路", "kind": "road", "points": "80,80 560,80" },
+        { "id": "funan", "label": "府南河", "kind": "river", "points": "80,270 560,270" }
+      ],
+      "nodes": [
+        { "id": "heyin", "label": "河音音像店", "x": 180, "y": 135, "since": "chA2" },
+        { "id": "chuantai", "label": "锦声传呼台", "x": 430, "y": 130, "since": "ch0-open" },
+        { "id": "funanhe-bank", "label": "府南河桥头", "x": 410, "y": 320, "since": "chA2d" }
+      ]
+    }
+  },
   "chapters": [
     { "id": "ch1", "title": "上岗", "file": "ch1.md" },
     { "id": "ch2", "title": "两个号码", "file": "ch2.md" },

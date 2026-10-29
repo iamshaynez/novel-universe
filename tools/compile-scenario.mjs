@@ -166,6 +166,38 @@ function parseChapter(text, ch) {
   return { nodes, order, scenes, endings, entry: order[0] ?? null, tailId };
 }
 
+export function validateReadingConfig(reading, { scenes, nodes, flags, endings, locations }) {
+  const sceneIds = new Set(Object.keys(scenes));
+  const transcriptIds = new Set(Object.values(nodes).filter(n => n.type === 'transcribe').map(n => n.transId));
+  const endingIds = new Set(endings.map(e => e.id));
+  const scene = id => {
+    if (!sceneIds.has(id)) throw new Error(`reading: 未知场景 ${id}`);
+  };
+  const flag = id => {
+    if (!flags.has(id)) throw new Error(`reading: 未在本作置位的 flag ${id}`);
+  };
+  for (const track of reading.tracks ?? []) for (const stop of track.stops ?? []) scene(stop.scene);
+  if (reading.convergence?.scene) scene(reading.convergence.scene);
+  for (const tid of Object.keys(reading.messages ?? {})) {
+    if (!transcriptIds.has(tid)) throw new Error(`reading: 未知转写 ${tid}`);
+  }
+  for (const item of reading.evidence ?? []) {
+    if (item.unlock) flag(item.unlock);
+    for (const f of item.anyUnlock ?? []) flag(f);
+    for (const f of item.variantFlags ?? []) flag(f);
+    if (item.emptyWhen) flag(item.emptyWhen);
+  }
+  if (reading.debt?.unlock) flag(reading.debt.unlock);
+  for (const row of reading.recap ?? []) {
+    if (!endingIds.has(row.id)) throw new Error(`reading: 未知结局 ${row.id}`);
+  }
+  for (const node of reading.map?.nodes ?? []) {
+    if (!locations[node.id]) throw new Error(`reading: 未知地点 ${node.id}`);
+    if (node.since) scene(node.since);
+  }
+  return true;
+}
+
 export function compileGame(gameDir, universeDir) {
   const manifest = JSON.parse(readFileSync(join(gameDir, 'game.json'), 'utf8'));
   const U = loadUniverse(universeDir);
@@ -255,7 +287,14 @@ export function compileGame(gameDir, universeDir) {
     .filter(e => e.layer === 'public' || allowedCanon2.has(e.disclosed_in))
     .map(e => [e.id, e]));
   const setFlags = new Set();
-  for (const id of order) for (const op of nodes[id].enter ?? []) if (op.op === 'flag') setFlags.add(op.name);
+  for (const id of order) {
+    const n = nodes[id];
+    for (const op of n.enter ?? []) if (op.op === 'flag') setFlags.add(op.name);
+    if (n.type === 'choice') for (const option of n.options) {
+      for (const op of option.set ?? []) if (op.op === 'flag') setFlags.add(op.name);
+    }
+    if (n.type === 'transcribe') setFlags.add(`tr.${n.transId}`);
+  }
   for (const id of order) {
     for (const op of nodes[id].enter ?? []) {
       if (op.op !== 'flag' || !op.name.startsWith('card.') || op.name.startsWith('card.char.')) continue;
@@ -271,6 +310,10 @@ export function compileGame(gameDir, universeDir) {
     for (const f of needed) {
       if (!setFlags.has(f)) throw new Error(`人物案卷悬空: ${c.id} 的 ${f} 未在本作置位（@set/@card）`);
     }
+  }
+
+  if (manifest.reading) {
+    validateReadingConfig(manifest.reading, { scenes, nodes, flags: setFlags, endings, locations: U.locations });
   }
 
   // 舞台合同 v0：IR 携带纪元过滤后的 canon 摘要块（演出层数据一次到位，不泄未来正典）
@@ -309,6 +352,7 @@ export function compileGame(gameDir, universeDir) {
     endings: [...endingMap.values()],
     speakers, characters, canon: canonBlock,
     player: manifest.player ?? { name: '你', voice_hz: 185 },
+    reading: manifest.reading ?? null,
   };
   return { ir, manifest };
 }

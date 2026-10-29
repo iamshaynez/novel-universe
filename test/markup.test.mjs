@@ -79,6 +79,32 @@ describe('标注层：g01 实战（宇宙客串出道）', () => {
   });
 });
 
+describe('标注层：事件与线索签名', () => {
+  const lex = synth({
+    characters: [{ id: 'heqinghe', name: '贺青禾', aliases: [] }],
+    orgs: [{ id: 'org-quanxing', name: '四川全兴足球俱乐部', aliases: ['全兴'] }],
+    events: [
+      { id: 'ev-fall', title: '贺青禾坠河' },
+      { id: 'ev-message', title: '最后一条留言' },
+      { id: 'ev-same-name', title: '全兴' },
+    ],
+  });
+
+  it('canon 事件题名自动获得 ec 线索签名，完整题名优先于其中的人名', () => {
+    assert.equal(markupText('最后一条留言已经入机。', lex), '<span class="ec">最后一条留言</span>已经入机。');
+    assert.equal(markupText('贺青禾坠河。', lex), '<span class="ec">贺青禾坠河</span>。');
+  });
+
+  it('同词冲突保持组织先于事件，未进入 canon 摘要的事件不签名', () => {
+    assert.equal(markupText('全兴赢了。', lex), '<span class="eo">全兴</span>赢了。');
+    assert.equal(markupText('最后一条留言。', EMPTY), '最后一条留言。');
+  });
+
+  it('短引语仍是原子朱批，不拆成事件签名', () => {
+    assert.equal(markupText('你回读「最后一条留言」。', lex), '你回读<span class="qk">「最后一条留言」</span>。');
+  });
+});
+
 describe('标注层：关键信息（日期 / 时刻 / 号码）', () => {
   const cases = ['一九九九年六月四日', '九月十四日', '九月二十八日', '十月二十六', '一九九九年', '二〇〇一年',
     '十点零七分', '十一点过', '零点过一刻', '十点半', '6688-7', '333-1188', '六六八八转七'];

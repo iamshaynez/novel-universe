@@ -3,6 +3,7 @@
 // fact.* 新增→时间轴点亮+线索;台词→呼吸节奏;选择→分支;结局→收集。
 import { StageAudio } from '/audio.mjs';
 import { Stage, callerHz } from '/stage.mjs';
+import { renderReadingPanel } from '/reading-view.mjs';
 
 const $ = s => document.querySelector(s);
 const AUTO = new URLSearchParams(location.search).has('auto');
@@ -32,6 +33,8 @@ const app = {
   trByTid: new Map(), // tid -> 转写节点（证物拍/并轨拍的呈堂材料）
   gen: 0,           // 换代令牌：切档/重开时 +1，旧渲染循环立即退场，防止双驱动
   forceUpdate: false, // 服务器指纹已变：最近的停点自动换版重载
+  current: null,    // 当前停点：导读从 IR + 当前 state 投影，读档无需第二套历史
+  readTab: 'tracks',
 };
 
 /** IR 就绪时重建索引：转写节点按 tid 一张表（峰值拍的呈堂材料）。 */
@@ -60,12 +63,14 @@ function peakRows(tids) {
 
 function resetRun() {
   app.gen++;
+  app.current = null; app.readTab = 'tracks'; readReturnFocus = null;
   app.prev = { chapter: null, bgKey: null, date: null };
   app.met = new Set(); app.facts = new Set(); app.timelineBuilt = false; app.sheet.clear(); app.cards.clear();
   stage.reset(); stage.clearClues(); stage.clearAnchors(); stage.clearDateLabel();
   $('#timeline').classList.remove('on');
   $('#chapterLabel').classList.remove('on');
   $('#sheetPanel').classList.remove('on');
+  $('#readPanel').classList.remove('on');
 }
 
 /** 渲染一个停点;返回下一停点状态(结局/选择后返回其状态),终局返回 null。 */
@@ -216,6 +221,8 @@ async function runLoop(s0) {
   let s = s0;
   while (s) {
     if (gen !== app.gen) break; // 换幕/换档：旧循环退场
+    app.current = s;
+    if ($('#readPanel').classList.contains('on')) renderRead();
     // 指纹哨兵落地：揭示不打断，拍与拍之间的停点换版（进度在服务端，无损）
     if (app.forceUpdate && !stage.revealing) { reloadForUpdate(); return; }
     s = await renderBeat(s);
@@ -227,6 +234,7 @@ async function showEnding(s) {
   const seen = await api.j(`/api/saves/${app.saveId}/endings`).catch(() => []);
   const names = seen.map(e => app.ir.endings.find(x => x.id === e.ending_id)?.title ?? e.ending_id);
   $('#endTitle').textContent = s.title;
+  $('#btnReadEnd').hidden = !app.ir.reading;
   $('#endCollected').innerHTML = `已收集结局 ${seen.length}/${app.ir.endings.length}` +
     (names.length ? `<br>${names.join(' · ')}` : '');
   $('#endcard').classList.add('on', 'settle'); // 安静期：整局养成的连点惯性不得当场命中「回到封面」
@@ -236,6 +244,7 @@ async function showEnding(s) {
 async function startGame(gameId) {
   const info = await api.j(`/api/games/${gameId}`);
   app.ir = info.ir; app.gameId = gameId;
+  $('#btnRead').hidden = !app.ir.reading;
   stage.setLexicon(app.ir); // 行内签名词典随 IR 重建（ADR-005）
   indexIr();
   const r = await api.post(`/api/games/${gameId}/saves`); // player 缺省=服务端取会话用户名
@@ -253,6 +262,7 @@ async function loadSave(saveId) {
   const r = await api.j(`/api/saves/${saveId}`);
   const info = await api.j(`/api/games/${r.save.gameId}`);
   app.ir = info.ir; app.gameId = r.save.gameId; app.saveId = saveId;
+  $('#btnRead').hidden = !app.ir.reading;
   for (const k of Object.keys(r.state.flags ?? {})) if (k.startsWith('card.')) app.cards.add(k); // 读档种子
   stage.setLexicon(app.ir);
   indexIr();
@@ -279,13 +289,39 @@ async function openSaves() {
   settlePanel('#savesPanel');
 }
 
+let readReturnFocus = null;
+function renderRead() {
+  if (!app.ir?.reading) return;
+  renderReadingPanel({
+    ir: app.ir,
+    state: app.current,
+    tab: app.readTab,
+    onTab: id => { app.readTab = id; renderRead(); },
+    mark: text => stage.mark(text),
+  });
+}
+function openRead(tab = null) {
+  if (!app.ir?.reading) { stage.toast('本作没有导读'); return; }
+  if (!readReturnFocus) readReturnFocus = document.activeElement;
+  if (!requestPanel('#readPanel')) return;
+  app.readTab = tab ?? app.readTab ?? 'tracks';
+  renderRead();
+  settlePanel('#readPanel');
+  $('#readPanel .read-tab[aria-selected="true"]')?.focus();
+}
+
 // ---- 侧面板统一合同：互斥开关 + 关闭钮 + 点外关闭（该拍不推进）+ ESC/空格冻结 ----
-const SIDE_PANELS = ['#savesPanel', '#sheetPanel', '#endsPanel', '#codexPanel'];
+const SIDE_PANELS = ['#savesPanel', '#sheetPanel', '#endsPanel', '#codexPanel', '#readPanel'];
 const panelOpen = () => SIDE_PANELS.find(sel => $(sel).classList.contains('on')) ?? null;
-let pendingPanel = null; // 点击即声明：异步开面板取数期间，别的面板不得反杀
+let pendingPanel = null;
 function closePanels() {
+  const restoreReadFocus = $('#readPanel').classList.contains('on');
   pendingPanel = null;
   for (const sel of SIDE_PANELS) $(sel).classList.remove('on');
+  if (restoreReadFocus && readReturnFocus) {
+    const el = readReturnFocus; readReturnFocus = null;
+    if (el?.isConnected) el.focus();
+  }
   if (stage.pendingGate) stage.hint(true); // 面板让位后，推进提示回来
 }
 /** 同步面板：点击即开（含 toggle）。已开着 → 关（toggle 语义）。 */
@@ -333,6 +369,8 @@ document.querySelectorAll('.pnl-x').forEach(b => b.onclick = () => closePanels()
 
 // ---- HUD 按钮 ----
 $('#btnSaves').onclick = openSaves;
+$('#btnRead').onclick = () => openRead();
+$('#btnReadEnd').onclick = () => { $('#endcard').classList.remove('on'); openRead('recap'); };
 // 底单回看：本局转写记录（悬疑玩家要翻回去对时间戳与号码）
 // 同频聚簇：同形声纹相邻并列——形状即线索，不标数字（播种层公平证据的回看强化）
 $('#btnSheet').onclick = () => {
@@ -350,7 +388,7 @@ $('#btnSheet').onclick = () => {
     for (const it of grp) {
       const div = document.createElement('div');
       div.className = 'tr-row';
-      div.innerHTML = `<span class="tr-row-caller">${it.caller ?? '呼入'}${it.hz ? Stage.waveChip(it.hz) : ''}</span><span class="tr-row-text">${stage.mark(it.target)}</span>`;
+      div.innerHTML = `<span class="tr-row-caller">${stage.mark(it.caller ?? '呼入')}${it.hz ? Stage.waveChip(it.hz) : ''}</span><span class="tr-row-text">${stage.mark(it.target)}</span>`;
       list.appendChild(div);
     }
   });
@@ -363,14 +401,15 @@ function endingBody(eid) {
   while (id && ++guard < 500) {
     const n = app.ir.nodes[id];
     if (!n || n.type === 'ending') break;
-    if (n.type === 'line') out += `<p>${n.speaker ? `<i>${n.speaker}：</i>` : ''}${stage.mark(n.text)}</p>`;
-    else if (n.type === 'transcribe') out += `<p class="end-tr">【转写】${n.caller ?? '呼入'}：${stage.mark(n.target)}</p>`;
+    if (n.type === 'line') out += `<p>${n.speaker ? `<i>${stage.mark(n.speaker)}：</i>` : ''}${stage.mark(n.text)}</p>`;
+    else if (n.type === 'transcribe') out += `<p class="end-tr">【转写】${stage.mark(n.caller ?? '呼入')}：${stage.mark(n.target)}</p>`;
     id = n.next;
   }
   return out;
 }
 async function openEnds() {
   if (!app.gameId) { stage.toast('先开始游戏'); return; }
+  if (!requestPanel('#endsPanel')) return;
   const seen = await api.j(`/api/games/${app.gameId}/endings`).catch(() => []);
   const seenIds = new Set(seen.map(e => e.ending_id));
   const box = $('#endsList');

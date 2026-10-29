@@ -23,18 +23,20 @@ const KEY_SRC = [
 
 const reEsc = s => s.replace(/[.*+?^${}()|[\]\\\-]/g, '\\$&');
 const htmlEsc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-const KIND_CLS = { p: 'ep', x: 'ex', o: 'eo', u: 'eu', t: 'et' };
+const KIND_CLS = { p: 'ep', x: 'ex', o: 'eo', c: 'ec', u: 'eu', t: 'et' };
 
 /** 从 IR 构建行内签名词典。kind：p=人物 x=地点 o=组织 u=宇宙级客串（class:universe 人物，
- *  永不主角，行文里以传闻与边缘在场出现——灯箱式金墨签名）；t=时代词条（ADR-006 图鉴：
- *  淡墨点线，提示「这是个老词，图鉴里有它的档案」）；同词先到先得（人物 > 地点 > 组织 > 词条）。 */
+ *  永不主角，行文里以传闻与边缘在场出现——灯箱式金墨签名）；c=事件线索（朱砂纸签）；
+ *  t=时代词条（ADR-006 图鉴：淡墨点线，提示「这是个老词，图鉴里有它的档案」）；
+ *  同词先到先得（人物 > 地点 > 组织 > 事件线索 > 词条）。 */
 export function buildLexicon(ir = {}) {
   const canon = ir.canon ?? {};
   const byText = new Map();
-  for (const [kind, list] of [['p', canon.characters], ['x', canon.locations], ['o', canon.orgs], ['t', canon.lexicon]]) {
+  for (const [kind, list] of [['p', canon.characters], ['x', canon.locations], ['o', canon.orgs], ['c', canon.events], ['t', canon.lexicon]]) {
     for (const e of list ?? []) {
       const k = kind === 'p' && e.class === 'universe' ? 'u' : kind;
-      for (const name of [e.name, ...(e.aliases ?? [])]) {
+      const names = kind === 'c' ? [e.title] : [e.name, ...(e.aliases ?? [])];
+      for (const name of names) {
         const t = String(name ?? '').trim();
         if (t.length < 2 || PRONOUNS.has(t) || GENERIC_WORDS.has(t)) continue;
         if (!byText.has(t)) byText.set(t, k);
@@ -50,7 +52,7 @@ export function buildLexicon(ir = {}) {
 }
 
 /** 扫描文本 → 标注 token 流。
- *  s=普通字串 p/x/o=实体 k=关键信息 qk=短引语（朱批，原子） lq=长引语（含递归 kids）。
+ *  s=普通字串 p/x/o/c=实体 k=关键信息 qk=短引语（朱批，原子） lq=长引语（含递归 kids）。
  *  短引语判定：『』恒为朱批（≤24 字）；「」内文 ≤12 字且无句末标点。 */
 function tokenize(text, lex) {
   const out = [];

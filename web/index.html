@@ -136,7 +136,7 @@
 
   /* —— 行内实体签名（ADR-005：全部由 canon 摘要块自动推导，剧本零标注）—— */
   /* 人物：中性墨账本划线——统一签名，绝不携带个体主题色（防别名串联泄底） */
-  .ep{font-family:var(--kai);font-weight:700;color:var(--ink-deep);
+  .ep{font-family:var(--kai);font-weight:700;color:var(--ink-deep);font-size:1.04em;
     background:linear-gradient(transparent 68%,rgba(51,46,33,.17) 0)}
   /* 宇宙级客串（class:universe，永不主角）：金墨骑缝签名——灯箱式闪现入场，
      一闪、一闪、稳亮（向启 E1 尾声「灯箱刚刚亮起」的同构）；仍中性墨不带个体色 */
@@ -148,7 +148,7 @@
   @keyframes euFlick{
     0%{opacity:0}22%{opacity:.9}34%{opacity:.14}52%{opacity:1}64%{opacity:.45}100%{opacity:1}}
   /* 地名：行内小印章——朱砂细框，落章式入场 */
-  .ex{font-family:var(--kai);font-weight:700;color:var(--blood);font-size:.94em;
+  .ex{font-family:var(--kai);font-weight:700;color:var(--blood);font-size:1em;
     letter-spacing:.08em;padding:0 .2em;margin:0 .05em;
     border:1px solid rgba(158,58,43,.5);border-radius:2px;background:rgba(158,58,43,.05);
     animation:sealInline .42s cubic-bezier(.2,1.5,.4,1) .12s both}
@@ -159,13 +159,19 @@
     border-block:1px solid rgba(125,98,38,.55)}
   /* 时代词条（ADR-006 图鉴）：淡墨点线——「这是个老词，卷宗里有它的档案」 */
   .et{border-bottom:1px dotted rgba(51,46,33,.45);cursor:help}
-  /* 关键信息（日期/时刻/号码）：dateline 数字块——无衬线 + 表格数字，字落后再着墨 */
-  .ek{font-family:var(--sans);font-weight:700;color:var(--accent-ink);font-size:.92em;
-    letter-spacing:.05em;font-variant-numeric:tabular-nums;
+  /* 关键信息（日期/时刻/号码）：冷青标记块——更大、更重，与暗金档案信息明确分层 */
+  .ek{font-family:var(--sans);font-weight:800;color:var(--accent-cold);font-size:1.1em;
+    letter-spacing:.04em;font-variant-numeric:tabular-nums;padding:0 .1em;
+    background:linear-gradient(transparent 8%,rgba(78,125,135,.16) 8% 92%,transparent 92%);
+    box-shadow:inset 0 -2px rgba(78,125,135,.65);
     animation:ekInk .55s ease .22s both}
   @keyframes ekInk{from{opacity:0;filter:blur(1.5px)}to{opacity:1;filter:none}}
+  /* 事件 / 线索：朱砂纸签——与证物 chip、时间轴点亮共用同一色相，形状区别于地点印章 */
+  .ec{font-family:var(--kai);font-weight:700;color:var(--blood);font-size:1.04em;
+    letter-spacing:.06em;padding:0 .14em;border-radius:1px;
+    background:rgba(158,58,43,.1);box-shadow:inset 0 -2px rgba(158,58,43,.45)}
   /* 短引语 / 『』嵌套引语 = 朱批关键词：朱砂楷体 + 笔锋下划线渐次拖出 */
-  .qk{font-family:var(--kai);font-weight:700;color:var(--blood);letter-spacing:.06em;
+  .qk{font-family:var(--kai);font-weight:700;color:var(--blood);font-size:1.03em;letter-spacing:.06em;
     background:linear-gradient(transparent 78%,rgba(158,58,43,.4) 0) no-repeat 0 100%/0 100%;
     animation:qkBrush .7s ease .32s forwards}
   @keyframes qkBrush{to{background-size:100% 100%}}
@@ -290,7 +296,7 @@
   .chip::before{content:"";position:absolute;left:.55em;width:5px;height:5px;border-radius:50%;
     background:var(--blood);box-shadow:0 0 0 1px rgba(158,58,43,.35)}
   .chip.in{transform:scale(1)}
-  .topbtns{display:flex;gap:8px}
+  .topbtns{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;max-width:65vw}
   #stage button{pointer-events:auto;background:#241e14;color:var(--ink);
     border:1px solid #6d5d3b;border-radius:3px;padding:4px 12px;cursor:pointer;
     font-size:12px;font-family:var(--kai);letter-spacing:.16em;
@@ -299,7 +305,8 @@
     box-shadow:0 4px 14px rgba(0,0,0,.5)}
 
   #hint{position:absolute;bottom:calc(3.4vh + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);
-    font-family:var(--sans);font-size:13px;letter-spacing:.34em;color:#8f8567;
+    width:max-content;max-width:92vw;text-align:center;
+    font-family:var(--sans);font-size:13px;letter-spacing:.16em;color:#8f8567;
     opacity:0;transition:opacity .6s;z-index:6;pointer-events:none}
   #hint.on{opacity:.9}
   /* 版本指纹（footer 左下角）：部署追踪——v版本 · sha · 起服 · 服务器时间 */
@@ -584,6 +591,80 @@
     .charcard{max-width:262px}
     .cc-wave{width:150px}
   }
+  /* 导读：渐进披露的阅读辅助（轨迹/留言/证物/关系/地图/回读） */
+  #readPanel{position:absolute;right:2%;top:7%;width:min(860px,94vw);max-height:82%;overflow:auto;display:none;
+    background:linear-gradient(150deg,#e9dcbd,#ddd0a9);border:1px solid #a8946a;border-radius:3px;padding:14px;z-index:21;
+    font-family:var(--sans);color:#2e2818;touch-action:pan-y;user-select:text;
+    box-shadow:0 24px 70px rgba(0,0,0,.7),inset 0 0 0 4px rgba(23,19,13,.10)}
+  #readPanel.on{display:block}
+  .read-head{position:sticky;top:-14px;z-index:3;margin:-14px -14px 12px;padding:14px 14px 0;
+    background:linear-gradient(180deg,#e9dcbd 88%,rgba(233,220,189,.82))}
+  .read-head h3{margin:0 0 8px;font-size:13px;color:#7c704f;letter-spacing:.22em;font-family:var(--kai)}
+  .read-tabs{display:flex;gap:5px;overflow-x:auto;border-bottom:1px solid rgba(124,112,79,.32);padding-bottom:8px}
+  .read-tab{flex:none;padding:5px 10px;min-height:32px;background:rgba(255,252,242,.25);color:#6e6549;
+    border:1px solid transparent;font-size:12px;letter-spacing:.1em}
+  .read-tab[aria-selected="true"]{border-color:#9e3a2b;color:#9e3a2b;background:rgba(158,58,43,.07)}
+  .ra-note{font-size:11px;color:#8f8567;line-height:1.7;margin:2px 0 12px;letter-spacing:.08em}
+  .ra-locked{padding:28px 12px;text-align:center;color:#8f8567;font-family:var(--kai);font-size:14px;letter-spacing:.12em}
+  .ra-tracks{display:grid;gap:18px}
+  .ra-track{display:grid;grid-template-columns:46px 1fr;gap:10px;align-items:start}
+  .ra-track-label{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border:1px solid #a8946a;
+    border-radius:50%;font-family:var(--kai);color:#7c704f;background:rgba(255,252,242,.22)}
+  .ra-stops{display:flex;flex-wrap:wrap;gap:8px;border-top:1px dashed rgba(124,112,79,.35);padding-top:10px}
+  .ra-stop{min-width:110px;padding:6px 9px;border-left:2px solid rgba(124,112,79,.28);color:#6e6549;font-size:12px;line-height:1.6}
+  .ra-stop.current{border-left-color:var(--blood);color:var(--blood);background:rgba(158,58,43,.06)}
+  .ra-converge{margin-left:56px;padding:10px 12px;border:1px solid rgba(158,58,43,.45);color:var(--blood);
+    font-family:var(--kai);letter-spacing:.12em;background:rgba(158,58,43,.05)}
+  .ra-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  .ra-card{border:1px solid #a8946a;background:rgba(255,252,242,.26);padding:12px;min-width:0}
+  .ra-card-head{display:flex;justify-content:space-between;gap:8px;align-items:baseline;color:#7c704f;font-size:11px;line-height:1.6}
+  .ra-number{font-family:var(--sans);color:var(--accent-cold);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .ra-text{font-family:var(--serif);font-size:15px;line-height:1.85;color:#332e21;margin-top:8px;overflow-wrap:anywhere}
+  .ra-cough{display:inline-block;margin-top:8px;padding:1px 5px;border:1px solid rgba(124,112,79,.4);color:#7c704f;font-size:10px;letter-spacing:.12em}
+  .ra-late{display:flex;gap:14px;margin-top:9px;padding-top:8px;border-top:1px dashed rgba(124,112,79,.35);font-size:11px;color:#6e6549}
+  .ra-late strong{color:var(--blood);font-weight:600}
+  .ra-evidence{grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
+  .ra-paper{position:relative;min-height:108px;border-left-width:4px}
+  .ra-paper.original{border-left-color:#9e3a2b}
+  .ra-paper.hand{border-left-color:#5b4d3a}
+  .ra-paper.draft{border-left-color:#c9a15f}
+  .ra-paper.summary{border-left-color:#4e7d87}
+  .ra-paper.copy{border-left-color:#8f8567;border-style:dashed;border-top-width:1px;border-right-width:1px;border-bottom-width:1px}
+  .ra-kind{font-size:10px;color:#8f8567;letter-spacing:.14em}
+  .ra-holder{margin-top:12px;color:#7d6226;font-size:12px;line-height:1.7}
+  .ra-paper.empty{opacity:.62}
+  .ra-debt{display:grid;gap:10px}
+  .ra-debt-row{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;padding:11px;border:1px solid rgba(168,148,106,.65);background:rgba(255,252,242,.2)}
+  .ra-from{font-family:var(--kai);font-weight:700;color:#2e2818}
+  .ra-relation{color:var(--blood);text-align:center;font-size:12px}
+  .ra-to{text-align:right;color:#6e6549;font-size:12px}
+  .ra-map{display:block;width:100%;height:auto;max-height:360px;border:1px solid rgba(168,148,106,.55);background:rgba(255,252,242,.18)}
+  .ra-map text{fill:var(--blood);font:12px var(--sans);letter-spacing:.04em}
+  .ra-map .road{stroke:#8f8567;stroke-width:5;stroke-linecap:round;fill:none}
+  .ra-map .river{stroke:#4e7d87;stroke-width:10;stroke-linecap:round;fill:none;opacity:.65}
+  .ra-map circle{fill:#c9a15f;stroke:#e9dcbd;stroke-width:3}
+  .ra-map g.current circle{fill:var(--blood)}
+  .ra-map g.current text{fill:var(--blood);font-weight:700}
+  .ra-recap{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+  .ra-recap-card{border:1px solid #a8946a;padding:12px;background:rgba(255,252,242,.22)}
+  .ra-recap-card.current{border-color:var(--blood);background:rgba(158,58,43,.06)}
+  .ra-recap-card h4{margin:0 0 8px;font-family:var(--kai);font-size:17px;color:#2e2818;letter-spacing:.14em}
+  .ra-recap-card dl{display:grid;grid-template-columns:44px 1fr;gap:6px;font-size:12px;line-height:1.75}
+  .ra-recap-card dt{color:#8f8567}.ra-recap-card dd{margin:0;color:#332e21}
+  @media (max-width:640px){
+    #readPanel{right:3vw;top:4%;width:94vw;max-height:88%;padding:12px}
+    .read-head{top:-12px;margin:-12px -12px 10px;padding:12px 12px 0}
+    .ra-grid,.ra-recap{grid-template-columns:1fr}
+    .ra-track{grid-template-columns:36px 1fr;gap:6px}
+    .ra-track-label{width:30px;height:30px}
+    .ra-stop{min-width:96px;padding:5px 7px}
+    .ra-converge{margin-left:42px}
+    .ra-debt-row{grid-template-columns:1fr;gap:4px}
+    .ra-relation,.ra-to{text-align:left}
+    .ra-card{padding:10px}
+    .ra-map text{font-size:11px}
+  }
+
   @media (max-width:520px){
     #hud button{font-size:11px;padding:5px 9px;letter-spacing:1px;min-height:34px}
     #hud{gap:6px}
@@ -618,6 +699,7 @@
     <div id="hudR">
       <div class="bag"><span>证物</span><span class="chips" id="clues"></span></div>
       <div class="topbtns">
+        <button id="btnRead" hidden>导读</button>
         <button id="btnSheet">底单</button>
         <button id="btnEnds">结案</button>
         <button id="btnCodex">图鉴</button>
@@ -630,7 +712,7 @@
   </div>
 
   <div id="timeline"></div>
-  <div id="hint">点击 · 空格 —— 继续 ▸</div>
+  <div id="hint">滑动 / 滚轮回看 · 点击 / 空格继续 ▸</div>
 
   <div id="title">
     <div class="t-paper">
@@ -653,6 +735,13 @@
   <div id="endsPanel" class="sidepanel"><h3>结案档案 · 已归档结局<button class="pnl-x" aria-label="关闭">×</button></h3><div id="endsList"></div></div>
   <div id="codexPanel" class="sidepanel"><h3>卷宗图鉴 · 时代与人物<button class="pnl-x" aria-label="关闭">×</button></h3><div id="codexList"></div></div>
   <div id="sheetPanel" class="sidepanel"><h3>转写底单 · 本局<button class="pnl-x" aria-label="关闭">×</button></h3><div id="sheetList"></div></div>
+  <div id="readPanel" class="sidepanel" role="dialog" aria-label="渐进阅读辅助">
+    <div class="read-head">
+      <h3>导读 · 只展开已读信息<button class="pnl-x" aria-label="关闭">×</button></h3>
+      <div class="read-tabs" id="readTabs" role="tablist" aria-label="导读分类"></div>
+    </div>
+    <div id="readBody" role="tabpanel"></div>
+  </div>
 
   <div id="endcard">
     <div class="ec-paper">
@@ -664,6 +753,7 @@
       <div class="ec-btns">
         <button id="btnAgain">翻页重开</button>
         <button id="btnEnds2">结案档案</button>
+        <button id="btnReadEnd">回读轨迹</button>
         <button id="btnBackTitle">回到封面</button>
       </div>
     </div>

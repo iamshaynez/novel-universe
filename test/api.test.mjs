@@ -154,6 +154,7 @@ describe('版本指纹（footer 部署追踪）', () => {
     assert.equal(status, 200);
     assert.match(body.version, /^\d+\.\d+\.\d+$/, 'semver 版本号');
     assert.ok(typeof body.sha === 'string' && body.sha.length >= 4, 'sha 或其兜底');
+    assert.match(body.bundle, /^[a-f0-9]{16}$/, '内容指纹不依赖 git');
     assert.ok(!Number.isNaN(Date.parse(body.boot)), '起服时间可解析');
     assert.ok(!Number.isNaN(Date.parse(body.now)), '服务器时间可解析');
     assert.ok(Date.parse(body.boot) <= Date.parse(body.now), '起服不晚于当前');

@@ -4,8 +4,8 @@
 // 断线自愈：4xx（除 408/429）是永久失败，重试只会原地打转；其余按拍退避，
 // 部署窗口的失联通常数十秒内回来。
 
-/** 换版指纹：只由版本号与 sha 构成，起服时刻不参与。 */
-export const codeOf = v => `${v.version}|${v.sha}`;
+/** 换版指纹：优先内容 bundle；旧服务端没有 bundle 时回退 version|sha。 */
+export const codeOf = v => v.bundle ? `bundle:${v.bundle}` : `${v.version}|${v.sha}`;
 
 /** 出身指纹 base 对最新对时 next 的哨兵动作：observe 认定出身 / reload 换版 / notice 重启报平安 / none 沉默。 */
 export function sentinelAction(base, next) {

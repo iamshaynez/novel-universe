@@ -4,6 +4,7 @@ import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { extname, join, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { compileGame } from '../tools/compile-scenario.mjs';
@@ -31,6 +32,21 @@ const detectSha = () => {
   }
 };
 const GIT_SHA = detectSha();
+
+// 内容指纹：不依赖镜像里是否存在 .git。静态壳或任一作品 IR 变化都会改变 bundle，
+// 让已打开的页面能识别真正的换版；同镜像重启则保持同值，不误伤玩家。
+function bundleFingerprint(games, webDir) {
+  const hash = createHash('sha256');
+  const walk = dir => readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))
+    .flatMap(entry => entry.isDirectory() ? walk(join(dir, entry.name)) : [join(dir, entry.name)]);
+  for (const file of walk(webDir)) {
+    hash.update(file.slice(webDir.length)); hash.update(readFileSync(file));
+  }
+  for (const id of Object.keys(games).sort()) {
+    hash.update(id); hash.update(JSON.stringify(games[id].ir));
+  }
+  return hash.digest('hex').slice(0, 16);
+}
 
 export function loadGames(gamesRoot, universeDir) {
   const games = {};
@@ -77,6 +93,7 @@ async function readBody(req) {
 }
 
 export function createApp({ db, games, webDir }) {
+  const bundle = bundleFingerprint(games, webDir);
   async function serveStatic(res, pathname, req) {
     let file = null;
     if (pathname === '/') file = join(webDir, 'index.html');
@@ -150,7 +167,7 @@ export function createApp({ db, games, webDir }) {
 
     // ---- 版本指纹（无需会话）：footer 部署追踪 ----
     if (req.method === 'GET' && a === 'version' && !b) {
-      return json(res, 200, { version: PKG_VERSION, sha: GIT_SHA, boot: BOOT_AT.toISOString(), now: new Date().toISOString() });
+      return json(res, 200, { version: PKG_VERSION, sha: GIT_SHA, bundle, boot: BOOT_AT.toISOString(), now: new Date().toISOString() });
     }
 
     // ---- 认证 ----

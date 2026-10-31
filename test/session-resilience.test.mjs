@@ -36,8 +36,17 @@ describe('版本哨兵：服务器重启不弹回封面，真正换版才换', (
     assert.equal(sentinelAction(v('0.1.0', 'abc1234', 'T1'), v('0.1.0', 'abc1234', 'T1')), 'none');
   });
 
-  it('换版指纹只由 version|sha 构成，boot 不参与', () => {
+  it('换版指纹优先使用内容 bundle，boot 不参与', () => {
     assert.equal(codeOf(v('0.1.0', 'abc1234', '任意')), '0.1.0|abc1234');
+    assert.equal(codeOf({ ...v('0.1.0', 'snapshot', '任意'), bundle: 'abc123' }), 'bundle:abc123');
+  });
+
+  it('内容变化即换版，即使 sha 仍是 snapshot；同 bundle 重启只报平安', () => {
+    const a = { version: '0.1.0', sha: 'snapshot', bundle: 'aaa', boot: 'T1' };
+    const b = { version: '0.1.0', sha: 'snapshot', bundle: 'bbb', boot: 'T2' };
+    const restarted = { ...a, boot: 'T2' };
+    assert.equal(sentinelAction(a, b), 'reload');
+    assert.equal(sentinelAction(a, restarted), 'notice');
   });
 });
 
@@ -73,6 +82,9 @@ describe('播放器接线合同：三条韧性路径都真实接进 player', () 
     assert.match(src, /markLastPlay\(r\.saveId\)/, '开局记标记');
     assert.match(src, /markLastPlay\(saveId\)/, '读档记标记');
     assert.match(src, /await tryResume\(/, '开卷时尝试续档');
+    assert.match(src, /listComplete = false/, '存档列表失败被标记为未知，而非空档');
+    assert.match(src, /!unfinished\.has\(marker\.saveId\) && listComplete/, '列表不完整时不得删除续档标记');
+    assert.match(src, /app\.resume = true/, '读档首拍走续读模式');
     assert.match(src, /clearLastPlay\(\); sessionStorage\.setItem\('nu\.reload\.cause', 'btnTitle'\)/, '回到封面清标记');
     assert.match(src, /clearLastPlay\(\); sessionStorage\.setItem\('nu\.reload\.cause', 'btnBackTitle'\)/, '结案页回到封面清标记');
     assert.match(src, /clearLastPlay\(\); sessionStorage\.setItem\('nu\.reload\.cause', 'btnLogout'\)/, '退出登录清标记');

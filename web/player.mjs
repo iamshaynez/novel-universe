@@ -39,6 +39,7 @@ const app = {
   gen: 0,           // 换代令牌：切档/重开时 +1，旧渲染循环立即退场，防止双驱动
   forceUpdate: false, // 服务器指纹已变：最近的停点自动换版重载
   current: null,    // 当前停点：导读从 IR + 当前 state 投影，读档无需第二套历史
+  resume: false,    // 读档首拍：落当前停点，不重播章节卡/印章仪式
   readTab: 'tracks',
 };
 
@@ -69,6 +70,7 @@ function peakRows(tids) {
 function resetRun() {
   app.gen++;
   app.current = null; app.readTab = 'tracks'; readReturnFocus = null;
+  app.resume = false;
   app.prev = { chapter: null, bgKey: null, date: null };
   app.met = new Set(); app.facts = new Set(); app.timelineBuilt = false; app.sheet.clear(); app.cards.clear();
   stage.reset(); stage.clearClues(); stage.clearAnchors(); stage.clearDateLabel();
@@ -82,27 +84,33 @@ function resetRun() {
 async function renderBeat(s) {
   const gen = app.gen;
   const dead = () => gen !== app.gen; // 切档/重开令牌：舞台层只保演出干净，推进权归新代
-  // 章节切换 → 清场 + 章节卡（带本章起始日期——双时间线在章卡上就亮明年代）
+  // 章节切换 → 清场 + 章节卡；读档首拍只落 HUD 与氛围，不把玩家拉回章首仪式
+  const resuming = app.resume;
+  app.resume = false;
   if (s.chapter !== app.prev.chapter) {
     const idx = Math.max(0, app.ir.chapters.findIndex(c => c.id === s.chapter));
     const ch = app.ir.chapters[idx];
     const num = CN[idx] ?? String(idx + 1);
-    await stage.wipe();
-    await stage.chapterCard(`第${num}章`, ch.title, s.date ?? null);
-    if (dead()) return null; // 卡播到一半被切档：不再触碰新幕
+    if (!resuming) {
+      await stage.wipe();
+      await stage.chapterCard(`第${num}章`, ch.title, s.date ?? null);
+      if (dead()) return null; // 卡播到一半被切档：不再触碰新幕
+    }
     stage.setChapterLabel(`第${num}章 · ${ch.title}`);
     if (s.date) { stage.setDateLabel(s.date); app.prev.date = s.date; } // 章卡已示日期，流内不再重复盖章
     app.prev.chapter = s.chapter;
     app.prev.bgKey = null;
   }
-  // 章内时间跳变（@date 变更）→ HUD 罗盘换日 + 流内日期章：回拨/前跳都被钉在纸上
+  // 章内时间跳变（@date 变更）→ HUD 罗盘换日 + 流内日期章；读档只恢复 HUD，不重播日期章
   if (s.date && s.date !== app.prev.date) {
     stage.setDateLabel(s.date);
-    await stage.dateLine(s.date);
-    if (dead()) return null;
+    if (!resuming) {
+      await stage.dateLine(s.date);
+      if (dead()) return null;
+    }
     app.prev.date = s.date;
   }
-  // 地点或昼夜切换 → 氛围层 + 印章（白日/夜翻面本身是场景信号，同地点也要换）
+  // 地点或昼夜切换 → 氛围层 + 印章；读档只落氛围，不再次等待印章停点
   const bgId = s.view?.bg?.id ?? null;
   const bgTime = s.view?.bg?.params?.time ?? null;
   const bgKey = bgId ? `${bgId}|${bgTime}` : null;
@@ -110,7 +118,7 @@ async function renderBeat(s) {
     const loc = app.ir.canon.locations.find(l => l.id === bgId);
     const time = ({ day: '白日', dusk: '黄昏', night: '夜' })[bgTime];
     stage.setAmbient(bgId, loc?.mood ?? {}, s.view.bg.params ?? {});
-    if (loc) await stage.seal(loc.name, app.ir.canon.world + (time ? ` · ${time}` : ''));
+    if (!resuming && loc) await stage.seal(loc.name, app.ir.canon.world + (time ? ` · ${time}` : ''));
     if (dead()) return null; // 旧幕的印章等完：新档已接管，旧循环不得再往新舞台渲染
     app.prev.bgKey = bgKey;
   }
@@ -317,6 +325,7 @@ async function loadSave(saveId) {
   $('#endcard').classList.remove('on');
   $('#worldLabel').textContent = `${app.ir.canon.world}悬疑宇宙 · ${app.ir.code}`;
   resetRun();
+  app.resume = true; // 续读落当前停点，不重播本章开篇演出
   runLoop(r.state);
 }
 
@@ -639,11 +648,12 @@ function clearLastPlay() {
   try { localStorage.removeItem(LASTPLAY); } catch { /* 静默 */ }
 }
 /** 开卷续档：标记指向的存档仍进行中才回去；换档案/存档已完结/已删则安静留在封面。 */
-async function tryResume(unfinished) {
+async function tryResume(unfinished, listComplete = true) {
   let marker = null;
   try { marker = JSON.parse(localStorage.getItem(LASTPLAY) ?? 'null'); } catch { clearLastPlay(); return; }
   if (!marker?.saveId || AUTO) return;
-  if (!unfinished.has(marker.saveId)) { clearLastPlay(); return; } // 已通关/换档案所致：标记作废
+  // 列表失败是「未知」而不是「没有」：保留标记，直接按存档号读一次，避免弱网误删续档
+  if (!unfinished.has(marker.saveId) && listComplete) { clearLastPlay(); return; }
   try {
     await loadSave(marker.saveId);
     stage.toast(`回到存档 #${marker.saveId}——从刚才的停点继续`);
@@ -670,6 +680,7 @@ async function tryResume(unfinished) {
     renderAuthBar();
     const games = await api.j('/api/games');
     const unfinished = new Map(); // saveId -> save：续档恢复据此判断「还进行中」
+    let listComplete = true;
     for (const g of games) {
       const row = document.createElement('div');
       row.style.cssText = 'display:flex;gap:8px;align-items:center;justify-content:center';
@@ -678,7 +689,7 @@ async function tryResume(unfinished) {
       b.onclick = () => startGame(g.id).catch(failNote);
       row.appendChild(b);
       // 「继续上次」：任何 reload/误触都不再是灾难——一键回到最近的进行中存档
-      const saves = await api.j(`/api/saves?gameId=${g.id}`).catch(() => []);
+      const saves = await api.j(`/api/saves?gameId=${g.id}`).catch(() => { listComplete = false; return []; });
       for (const sv of saves) if (!sv.ended) unfinished.set(sv.id, sv);
       const last = saves.filter(s => !s.ended).sort((a, b2) => b2.id - a.id)[0];
       if (last && !AUTO) {
@@ -699,7 +710,7 @@ async function tryResume(unfinished) {
         else if (cause === 'server-updated') { sessionStorage.removeItem('nu.reload.cause'); stage.toast('服务器已更新——已自动换到新版，点「继续存档」回到刚才的进度'); }
         else if (cause) { sessionStorage.removeItem('nu.reload.cause'); }
       } catch { /* 静默 */ }
-      await tryResume(unfinished); // 开卷即回：PWA 重开/换版弹回后自动续上
+      await tryResume(unfinished, listComplete); // 开卷即回：PWA 重开/换版弹回后自动续上
     }
   } catch (e) {
     // 开场兜底：me/games 失败（部署窗口的 502、切网）不再静默空白——给出原因与重试入口

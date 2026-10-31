@@ -1,8 +1,8 @@
 // build-wiki：正典 → 设定集页面。确定性（两次构建逐字节相同）+ 内容覆盖 + 漂移守卫
-//（已提交的 web/canon.html 必须等于当前正典的构建产物——正典变了不重新构建，这里变红）。
+//（已提交的 docs/canon.html 必须等于当前正典的构建产物——正典变了不重新构建，这里变红）。
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildWikiHtml } from '../tools/build-wiki.mjs';
@@ -75,8 +75,9 @@ describe('build-wiki：设定集页面', () => {
     }
   });
 
-  it('漂移守卫：已提交的 web/canon.html 与当前正典构建一致', () => {
-    const committed = readFileSync(join(root, 'web/canon.html'), 'utf8');
+  it('漂移守卫：已提交的 docs/canon.html 与当前正典构建一致，且不进入公网目录', () => {
+    const committed = readFileSync(join(root, 'docs/canon.html'), 'utf8');
     assert.equal(committed, html, 'canon.html 过期：请运行 npm run build:wiki 重新构建');
+    assert.equal(existsSync(join(root, 'web/canon.html')), false, '创作内部设定集不得放在 web/');
   });
 });

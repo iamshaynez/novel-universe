@@ -23,9 +23,9 @@ describe('迁移', () => {
   it('全新库：应用全部迁移并建表', () => {
     db = openDb(dbPath);
     const r = migrate(db, MIG);
-    assert.equal(r.appliedCount, 3);
-    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('saves','endings_seen','users','sessions','cards_seen','schema_migrations') ORDER BY name").all();
-    assert.deepEqual(tables.map(t => t.name), ['cards_seen', 'endings_seen', 'saves', 'schema_migrations', 'sessions', 'users']);
+    assert.equal(r.appliedCount, 4);
+    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('saves','endings_seen','users','sessions','cards_seen','sync_docs','sync_heads','collections','schema_migrations') ORDER BY name").all();
+    assert.deepEqual(tables.map(t => t.name), ['cards_seen', 'collections', 'endings_seen', 'saves', 'schema_migrations', 'sessions', 'sync_docs', 'sync_heads', 'users']);
     // 002 给存量表加的归属列必须就位
     const cols = db.prepare("SELECT name FROM pragma_table_info('saves') WHERE name = 'user_id'").all();
     assert.equal(cols.length, 1);

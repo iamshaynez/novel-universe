@@ -14,8 +14,9 @@
 | 剧透纪元 | 每条正典数据带 `disclosed_in`/`first_appearance`，每作声明 `assumes`；**越前引用直接 lint 失败**，这是共享宇宙的核心保护 |
 | 文字舞台 | 排版即运镜：呼吸节奏、实体视觉签名（人物=声纹/分侧站位、地点=印章/氛围、时间=轴带、线索=解锁）、动态范围（峰值每章限量）；演出由 IR+canon 自动推导，剧本零演出标注（ADR-004）；e2e 不依赖浏览器与音频，引擎层回放即测试 |
 | 模块化单体 | 单进程单库，目录严格分层 |
+| 离线优先 | 首访后游戏完全在浏览器本地运行；进度先写 IndexedDB，未注册也可玩可存；账号只用于后台同步，任何同步失败不得影响本地游戏 |
 
-**依赖方向强制单向**：`web(演出) → server(编排) → engine(纯内核) ← tools(编译/lint)`；`games → {universe, assets, engine}`。禁止反向 import。
+**依赖方向强制单向**：`web(演出/本地运行时) → engine(纯内核) ← tools(编译/lint)`；`server(内容/账号/同步) → engine/tools`；web 与 server 仅经 HTTP 交互。`games → {universe, assets, engine}`。禁止反向 import；玩法路径不得依赖 server。
 
 **分层归属**：剧本/文案 → `games/`；设定/数值 → `universe/`；规则逻辑 → `engine/`；接入与编排 → `server/`；界面与演出 → `web/`；编译与校验 → `tools/`。跨层改动在 PR 描述中说明。
 
@@ -25,8 +26,8 @@
 
 1. **TDD**：新机制先补 `test/` 场景测试（用游戏业务语言命名）再写实现；图校验类改动另加变异测试（故意断链/造环必须被抓到）。
 2. **测试命令**：合并前本地 `npm test`（单测+编译+lint+API+e2e 全量）与 `npm run verify`（编译+剧透纪元+图校验+结局全可达）全绿才允许开 PR。
-3. **确定性**：随机只允许存在于边界（server 建档 seed）；`engine/` 内禁止 `Math.random()`/`Date.now()`；乐谱 = 种子 + 参数，同种子离线渲染 MD5 必须不变。
-4. **数据库变更**：落 `server/migrations/NNN-名称.sql`，事务内执行、幂等、编号不复用；提交前 `npm run migrate:status` 必须无 pending。内容包（universe/games）变更不走 schema 迁移。
+3. **确定性**：随机只允许存在于边界（客户端 web 建档 seed、设备 id 与时间戳）；`engine/` 内禁止 `Math.random()`/`Date.now()`；乐谱 = 种子 + 参数，同种子离线渲染 MD5 必须不变。
+4. **数据库变更**：落 `server/migrations/NNN-名称.sql`，事务内执行、幂等、编号不复用；提交前 `npm run migrate:status` 必须无 pending。浏览器 IndexedDB 的本地 schema 升级同样必须版本化并有测试。内容包（universe/games）变更不走 schema 迁移。
 5. **正典变更**：新增条目/字段 = canon minor；改含义/删条目 = major（破坏性，独立 PR 评审）。游戏在 `game.json` 声明 `canon` 版本区间；canon 破坏性变更导致全游戏 lint 变红是预期行为，不许为消红放宽区间。
 6. **剧本变更**：DSL 语法以 `docs/ADR/003` 为合同；改剧本必须过 verify（目标存在、选项不落穿、结局全可达、资产引用齐全）。
 7. **素材纪律**：人物 = 正典字段（`voice_hz` 声线 + `stage{side,theme}` 站位主题色）；场景 = 地点 `mood` 氛围参数（palette/rain/sign/bigchar）+ 播放器配方；调色板 = `universe/tokens.json` stage 令牌（与 `web/index.html` CSS 变量对齐，改一处同步一处）。音效/BGM 全部代码合成（`web/audio.mjs`），零素材文件。乐谱模块化（种子+参数）列为舞台合同 v1 待办。
@@ -64,7 +65,7 @@ feat/fix 分支 → PR → dev（集成）→ PR → release（预发）→ PR �
 ## 5. 速查
 
 ```bash
-npm test              # 全量测试（61+，含 e2e 全分支）
+npm test              # 全量测试（250+，含引擎回放、同步与 e2e 全分支）
 npm run verify        # 编译 + lint + 图 + 可达性
 npm run demo          # http://127.0.0.1:3000（文字舞台播放器，?auto=1 冒烟）
 npm run migrate:status

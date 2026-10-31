@@ -24,7 +24,7 @@ before(async () => {
   await new Promise(r => server.listen(0, r));
   base.url = `http://127.0.0.1:${server.address().port}`;
   base.server = server; base.db = db;
-  const boot = await fetch(base.url + '/api/auth/me');
+  const boot = await fetch(base.url + '/api/auth/guest');
   base.sid = boot.headers.get('set-cookie').match(/nu_sid=([^;]+)/)[1];
 });
 after(() => { base.server.close(); base.db.close(); });

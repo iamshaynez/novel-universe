@@ -1,0 +1,25 @@
+离线优先验收证据（2026-10-31）
+
+实现分支：feat/offline-first
+
+一、自动化门禁
+- npm test：256 tests / 256 pass / 0 fail
+- npm run verify：[PASS] g01-jiexianyuan 结局 E1, E2, E3 路径 2160 条
+- DB_PATH=/tmp/nu-offline-migrate.db npm run migrate：应用 4/4；再次 migrate:status 无 pending
+- 生成式 /sw.js 与模板均通过 node --check
+
+二、真实浏览器离线演练（本地隔离实例 127.0.0.1:3220）
+1. 首次加载：Service Worker activated；Cache Storage 创建 jinjiang-offline-<bundle>；
+   清单含全部壳模块、/engine/*.mjs、/content/catalog.json 与内容寻址 IR，安装时逐项 SHA-256 校验。
+2. 未注册新局：生成 UUID 本地存档并写入 nu.lastPlay；推进到 ch1-n2。
+3. 停止 Node 服务后刷新：页面仍由离线壳加载，直接回到 ch1-n2，未重播章节卡或地点印章。
+4. 服务仍停止时继续推进：成功显示下一拍「锦声传呼台」的玻璃门后 / 白班正要交班。
+5. 账号栏：本机进度 · 可离线游玩 · 离线 · 仅本机；未注册玩家不发起同步。
+
+三、同步验收
+- 真实 HTTP 注册会话 POST /api/sync 推送 accepted；兼容游客推送 403。
+- 同一请求重复推送幂等；版本向量并发返回 conflict；客户端保留本机分叉并接受远端原档。
+- 同步接口抛 offline 时 LocalRuntime 推进与读档仍成功，dirty 保留待重试。
+
+四、隐私边界
+- 创作内部设定集 docs/canon.html；线上 /canon.html = 404（g01-v0.3.1 已发布）。

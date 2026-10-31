@@ -4,7 +4,10 @@
 import { StageAudio } from '/audio.mjs';
 import { Stage, callerHz } from '/stage.mjs';
 import { renderReadingPanel } from '/reading-view.mjs';
-import { codeOf, sentinelAction, isFatalStatus, retryDelayMs } from '/resilience.mjs';
+import { codeOf, sentinelAction } from '/resilience.mjs';
+import { LocalRuntime } from '/runtime.mjs';
+import { openLocalStore } from '/store.mjs';
+import { SyncClient } from '/sync.mjs';
 
 const $ = s => document.querySelector(s);
 const AUTO = new URLSearchParams(location.search).has('auto');
@@ -31,6 +34,7 @@ const api = {
 
 const app = {
   ir: null, saveId: null, gameId: null, user: null,
+  store: null, runtime: null, sync: null, deviceId: null, catalog: [], irByGame: new Map(), syncStatus: '', pendingRemote: null,
   prev: { chapter: null, bgKey: null, date: null },
   met: new Set(), facts: new Set(), timelineBuilt: false, running: false,
   cards: new Set(), // 本局已见的 card.* flag（读档种子先灌满，避免补播入档提示）
@@ -42,6 +46,13 @@ const app = {
   resume: false,    // 读档首拍：落当前停点，不重播章节卡/印章仪式
   readTab: 'tracks',
 };
+
+let syncTimer = null;
+function queueSync() {
+  if (!app.sync || !app.user || app.user.guest) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => app.sync.flush(), 3000);
+}
 
 /** IR 就绪时重建索引：转写节点按 tid 一张表（峰值拍的呈堂材料）。 */
 function indexIr() {
@@ -186,7 +197,8 @@ async function renderBeat(s) {
     stage.dismissCard(card);
     await stage.gate();
     if (gen !== app.gen) return null; // 等待期间换了幕/档：不再触碰任何存档
-    const r = await api.post(`/api/saves/${app.saveId}/advance`);
+    const r = await app.runtime.advance(app.saveId);
+    queueSync();
     if (r.state.kind === 'void') { stage.toast('剧情已到尽头'); return null; }
     return r.state;
   }
@@ -194,7 +206,8 @@ async function renderBeat(s) {
   if (s.kind === 'choice') {
     const idx = await stage.choice(null, s.options.map(o => o.label));
     if (gen !== app.gen) return null;
-    const r = await api.post(`/api/saves/${app.saveId}/choose`, { index: idx });
+    const r = await app.runtime.choose(app.saveId, idx);
+    queueSync();
     return r.state;
   }
 
@@ -212,7 +225,8 @@ async function renderBeat(s) {
         dead: cur.peak?.kind === 'dead', stamp: cur.peak?.args[0] ?? null,
       });
       if (gen !== app.gen) return null;
-      const r = await api.post(`/api/saves/${app.saveId}/advance`, { pick });
+      const r = await app.runtime.advance(app.saveId, pick);
+      queueSync();
       if (r.state.kind === 'transcribe' && r.state.id === cur.id) { stage.toast('听岔了——再听一遍'); cur = r.state; }
       // tid 用于底单/flag 追踪；同节点判定用 id
       else { app.sheet.set(cur.tid, { caller: cur.caller, target: cur.target, hz }); return r.state; }
@@ -228,62 +242,39 @@ async function renderBeat(s) {
   return null;
 }
 
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-
-// 断线自愈：拍内请求失败不再静默死循环。绝不盲目重发 advance/choose（响应丢失时
-// 可能双推进），改以服务端当前状态为权威——幂等 GET 对齐后原地续跑；存档没了/
-// 会话失效等永久失败不空转，说清楚就停。进度全在服务端，对上了就无损继续。
-async function reconnect(e) {
-  if (e.status && isFatalStatus(e.status)) { stage.toast(`出了岔子：${e.message}`); return null; }
-  stage.toast(`连接不稳：${e.message}——正在重连`);
-  for (let i = 0; ; i++) {
-    await sleep(retryDelayMs(i));
-    let r;
-    try {
-      r = await api.j(`/api/saves/${app.saveId}`);
-    } catch (err) {
-      if (err.status && isFatalStatus(err.status)) { stage.toast(`无法续跑：${err.message}`); return null; }
-      if (i > 0 && i % 6 === 0) stage.toast(`仍在对时：${err.message}——进度在服务端，不会丢`);
-      continue;
-    }
-    if (i > 0) stage.toast('已重连——从刚才的停点继续');
-    return r.state;
-  }
-}
-
+// 玩法推进不再访问网络：本地数据库异常只报告并停住，绝不用旧服务端状态覆盖本地进度。
 async function runLoop(s0) {
   const gen = app.gen;
   app.running = true;
   try {
     let s = s0;
-    let stuckKey = null, heals = 0; // 同一停点反复自愈 = 不是网络问题：止步并说明，不无限打转
     while (s) {
-      if (gen !== app.gen) break; // 换幕/换档：旧循环退场
+      if (gen !== app.gen) break;
       app.current = s;
       if ($('#readPanel').classList.contains('on')) renderRead();
-      // 指纹哨兵落地：揭示不打断，拍与拍之间的停点换版（进度在服务端，无损）
       if (app.forceUpdate && !stage.revealing) { reloadForUpdate(); return; }
+      if (app.pendingRemote && !stage.revealing) {
+        const remoteId = app.pendingRemote; app.pendingRemote = null;
+        stage.toast('另一台设备已更新此存档——在停点跟进');
+        await loadSave(remoteId).catch(failNote);
+        return;
+      }
       try {
         s = await renderBeat(s);
-        stuckKey = null; heals = 0;
       } catch (e) {
-        if (gen !== app.gen) break; // 旧代的异常：新幕已接管，静默退场
-        const next = await reconnect(e); // 断线自愈：对齐服务端后原地续跑
-        const key = next ? JSON.stringify(next) : null;
-        heals = key && key === stuckKey ? heals + 1 : 0;
-        stuckKey = key;
-        if (!next) s = null; // 永久失败：reconnect 已说明缘由
-        else if (heals >= 3) { stage.toast('反复出错，先停在这里——刷新页面或换个存档再试'); s = null; }
-        else s = next;
+        if (gen !== app.gen) break;
+        stage.toast(`本地存档出了岔子：${e.message}——进度未被覆盖，请重开当前存档`);
+        s = null;
       }
     }
   } finally {
-    if (gen === app.gen) app.running = false; // 异常路径同样落下：running 不再永久挂起
+    if (gen === app.gen) app.running = false;
   }
 }
 
 async function showEnding(s) {
-  const seen = await api.j(`/api/saves/${app.saveId}/endings`).catch(() => []);
+  const collection = await app.store.getCollection(app.gameId).catch(() => ({ endings: [] }));
+  const seen = collection.endings.map(ending_id => ({ ending_id }));
   const names = seen.map(e => app.ir.endings.find(x => x.id === e.ending_id)?.title ?? e.ending_id);
   $('#endTitle').textContent = s.title;
   $('#btnReadEnd').hidden = !app.ir.reading;
@@ -293,51 +284,79 @@ async function showEnding(s) {
   setTimeout(() => $('#endcard').classList.remove('settle'), 1200);
 }
 
-async function startGame(gameId) {
-  const info = await api.j(`/api/games/${gameId}`);
-  app.ir = info.ir; app.gameId = gameId;
+async function loadIr(gameId) {
+  if (app.irByGame.has(gameId)) return app.irByGame.get(gameId);
+  const meta = app.catalog.find(g => g.id === gameId);
+  if (!meta) throw new Error(`本地目录没有这部作品 ${gameId}`);
+  let ir;
+  try {
+    ir = await api.j(meta.irUrl);
+    await app.store.setMeta(`ir:${gameId}`, { irHash: meta.irHash, ir });
+  } catch (error) {
+    const cached = await app.store.getMeta(`ir:${gameId}`);
+    if (!cached?.ir) throw error;
+    ir = cached.ir;
+  }
+  app.irByGame.set(gameId, ir);
+  return ir;
+}
+
+function useRuntime(ir) {
+  const meta = app.catalog.find(g => g.id === ir.id);
+  app.runtime = new LocalRuntime({ ir, irHash: meta?.irHash ?? null, store: app.store, deviceId: app.deviceId });
+  app.ir = ir; app.gameId = ir.id;
   $('#btnRead').hidden = !app.ir.reading;
-  stage.setLexicon(app.ir); // 行内签名词典随 IR 重建（ADR-005）
+  stage.setLexicon(app.ir);
   indexIr();
-  const r = await api.post(`/api/games/${gameId}/saves`); // player 缺省=服务端取会话用户名
-  app.saveId = r.saveId;
-  if (!AUTO) markLastPlay(r.saveId); // 续档标记：PWA 重开/换版弹回后开卷即回
-  for (const k of Object.keys(r.state.flags ?? {})) if (k.startsWith('card.')) app.cards.add(k); // 开局种子：不补播提示
+}
+
+async function startGame(gameId) {
+  const ir = await loadIr(gameId);
+  useRuntime(ir);
+  const seed = globalThis.crypto?.getRandomValues ? globalThis.crypto.getRandomValues(new Uint32Array(1))[0] : 1;
+  const r = await app.runtime.newGame(seed);
+  app.saveId = r.doc.id;
+  if (!AUTO) markLastPlay(r.doc.id);
+  for (const k of Object.keys(r.state.flags ?? {})) if (k.startsWith('card.')) app.cards.add(k);
   $('#title').style.display = 'none';
   $('#endcard').classList.remove('on');
   $('#savesPanel').classList.remove('on');
   $('#worldLabel').textContent = `${app.ir.canon.world}悬疑宇宙 · ${app.ir.code}`;
   resetRun();
+  queueSync();
   runLoop(r.state);
 }
 
 async function loadSave(saveId) {
-  const r = await api.j(`/api/saves/${saveId}`);
-  const info = await api.j(`/api/games/${r.save.gameId}`);
-  app.ir = info.ir; app.gameId = r.save.gameId; app.saveId = saveId;
-  if (!AUTO) markLastPlay(saveId); // 续档标记
+  const existing = await app.store.getSave(saveId);
+  if (!existing) throw new Error('本地存档不存在');
+  const ir = await loadIr(existing.gameId);
+  useRuntime(ir);
+  const r = await app.runtime.load(saveId);
+  app.saveId = saveId;
+  if (!AUTO) markLastPlay(saveId);
   $('#btnRead').hidden = !app.ir.reading;
-  for (const k of Object.keys(r.state.flags ?? {})) if (k.startsWith('card.')) app.cards.add(k); // 读档种子
-  stage.setLexicon(app.ir);
-  indexIr();
+  for (const k of Object.keys(r.state.flags ?? {})) if (k.startsWith('card.')) app.cards.add(k);
   $('#title').style.display = 'none';
   $('#savesPanel').classList.remove('on');
   $('#endcard').classList.remove('on');
   $('#worldLabel').textContent = `${app.ir.canon.world}悬疑宇宙 · ${app.ir.code}`;
   resetRun();
-  app.resume = true; // 续读落当前停点，不重播本章开篇演出
+  app.resume = true;
+  queueSync();
   runLoop(r.state);
 }
 
 async function openSaves() {
   if (!app.gameId) { stage.toast('先开始游戏'); return; }
   if (!requestPanel('#savesPanel')) return;
-  const list = await api.j(`/api/saves?gameId=${app.gameId}`);
-  $('#savesList').innerHTML = list.length ? '' : '<div style="color:var(--ink-dim);font-size:12px">暂无存档</div>';
+  const list = await app.store.listSaves(app.gameId);
+  $('#savesList').innerHTML = list.length ? '' : '<div style="color:var(--ink-dim);font-size:12px">暂无本地存档</div>';
   for (const sv of list) {
     const div = document.createElement('div');
     div.className = 'save';
-    div.innerHTML = `<span>#${sv.id} 存档</span><span style="color:var(--ink-dim)">${sv.ended ? `已通关(${sv.ended})` : '进行中'}</span>`;
+    const label = sv.summary?.chapterTitle ? `${sv.summary.chapterTitle} · ` : '';
+    div.innerHTML = `<span>${label}存档 ${String(sv.id).slice(0, 8)}</span><span style="color:var(--ink-dim)">${sv.summary?.ended ? `已通关(${sv.summary.ended})` : (sv.dirty ? '仅本机 · 待同步' : '已同步')}</span>`;
     div.onclick = () => loadSave(sv.id).catch(failNote);
     $('#savesList').appendChild(div);
   }
@@ -465,8 +484,8 @@ function endingBody(eid) {
 async function openEnds() {
   if (!app.gameId) { stage.toast('先开始游戏'); return; }
   if (!requestPanel('#endsPanel')) return;
-  const seen = await api.j(`/api/games/${app.gameId}/endings`).catch(() => []);
-  const seenIds = new Set(seen.map(e => e.ending_id));
+  const collection = await app.store.getCollection(app.gameId).catch(() => ({ endings: [] }));
+  const seenIds = new Set(collection.endings);
   const box = $('#endsList');
   box.innerHTML = '';
   for (const e of app.ir.endings) {
@@ -495,9 +514,9 @@ function dossierName(c, revealed) {
 async function openCodex() {
   if (!app.gameId) { stage.toast('先开始游戏'); return; }
   if (!requestPanel('#codexPanel')) return;
-  const seen = await api.j(`/api/games/${app.gameId}/cards`).catch(() => []);
-  // 统一用全名（card.*）判收集与解锁：服务端历史键补 card. 前缀
-  const has = new Set([...app.cards, ...seen.map(k => 'card.' + k)]);
+  const collection = await app.store.getCollection(app.gameId).catch(() => ({ cards: [] }));
+  // 统一用全名（card.*）判收集与解锁：本地收集与存档 flags 同构
+  const has = new Set([...app.cards, ...collection.cards.map(k => 'card.' + k)]);
   const box = $('#codexList');
   box.innerHTML = '';
   const sec = label => { const d = document.createElement('div'); d.className = 'cx-sec'; d.textContent = label; box.appendChild(d); };
@@ -555,17 +574,30 @@ $('#btnMute').onclick = e => {
 };
 document.addEventListener('pointerdown', () => audio.ensure(), { once: true });
 
-// ---- 账籍（游客优先：boot 的 me 自动发游客会话；注册=游客补录凭据，进度归属不动）----
+// ---- 账籍：本机进度为默认；注册/登录只负责把本机进度同步到远端 ----
 const authMode = { now: 'register' }; // register | login
 function renderAuthBar() {
   const bar = $('#authBar');
-  if (!app.user) { bar.innerHTML = ''; return; }
-  // 用户名经服务端字符白名单校验（文字/数字/._-），不含标记字符，innerHTML 安全
-  bar.innerHTML = app.user.guest
-    ? `<span>游客进度仅存本机</span><button id="btnAuth">注册留存</button>`
-    : `<span>档案 · ${app.user.username}</span><button id="btnLogout">退出</button>`;
-  if (app.user.guest) $('#btnAuth').onclick = () => openAuth('register');
-  else $('#btnLogout').onclick = async () => { await api.post('/api/auth/logout'); clearLastPlay(); sessionStorage.setItem('nu.reload.cause', 'btnLogout'); location.reload(); };
+  const syncText = app.syncStatus ? ` · ${app.syncStatus}` : '';
+  if (!app.user) {
+    bar.innerHTML = `<span>本机进度 · 可离线游玩${syncText}</span><button id="btnAuth">注册/登录同步</button>`;
+    $('#btnAuth').onclick = () => openAuth('register');
+    return;
+  }
+  if (app.user.guest) {
+    bar.innerHTML = `<span>本机进度 · 可离线游玩${syncText}</span><button id="btnAuth">注册留存</button>`;
+    $('#btnAuth').onclick = () => openAuth('register');
+    return;
+  }
+  bar.innerHTML = `<span>档案 · ${app.user.username}${syncText}</span><button id="btnLogout">退出</button>`;
+  $('#btnLogout').onclick = async () => {
+    const synced = await app.sync?.flush();
+    const dirty = await app.store.listDirty();
+    if (dirty.length && !synced) { stage.toast('还有未同步进度，暂不退档；联网同步后再试'); return; }
+    await api.post('/api/auth/logout').catch(() => null);
+    await app.store.clearAll(); // 共享设备默认清除本机账号数据
+    clearLastPlay(); sessionStorage.setItem('nu.reload.cause', 'btnLogout'); location.reload();
+  };
 }
 function openAuth(mode) {
   authMode.now = mode;
@@ -587,7 +619,8 @@ $('#apSubmit').onclick = async () => {
       username: $('#apUser').value.trim(), password: $('#apPass').value,
     });
     app.user = r.user;
-    stage.toast(authMode.now === 'register' ? `已立档：${r.user.username}，进度已留存` : `档案调取：${r.user.username}`);
+    if (app.sync) { app.sync.paused = false; app.sync.init(); }
+    stage.toast(authMode.now === 'register' ? `已立档：${r.user.username}，本机进度将同步到远端` : `档案调取：${r.user.username}，正在合并本机与远端进度`);
     $('#authPanel').classList.remove('on');
     renderAuthBar();
   } catch (e) { $('#apErr').textContent = e.message; }
@@ -606,7 +639,8 @@ const FP_RELOADED = 'nu.server.fp.reloaded';
 let fpBase = null; // 出身指纹（页面生命周期内变量：每次加载重新认定，跨重载不残留）
 function reloadForUpdate() {
   try { sessionStorage.setItem('nu.reload.cause', 'server-updated'); } catch { /* 静默 */ }
-  location.reload();
+  if (window.nuActivateUpdate) window.nuActivateUpdate();
+  else location.reload();
 }
 function armForceUpdate(fpNew) {
   if (AUTO) return; // 冒烟不自戕
@@ -647,80 +681,127 @@ function markLastPlay(saveId) {
 function clearLastPlay() {
   try { localStorage.removeItem(LASTPLAY); } catch { /* 静默 */ }
 }
-/** 开卷续档：标记指向的存档仍进行中才回去；换档案/存档已完结/已删则安静留在封面。 */
-async function tryResume(unfinished, listComplete = true) {
+/** 开卷续档：直接读本地存档；网络与账号状态完全不参与。 */
+async function tryResume() {
   let marker = null;
   try { marker = JSON.parse(localStorage.getItem(LASTPLAY) ?? 'null'); } catch { clearLastPlay(); return; }
   if (!marker?.saveId || AUTO) return;
-  // 列表失败是「未知」而不是「没有」：保留标记，直接按存档号读一次，避免弱网误删续档
-  if (!unfinished.has(marker.saveId) && listComplete) { clearLastPlay(); return; }
+  const doc = await app.store.getSave(marker.saveId);
+  if (!doc || doc.deleted || doc.summary?.ended) { clearLastPlay(); return; }
   try {
     await loadSave(marker.saveId);
-    stage.toast(`回到存档 #${marker.saveId}——从刚才的停点继续`);
+    stage.toast('回到上次的本地停点——可继续离线游玩');
   } catch (e) {
-    if (e.status === 404) clearLastPlay(); // 存档已不属于本档案：标记作废
-    else stage.toast(`上次进度没能自动回来：${e.message}——可从「继续存档」进入`); // 瞬时失联：标记留着下次
+    stage.toast(`上次进度没能自动回来：${e.message}——可从本地存档进入`);
   }
 }
 
-// ---- 启动:标题页游戏列表;?auto=1 冒烟 ----
+/** 兼容期一次性导入旧服务端游客存档；导入后本地成为唯一权威，旧游客会话注销。 */
+async function importLegacyGuest() {
+  if (await app.store.getMeta('legacyImported')) return;
+  let count = 0;
+  for (const game of app.catalog) {
+    const list = await api.j(`/api/saves?gameId=${game.id}`);
+    for (const summary of list) {
+      const full = await api.j(`/api/saves/${summary.id}`);
+      if (!full.run) continue;
+      const ir = await loadIr(game.id);
+      const runtime = new LocalRuntime({ ir, irHash: game.irHash, store: app.store, deviceId: app.deviceId });
+      await runtime.importLegacy(full.save, full.run);
+      count++;
+    }
+  }
+  await app.store.setMeta('legacyImported', true);
+  app.syncStatus = count ? `已导入 ${count} 份旧存档到本机` : '';
+  await api.post('/api/auth/logout').catch(() => null);
+  app.user = null; renderAuthBar();
+}
+
+// 同步是后台副作用：失败不打断本地游戏，恢复网络后自动追平。
+setInterval(() => { if (document.visibilityState === 'visible' && app.user && !app.user.guest) app.sync?.flush(); }, 60000);
+addEventListener('online', () => { if (app.user && !app.user.guest) app.sync?.flush(); });
+
+// ---- 启动：本地库与内容目录优先；账号与同步均为后台可选能力 ----
 (async () => {
-  // 重载原因标记：按钮重载前写入；boot 时若 reload 但无标记 = 浏览器行为（下拉刷新/标签回收）——
-  // 玩家看到的「莫名弹回封面」由此可当场分辨
   try {
     if (performance.getEntriesByType('navigation')[0]?.type === 'reload') {
       sessionStorage.setItem('nu.reload.cause', sessionStorage.getItem('nu.reload.cause') ?? 'browser');
-    } else {
-      sessionStorage.removeItem('nu.reload.cause');
-    }
+    } else sessionStorage.removeItem('nu.reload.cause');
   } catch { /* sessionStorage 不可用时静默 */ }
   try {
-    const me = await api.j('/api/auth/me'); // 播放器 boot 合同：先立会话，存档从此有归属
-    app.user = me.user;
+    app.store = await openLocalStore();
+    app.deviceId = await app.store.getMeta('deviceId');
+    if (!app.deviceId) {
+      app.deviceId = globalThis.crypto?.randomUUID?.() ?? `device-${Date.now()}`;
+      await app.store.setMeta('deviceId', app.deviceId);
+    }
     renderAuthBar();
-    const games = await api.j('/api/games');
-    const unfinished = new Map(); // saveId -> save：续档恢复据此判断「还进行中」
-    let listComplete = true;
-    for (const g of games) {
+    let cachedCatalog = await app.store.getMeta('catalog');
+    try {
+      app.catalog = await api.j('/content/catalog.json');
+      await app.store.setMeta('catalog', app.catalog);
+    } catch (error) {
+      if (!cachedCatalog) throw error;
+      app.catalog = cachedCatalog;
+      app.syncStatus = '离线目录 · 仅本机';
+      renderAuthBar();
+    }
+    app.sync = new SyncClient({
+      store: app.store, deviceId: app.deviceId, games: app.catalog.map(g => g.id),
+      post: (path, data) => api.post(path, data),
+      onStatus: status => { app.syncStatus = status.text; renderAuthBar(); },
+      onRemote: doc => {
+        if (doc.id !== app.saveId) return;
+        app.pendingRemote = doc.id;
+        if (!stage.revealing) setTimeout(() => {
+          if (app.pendingRemote !== doc.id) return;
+          app.pendingRemote = null;
+          loadSave(doc.id).catch(failNote);
+        }, 0);
+      },
+    });
+    const unfinished = new Map();
+    for (const g of app.catalog) {
       const row = document.createElement('div');
       row.style.cssText = 'display:flex;gap:8px;align-items:center;justify-content:center';
       const b = document.createElement('button');
       b.innerHTML = `${g.title}<span class="g-sub">${g.subtitle ?? ''}</span>${g.hook ? `<span class="g-hook">${g.hook}</span>` : ''}`;
       b.onclick = () => startGame(g.id).catch(failNote);
       row.appendChild(b);
-      // 「继续上次」：任何 reload/误触都不再是灾难——一键回到最近的进行中存档
-      const saves = await api.j(`/api/saves?gameId=${g.id}`).catch(() => { listComplete = false; return []; });
-      for (const sv of saves) if (!sv.ended) unfinished.set(sv.id, sv);
-      const last = saves.filter(s => !s.ended).sort((a, b2) => b2.id - a.id)[0];
+      const saves = await app.store.listSaves(g.id);
+      for (const sv of saves) if (!sv.summary?.ended) unfinished.set(sv.id, sv);
+      const last = saves.find(s => !s.summary?.ended);
       if (last && !AUTO) {
         const c = document.createElement('button');
-        c.innerHTML = `继续存档 #${last.id}`;
+        c.innerHTML = `继续存档 ${String(last.id).slice(0, 8)}`;
         c.style.cssText = 'font-size:13px;padding:6px 12px';
         c.onclick = () => loadSave(last.id).catch(failNote);
         row.appendChild(c);
       }
       $('#gameList').appendChild(row);
     }
-    if (AUTO) await startGame(games[0].id);
+    if (AUTO) await startGame(app.catalog[0].id);
     if (!AUTO) {
-      // 若页面是「被刷新」回来的，当场告知原因（诊断玩家报告的「莫名弹回」）
       try {
         const cause = sessionStorage.getItem('nu.reload.cause');
-        if (cause === 'browser') { sessionStorage.removeItem('nu.reload.cause'); stage.toast('页面被浏览器刷新（下拉刷新/系统回收）——进度在存档里，点「继续存档」即可回来'); }
-        else if (cause === 'server-updated') { sessionStorage.removeItem('nu.reload.cause'); stage.toast('服务器已更新——已自动换到新版，点「继续存档」回到刚才的进度'); }
-        else if (cause) { sessionStorage.removeItem('nu.reload.cause'); }
+        if (cause === 'browser') { sessionStorage.removeItem('nu.reload.cause'); stage.toast('页面被刷新——本地进度已保留，正在回到上次停点'); }
+        else if (cause === 'server-updated') { sessionStorage.removeItem('nu.reload.cause'); stage.toast('已换到新版——本地进度保留，正在续读'); }
+        else if (cause) sessionStorage.removeItem('nu.reload.cause');
       } catch { /* 静默 */ }
-      await tryResume(unfinished, listComplete); // 开卷即回：PWA 重开/换版弹回后自动续上
+      await tryResume();
     }
+    // 账号查询不阻塞本地 boot；旧游客存档在后台导入本机后才注销旧会话。
+    api.j('/api/auth/me').then(async me => {
+      app.user = me.user; renderAuthBar();
+      if (app.user?.guest) await importLegacyGuest();
+      else if (app.user) app.sync.init();
+    }).catch(() => { app.syncStatus = '离线 · 仅本机'; renderAuthBar(); });
   } catch (e) {
-    // 开场兜底：me/games 失败（部署窗口的 502、切网）不再静默空白——给出原因与重试入口
     const note = document.createElement('div');
     note.style.cssText = 'text-align:center;color:var(--ink-dim);font-size:13px;line-height:2.4';
-    note.textContent = `开场失败：${e.message}`;
+    note.textContent = `本地开卷失败：${e.message}——请使用支持本地存档的浏览器`;
     const retry = document.createElement('button');
-    retry.textContent = '重新开卷';
-    retry.onclick = () => location.reload();
-    note.appendChild(retry);
-    $('#gameList').appendChild(note);
+    retry.textContent = '重新开卷'; retry.onclick = () => location.reload();
+    note.appendChild(retry); $('#gameList').appendChild(note);
   }
 })();

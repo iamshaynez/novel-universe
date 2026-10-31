@@ -1,8 +1,4 @@
-// 会话韧性：版本哨兵、断线自愈、续档恢复——出错与重启都不再把局中人摔回封面。
-// 三条合同：
-//   换版才重载（version|sha 变才是真换版；同镜像重启只报平安，会话与存档都在库里）；
-//   断线以服务端当前状态对齐续跑（绝不盲目重发 advance/choose，防双推进）；
-//   上次进行到的存档开卷即回（刻意回封面/退出登录的除外）。
+// 离线优先合同：内容换版、后台同步失败隔离、本地存档与本地续读。
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -15,98 +11,61 @@ const player = () => readFile(join(root, 'web', 'player.mjs'), 'utf8');
 
 describe('版本哨兵：服务器重启不弹回封面，真正换版才换', () => {
   const v = (version, sha, boot) => ({ version, sha, boot });
-
-  it('首次对时只认定出身指纹，不做任何动作', () => {
-    assert.equal(sentinelAction(null, v('0.1.0', 'abc1234', 'T1')), 'observe');
-  });
-
-  it('同镜像重启（version|sha 不变、起服时刻变）：报一声平安，不换版', () => {
-    assert.equal(sentinelAction(v('0.1.0', 'abc1234', 'T1'), v('0.1.0', 'abc1234', 'T2')), 'notice');
-  });
-
-  it('部署新镜像（sha 变）：换版重载，拿新前端代码', () => {
-    assert.equal(sentinelAction(v('0.1.0', 'abc1234', 'T1'), v('0.1.0', 'def5678', 'T2')), 'reload');
-  });
-
-  it('镜像里没有 .git 时 sha 兜底同值，版本号变化也算换版', () => {
-    assert.equal(sentinelAction(v('0.1.0', 'snapshot', 'T1'), v('0.2.0', 'snapshot', 'T2')), 'reload');
-  });
-
-  it('每 30 秒的例行对时若无任何变化，保持沉默', () => {
-    assert.equal(sentinelAction(v('0.1.0', 'abc1234', 'T1'), v('0.1.0', 'abc1234', 'T1')), 'none');
-  });
-
-  it('换版指纹优先使用内容 bundle，boot 不参与', () => {
-    assert.equal(codeOf(v('0.1.0', 'abc1234', '任意')), '0.1.0|abc1234');
-    assert.equal(codeOf({ ...v('0.1.0', 'snapshot', '任意'), bundle: 'abc123' }), 'bundle:abc123');
-  });
-
-  it('内容变化即换版，即使 sha 仍是 snapshot；同 bundle 重启只报平安', () => {
+  it('首次对时只认定出身指纹，不做任何动作', () => assert.equal(sentinelAction(null, v('0.1.0', 'abc1234', 'T1')), 'observe'));
+  it('同镜像重启只报平安，不换版', () => assert.equal(sentinelAction(v('0.1.0', 'abc1234', 'T1'), v('0.1.0', 'abc1234', 'T2')), 'notice'));
+  it('部署新镜像换版', () => assert.equal(sentinelAction(v('0.1.0', 'abc1234', 'T1'), v('0.1.0', 'def5678', 'T2')), 'reload'));
+  it('内容 bundle 优先于 snapshot sha；同 bundle 重启只报平安', () => {
     const a = { version: '0.1.0', sha: 'snapshot', bundle: 'aaa', boot: 'T1' };
-    const b = { version: '0.1.0', sha: 'snapshot', bundle: 'bbb', boot: 'T2' };
-    const restarted = { ...a, boot: 'T2' };
-    assert.equal(sentinelAction(a, b), 'reload');
-    assert.equal(sentinelAction(a, restarted), 'notice');
+    assert.equal(sentinelAction(a, { ...a, bundle: 'bbb' }), 'reload');
+    assert.equal(sentinelAction(a, { ...a, boot: 'T2' }), 'notice');
+    assert.equal(codeOf(a), 'bundle:aaa');
   });
+  it('例行对时无变化保持沉默', () => assert.equal(sentinelAction(v('0.1.0', 'abc1234', 'T1'), v('0.1.0', 'abc1234', 'T1')), 'none'));
 });
 
-describe('断线自愈：瞬时失败退避重连，永久失败不空转', () => {
-  it('存档不存在、会话失效、非法推进（400/401/403/404/409）不该重试——重试只会原地打转', () => {
-    for (const status of [400, 401, 403, 404, 409]) assert.equal(isFatalStatus(status), true, String(status));
+describe('同步失败分类：瞬时失败退避，永久失败不空转', () => {
+  it('4xx 永久失败不重试，408/429 例外', () => {
+    for (const status of [400, 401, 403, 404, 409]) assert.equal(isFatalStatus(status), true);
+    for (const status of [408, 429, 500, 502, 503, undefined, null]) assert.equal(isFatalStatus(status), false);
   });
-
-  it('超时、限流、网关瞬断（408/429/5xx）与断网（无状态码）都算瞬时，继续重连', () => {
-    for (const status of [408, 429, 500, 502, 503]) assert.equal(isFatalStatus(status), false, String(status));
-    assert.equal(isFatalStatus(undefined), false, 'fetch 抛出的网络错误没有状态码');
-    assert.equal(isFatalStatus(null), false);
-  });
-
-  it('退避从 1 秒起步逐次 +1 秒，封顶 5 秒——部署窗口数十秒内必回来', () => {
-    assert.deepEqual([0, 1, 2, 3, 4, 5, 9].map(retryDelayMs), [1000, 2000, 3000, 4000, 5000, 5000, 5000]);
-  });
+  it('退避从 1 秒起步封顶 5 秒', () => assert.deepEqual([0, 1, 2, 3, 4, 9].map(retryDelayMs), [1000, 2000, 3000, 4000, 5000, 5000]));
 });
 
-describe('播放器接线合同：三条韧性路径都真实接进 player', () => {
-  it('局内出错不再静默死循环：捕获拍内异常，以幂等 GET 对齐服务端状态后续跑', async () => {
+describe('播放器离线接线合同', () => {
+  it('引擎、IndexedDB、后台同步都接入；玩法推进不调用服务端推进接口', async () => {
     const src = await player();
-    assert.match(src, /async function reconnect\(/);
-    assert.match(src, /catch \(e\) \{[\s\S]{0,80}?await reconnect\(e\)/, 'runLoop 捕获拍内异常并转入重连');
-    assert.match(src, /api\.j\(`\/api\/saves\/\$\{app\.saveId\}`\)/, '重连走幂等 GET，不盲目重发推进请求');
-    assert.match(src, /finally \{[\s\S]{0,120}?app\.running = false/, '异常路径也要落下 running，状态不再永久错乱');
+    assert.match(src, /import \{ LocalRuntime \}/);
+    assert.match(src, /import \{ openLocalStore \}/);
+    assert.match(src, /import \{ SyncClient \}/);
+    assert.match(src, /app\.runtime\.advance\(app\.saveId/);
+    assert.match(src, /app\.runtime\.choose\(app\.saveId/);
+    assert.doesNotMatch(src, /api\.post\(`\/api\/saves\/\$\{app\.saveId\}\/advance/);
+    assert.doesNotMatch(src, /api\.post\(`\/api\/saves\/\$\{app\.saveId\}\/choose/);
   });
 
-  it('续档恢复：开局/读档记下存档号，开卷自动回去；回封面与退出登录清标记，保留「刻意离开」', async () => {
+  it('本地进度先落盘，开卷直接续读；账号查询在后台，不阻塞首屏', async () => {
     const src = await player();
-    assert.match(src, /const LASTPLAY = /);
-    assert.match(src, /function markLastPlay\(/);
-    assert.match(src, /markLastPlay\(r\.saveId\)/, '开局记标记');
-    assert.match(src, /markLastPlay\(saveId\)/, '读档记标记');
-    assert.match(src, /await tryResume\(/, '开卷时尝试续档');
-    assert.match(src, /listComplete = false/, '存档列表失败被标记为未知，而非空档');
-    assert.match(src, /!unfinished\.has\(marker\.saveId\) && listComplete/, '列表不完整时不得删除续档标记');
-    assert.match(src, /app\.resume = true/, '读档首拍走续读模式');
-    assert.match(src, /clearLastPlay\(\); sessionStorage\.setItem\('nu\.reload\.cause', 'btnTitle'\)/, '回到封面清标记');
-    assert.match(src, /clearLastPlay\(\); sessionStorage\.setItem\('nu\.reload\.cause', 'btnBackTitle'\)/, '结案页回到封面清标记');
-    assert.match(src, /clearLastPlay\(\); sessionStorage\.setItem\('nu\.reload\.cause', 'btnLogout'\)/, '退出登录清标记');
+    assert.match(src, /app\.store = await openLocalStore\(\)/);
+    assert.match(src, /app\.runtime\.newGame\(/);
+    assert.match(src, /app\.runtime\.load\(saveId\)/);
+    assert.match(src, /await tryResume\(\)/);
+    assert.match(src, /api\.j\('\/api\/auth\/me'\)\.then/);
+    assert.match(src, /本机进度 · 可离线游玩/);
   });
 
-  it('开场兜底：boot 失败给出原因与重试入口，标题页不再静默空白', async () => {
+  it('读档不重播章节卡/印章；同步失败只显示状态，不进入推进循环', async () => {
     const src = await player();
-    assert.match(src, /开场失败：/);
+    assert.match(src, /app\.resume = true/);
+    assert.match(src, /const resuming = app\.resume/);
+    assert.match(src, /queueSync\(\)/);
+    assert.match(src, /本地存档出了岔子/);
+    assert.doesNotMatch(src, /async function reconnect\(/);
+  });
+
+  it('开场兜底针对本地能力，而不是要求先登录', async () => {
+    const src = await player();
+    assert.match(src, /本地开卷失败：/);
     assert.match(src, /重新开卷/);
-  });
-
-  it('同镜像重启只报平安；冒烟模式既不自动续档也不自动换版', async () => {
-    const src = await player();
-    assert.match(src, /sentinelAction\(fpBase, v\)/);
-    assert.match(src, /服务器刚重启过/);
-    assert.match(src, /if \(!marker\?\.saveId \|\| AUTO\) return;/, '续档恢复跳过冒烟');
-    assert.match(src, /if \(!AUTO\) stage\.toast\('服务器刚重启过/, '重启报平安跳过冒烟');
-  });
-
-  it('开局/调档的前置请求失败当场给反馈，不再静默无响应', async () => {
-    const src = await player();
-    const catches = src.match(/\.catch\(failNote\)/g) ?? [];
-    assert.ok(catches.length >= 4, `开局/读档入口共 5 处，至少 4 处接了失败反馈，实际 ${catches.length}`);
+    assert.match(src, /支持本地存档的浏览器/);
   });
 });

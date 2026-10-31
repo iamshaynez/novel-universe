@@ -19,7 +19,7 @@ before(async () => {
   base.server = server;
   base.db = db;
   // 播放器 boot 合同：先 me 建立会话（游客），此后所有存档操作带 cookie
-  const boot = await fetch(base.url + '/api/auth/me');
+  const boot = await fetch(base.url + '/api/auth/guest');
   base.sid = boot.headers.get('set-cookie').match(/nu_sid=([^;]+)/)[1];
 });
 after(() => { base.server.close(); base.db.close(); });

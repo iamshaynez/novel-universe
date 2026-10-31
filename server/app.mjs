@@ -4,12 +4,13 @@ import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
 import { extname, join, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { compileGame } from '../tools/compile-scenario.mjs';
 import { createRun, advance, choose, stateOf, loadRun, submitPick } from '../engine/state.mjs';
 import { validateGraph } from '../engine/graph.mjs';
+import { buildOfflineManifest } from './content.mjs';
+import { syncFor, validDoc } from './sync.mjs';
 import {
   createSave, getSave, listSaves, updateSave, recordEnding, listEndingsByGame, recordCards, listCards,
   createUser, getUserByName, setUserCredentials, createSession, getSessionUser,
@@ -32,21 +33,6 @@ const detectSha = () => {
   }
 };
 const GIT_SHA = detectSha();
-
-// 内容指纹：不依赖镜像里是否存在 .git。静态壳或任一作品 IR 变化都会改变 bundle，
-// 让已打开的页面能识别真正的换版；同镜像重启则保持同值，不误伤玩家。
-function bundleFingerprint(games, webDir) {
-  const hash = createHash('sha256');
-  const walk = dir => readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))
-    .flatMap(entry => entry.isDirectory() ? walk(join(dir, entry.name)) : [join(dir, entry.name)]);
-  for (const file of walk(webDir)) {
-    hash.update(file.slice(webDir.length)); hash.update(readFileSync(file));
-  }
-  for (const id of Object.keys(games).sort()) {
-    hash.update(id); hash.update(JSON.stringify(games[id].ir));
-  }
-  return hash.digest('hex').slice(0, 16);
-}
 
 export function loadGames(gamesRoot, universeDir) {
   const games = {};
@@ -92,14 +78,16 @@ async function readBody(req) {
   try { return JSON.parse(text); } catch { throw httpError(400, '请求体不是合法 JSON'); }
 }
 
-export function createApp({ db, games, webDir }) {
-  const bundle = bundleFingerprint(games, webDir);
-  async function serveStatic(res, pathname, req) {
+export function createApp({ db, games, webDir, engineDir = fileURLToPath(new URL('../engine', import.meta.url)) }) {
+  const offline = buildOfflineManifest({ games, webDir, engineDir });
+  const bundle = offline.bundle;
+  const swTemplate = readFileSync(join(webDir, 'sw.js'), 'utf8');
+  async function serveStatic(res, pathname, req, rootDir = webDir) {
     let file = null;
-    if (pathname === '/') file = join(webDir, 'index.html');
+    if (pathname === '/') file = join(rootDir, 'index.html');
     else {
-      file = resolvePath(join(webDir, pathname.slice(1)));
-      if (!file.startsWith(resolvePath(webDir))) throw httpError(403, '路径越界');
+      file = resolvePath(join(rootDir, pathname.slice(1)));
+      if (!file.startsWith(resolvePath(rootDir))) throw httpError(403, '路径越界');
     }
     if (!file || !existsSync(file)) throw httpError(404, `未找到 ${pathname}`);
     // no-cache = 每次回源校验（部署必达手机）；ETag/304 让校验零成本。
@@ -170,11 +158,26 @@ export function createApp({ db, games, webDir }) {
       return json(res, 200, { version: PKG_VERSION, sha: GIT_SHA, bundle, boot: BOOT_AT.toISOString(), now: new Date().toISOString() });
     }
 
+    // ---- 同步信箱：只有已注册账号可写；游客由客户端本地优先，兼容期另行导入 ----
+    if (req.method === 'POST' && a === 'sync' && !b) {
+      const user = requireUser(req);
+      if (!user.password_hash) throw httpError(403, '游客进度只存本机，请先注册以同步');
+      const body = await readBody(req);
+      if (body.protocol !== 1 || typeof body.deviceId !== 'string' || body.deviceId.length > 100) throw httpError(400, '同步协议或设备标识无效');
+      if (!Array.isArray(body.push) || body.push.length > 50 || body.push.some(doc => !validDoc(doc))) throw httpError(413, '同步文档过大或格式无效');
+      return json(res, 200, syncFor(db, user.id, body));
+    }
+
     // ---- 认证 ----
-    if (req.method === 'GET' && a === 'auth' && b === 'me' && !c) {
+    // 兼容接口：旧客户端/旧游客数据迁移专用；新播放器不为游客建立服务端身份。
+    if (req.method === 'GET' && a === 'auth' && b === 'guest' && !c) {
       let user = currentUser(req);
       if (!user) { user = createGuestUser(); startSession(res, user.id); }
       return json(res, 200, { user: publicUser(user) });
+    }
+    if (req.method === 'GET' && a === 'auth' && b === 'me' && !c) {
+      const user = currentUser(req);
+      return json(res, 200, { user: user ? publicUser(user) : null });
     }
     if (req.method === 'POST' && a === 'auth' && b === 'register' && !c) {
       const body = await readBody(req);
@@ -257,7 +260,7 @@ export function createApp({ db, games, webDir }) {
       const user = requireUser(req);
       const { row, run } = loadRunOf(Number(b), user.id);
       const g = games[row.game_id];
-      return json(res, 200, { save: { id: row.id, gameId: row.game_id, player: row.player, ended: row.ended, updatedAt: row.updated_at }, state: stateOf(g.ir, run) });
+      return json(res, 200, { save: { id: row.id, gameId: row.game_id, player: row.player, ended: row.ended, updatedAt: row.updated_at }, run, state: stateOf(g.ir, run) });
     }
     if (req.method === 'POST' && a === 'saves' && b && c === 'advance') {
       const user = requireUser(req);
@@ -308,6 +311,28 @@ export function createApp({ db, games, webDir }) {
     const pathname = decodeURIComponent(url.pathname);
     try {
       if (pathname.startsWith('/api/')) return await api(req, res, pathname, url.searchParams);
+      if (pathname === '/sw.js') {
+        const body = swTemplate
+          .replace('"/*__NU_BUNDLE__*/"', JSON.stringify(bundle))
+          .replace('/*__NU_PRECACHE__*/[]', JSON.stringify(offline.entries));
+        res.writeHead(200, { 'Content-Type': MIME['.js'], 'Cache-Control': 'no-cache' });
+        return res.end(body);
+      }
+      if (pathname === '/content/catalog.json') {
+        res.writeHead(200, { 'Content-Type': MIME['.json'], 'Cache-Control': 'no-cache' });
+        return res.end(JSON.stringify(offline.games));
+      }
+      if (pathname.startsWith('/content/')) {
+        const game = offline.games.find(g => g.irUrl === pathname);
+        if (!game) throw httpError(404, '内容版本不存在');
+        res.writeHead(200, {
+          'Content-Type': MIME['.json'],
+          'Cache-Control': 'public, max-age=31536000, immutable',
+          ETag: `"${game.irHash}"`,
+        });
+        return res.end(JSON.stringify(games[game.id].ir));
+      }
+      if (pathname.startsWith('/engine/')) return await serveStatic(res, pathname.slice('/engine'.length), req, engineDir);
       return await serveStatic(res, pathname, req);
     } catch (e) {
       json(res, e.status ?? 500, { error: e.message });

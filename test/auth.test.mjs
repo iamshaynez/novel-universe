@@ -40,14 +40,21 @@ const me = sid => call('/api/auth/me', { sid });
 
 /** 拿一个全新游客会话（模拟一个新浏览器）。 */
 async function newGuest() {
-  const r = await me();
+  const r = await call('/api/auth/guest');
   assert.equal(r.status, 200);
   return r.newSid;
 }
 
-describe('会话：游客优先', () => {
-  it('me 无 cookie → 建游客并发 HttpOnly 会话 cookie', async () => {
+describe('会话：本机优先，游客接口仅作兼容', () => {
+  it('me 无 cookie → 返回空身份且不下发服务端游客会话', async () => {
     const r = await me();
+    assert.equal(r.status, 200);
+    assert.equal(r.body.user, null);
+    assert.equal(r.newSid, null);
+  });
+
+  it('兼容 guest 接口 → 建游客并发 HttpOnly 会话 cookie', async () => {
+    const r = await call('/api/auth/guest');
     assert.equal(r.status, 200);
     assert.equal(r.body.user.guest, true);
     assert.match(r.body.user.username, /^游客/);
@@ -72,8 +79,8 @@ describe('会话：游客优先', () => {
     const out = await post('/api/auth/logout', {}, sid);
     assert.equal(out.status, 200);
     assert.match(out.setCookie, /nu_sid=;/, '应清空 cookie');
-    // 旧 token 已从 sessions 删除：带着它再 me，得到的是全新游客
-    const after = await me(sid);
+    // 旧 token 已从 sessions 删除：兼容 guest 接口才会另发游客
+    const after = await call('/api/auth/guest');
     assert.equal(after.body.user.guest, true);
     assert.notEqual(after.body.user.id, before.id);
     assert.ok(after.newSid && after.newSid !== sid);

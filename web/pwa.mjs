@@ -72,7 +72,22 @@ if (standalone()) showInstalled();
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(error => {
+    navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(registration => {
+      // 更新只在播放器声明的安全点激活；controllerchange 后才重载，避免新旧壳混用。
+      window.nuActivateUpdate = async () => {
+        await registration.update().catch(() => null);
+        if (registration.waiting) {
+          registration.waiting.postMessage({ type: 'NU_ACTIVATE' });
+          return;
+        }
+        location.reload();
+      };
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (window.__nuSwReloaded) return;
+        window.__nuSwReloaded = true;
+        location.reload();
+      });
+    }).catch(error => {
       console.warn('离线安装壳注册失败', error);
       note.textContent = '仍可通过浏览器菜单添加到主屏幕';
     });

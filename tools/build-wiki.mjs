@@ -1,4 +1,4 @@
-// build-wiki：universe 正典 → web/canon.html 设定集页面（静态、零依赖、确定性构建）。
+// build-wiki：universe 正典 → docs/canon.html 创作内部设定集（静态、零依赖、确定性构建）。
 // 地点图案 = 文字舞台演出词汇（ADR-004）：氛围层调色板 + 印章 + 大字 + 雨意。
 // 运行：npm run build:wiki（产物提交入库；漂移守卫见 test/build-wiki.test.mjs）。
 import { createHash } from 'node:crypto';
@@ -248,12 +248,12 @@ export function buildWikiHtml(universeDir) {
 `;
 }
 
-// 直接运行：写 web/canon.html 并输出校验和（演出证据，AGENTS §4）
+// 直接运行：写 docs/canon.html 并输出校验和（创作内部产物，不进入公网 web/）
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) {
   const root = resolvePath(dirname(fileURLToPath(import.meta.url)), '..');
   const html = buildWikiHtml(join(root, 'universe'));
-  writeFileSync(join(root, 'web/canon.html'), html);
+  writeFileSync(join(root, 'docs/canon.html'), html);
   const md5 = createHash('md5').update(html).digest('hex');
-  console.log(`web/canon.html  ${(html.length / 1024).toFixed(1)} KB  md5 ${md5}`);
+  console.log(`docs/canon.html  ${(html.length / 1024).toFixed(1)} KB  md5 ${md5}`);
 }

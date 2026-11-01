@@ -90,6 +90,37 @@ describe('同步信箱：重放安全、并发不丢档', () => {
     assert.ok(await store.getSave('doc-conflict'));
     assert.ok([...store.saves.keys()].some(id => id.startsWith('doc-conflict-fork-C-')));
   });
+
+  it('冲突档不得热切正在玩的本地主线：静默分叉，不触发跟进通知', async () => {
+    const store = new MemoryStore();
+    // 本机正在玩： vv{C:5}、dirty、停在 n3
+    await store.putSave({ ...docFor('doc-live', { C: 5 }, 'n3'), dirty: 1 });
+    // 服务器并发副本： vv{B:4}，位置更早（n1）
+    const serverCopy = { ...docFor('doc-live', { B: 4 }, 'n1'), dirty: 0 };
+    let notified = 0;
+    const client = new SyncClient({ store, deviceId: 'C', games: [ir.id], post: async () => ({}), onRemote: () => notified++ });
+    await client.applyRemote(serverCopy);
+    assert.equal(notified, 0, '并发冲突不得把正在玩的档热切回远端位置');
+    assert.ok([...store.saves.keys()].some(id => id.startsWith('doc-live-fork-C-')), '本机进度必须先分叉保命');
+    assert.equal((await store.getSave('doc-live')).run.nodeId, 'n1', '主线槽位按同步协议接受远端，但玩家不被拽走');
+  });
+
+  it('远端真正领先才通知跟进（跨设备续玩），新拉到的档不通知', async () => {
+    const store = new MemoryStore();
+    await store.putSave({ ...docFor('doc-follow', { C: 2 }, 'n1'), dirty: 0 });
+    const ahead = { ...docFor('doc-follow', { C: 3 }, 'n3'), dirty: 0 };
+    let notified = 0;
+    const client = new SyncClient({ store, deviceId: 'C', games: [ir.id], post: async () => ({}), onRemote: () => notified++ });
+    await client.applyRemote(ahead);
+    assert.equal(notified, 1, '真领先要在停点跟进');
+    assert.equal((await store.getSave('doc-follow')).run.nodeId, 'n3');
+
+    notified = 0;
+    const fresh = { ...docFor('doc-new-remote', { A: 1 }, 'n2'), dirty: 0 };
+    await client.applyRemote(fresh);
+    assert.equal(notified, 0, '新出现的远端档不通知（不在玩的档不热切）');
+    assert.ok(await store.getSave('doc-new-remote'));
+  });
 });
 
 describe('双客户端与同步故障', () => {

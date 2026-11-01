@@ -278,7 +278,7 @@
   /* HUD / 标题 / 存档 / 结局 */
   #hud{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;
     padding:calc(2.2vh + env(safe-area-inset-top,0px)) calc(2.4vw + env(safe-area-inset-right,0px)) 2.2vh calc(2.4vw + env(safe-area-inset-left,0px));
-    pointer-events:none;font-family:var(--sans);z-index:6}
+    pointer-events:none;font-family:var(--sans);z-index:19}
   #hudL .uni{font-size:11px;letter-spacing:.32em;color:#a2956f}
   #hudL .dt{font-size:11px;letter-spacing:.3em;color:#c9a15f;margin-top:.45em;font-family:var(--kai);
     opacity:0;transition:opacity 1.2s}
@@ -350,8 +350,16 @@
 
   /* 侧面板统一交互（关闭钮/互斥/点外关闭见 player.mjs）：标题行 flex 让出关闭钮 */
   .sidepanel h3{display:flex;align-items:center;justify-content:space-between;gap:8px}
-  /* 舞台 touch-action:none 让位给拖拽回看；面板与纸卡内部恢复原生滚动 */
-  .sidepanel,.ec-paper,.ap-paper{touch-action:pan-y}
+  /* 面板遮罩：点外关闭的可视化合同——舞台压暗即「这里是外面」，点它关面板不推进。
+     层级在 HUD/面板/结局卡之下，只挡舞台；关闭走 player.mjs 的点外关闭捕获。 */
+  #panelVeil{position:absolute;inset:0;z-index:18;background:rgba(24,19,12,.44);
+    opacity:0;pointer-events:none;transition:opacity .28s ease}
+  #panelVeil.on{opacity:1;pointer-events:auto}
+  /* 舞台 touch-action:none 让位给拖拽回看；侧面板是 body 层（不受舞台约束），
+     恢复原生滚动让页签条可横滑；纸卡仍只纵滚防橡皮筋 */
+  .sidepanel{touch-action:auto}
+  .ec-paper,.ap-paper{touch-action:pan-y}
+  .read-tabs{touch-action:pan-x}
   #stage button.armed{border-color:var(--blood);color:#e8b8ae;background:#5a221a;letter-spacing:.1em}
   .pnl-x{flex:none;background:transparent;border:1px solid #9b8a65;border-radius:2px;color:#655c48;
     font:16px/1 var(--sans);padding:6px 12px;min-height:34px;min-width:34px;cursor:pointer;letter-spacing:0}
@@ -742,6 +750,7 @@
     </div>
   </div>
 
+  <div id="panelVeil" aria-hidden="true"></div>
   <div id="savesPanel" class="sidepanel"><h3>读取存档<button class="pnl-x" aria-label="关闭">×</button></h3><div id="savesList"></div></div>
   <div id="endsPanel" class="sidepanel"><h3>结案档案 · 已归档结局<button class="pnl-x" aria-label="关闭">×</button></h3><div id="endsList"></div></div>
   <div id="codexPanel" class="sidepanel"><h3>卷宗图鉴 · 时代与人物<button class="pnl-x" aria-label="关闭">×</button></h3><div id="codexList"></div></div>

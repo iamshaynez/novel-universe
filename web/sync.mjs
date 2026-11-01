@@ -9,12 +9,14 @@ export class SyncClient {
 
   status(text, extra = {}) { this.onStatus({ text, ...extra }); }
 
+  /** 落库远端档。notify=true 只用于「远端真领先」——那条路才允许播放器在停点跟进；
+   *  冲突与新档一律静默：正在玩的本地主线绝不被服务器副本热切（分叉已保命，玩家自己挑）。 */
   async applyRemote(remote) {
     const clean = { ...remote, dirty: 0 };
     delete clean.seq;
     const storeRemote = async (doc, notify = true) => { await this.store.putSave(doc); if (notify) this.onRemote(doc); };
     const local = await this.store.getSave(remote.id);
-    if (!local) { await storeRemote(clean); return; }
+    if (!local) { await storeRemote(clean, false); return; }
     const relation = compareVV(local.vv, remote.vv);
     if (relation === -1) { await storeRemote(clean); return; }
     if (relation === 1) return; // 本机领先，留在下一次 push
@@ -28,7 +30,7 @@ export class SyncClient {
       const forkId = `${local.id}-fork-${this.deviceId}-${Date.now().toString(36)}`;
       await this.store.putSave({ ...local, id: forkId, forkOf: local.id, vv: { [this.deviceId]: 1 }, dirty: 1 });
     }
-    await storeRemote(clean);
+    await storeRemote(clean, false);
   }
 
   async flush() {

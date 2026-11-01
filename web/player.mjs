@@ -253,7 +253,7 @@ async function runLoop(s0) {
       app.current = s;
       if ($('#readPanel').classList.contains('on')) renderRead();
       if (app.forceUpdate && !stage.revealing) { reloadForUpdate(); return; }
-      if (app.pendingRemote && !stage.revealing) {
+      if (app.pendingRemote && app.pendingRemote === app.saveId && !stage.revealing) {
         const remoteId = app.pendingRemote; app.pendingRemote = null;
         stage.toast('另一台设备已更新此存档——在停点跟进');
         await loadSave(remoteId).catch(failNote);
@@ -316,6 +316,7 @@ async function startGame(gameId) {
   const seed = globalThis.crypto?.getRandomValues ? globalThis.crypto.getRandomValues(new Uint32Array(1))[0] : 1;
   const r = await app.runtime.newGame(seed);
   app.saveId = r.doc.id;
+  app.pendingRemote = null; // 主动开新局：不追任何远端跟进
   if (!AUTO) markLastPlay(r.doc.id);
   for (const k of Object.keys(r.state.flags ?? {})) if (k.startsWith('card.')) app.cards.add(k);
   $('#title').style.display = 'none';
@@ -384,13 +385,14 @@ function openRead(tab = null) {
   $('#readPanel .read-tab[aria-selected="true"]')?.focus();
 }
 
-// ---- 侧面板统一合同：互斥开关 + 关闭钮 + 点外关闭（该拍不推进）+ ESC/空格冻结 ----
+// ---- 侧面板统一合同：互斥开关 + 遮罩（点外关闭的可视化）+ 关闭钮 + 点外关闭（该拍不推进）+ ESC/空格冻结 ----
 const SIDE_PANELS = ['#savesPanel', '#sheetPanel', '#endsPanel', '#codexPanel', '#readPanel'];
 const panelOpen = () => SIDE_PANELS.find(sel => $(sel).classList.contains('on')) ?? null;
 let pendingPanel = null;
 function closePanels() {
   const restoreReadFocus = $('#readPanel').classList.contains('on');
   pendingPanel = null;
+  $('#panelVeil').classList.remove('on');
   for (const sel of SIDE_PANELS) $(sel).classList.remove('on');
   if (restoreReadFocus && readReturnFocus) {
     const el = readReturnFocus; readReturnFocus = null;
@@ -403,14 +405,16 @@ function openPanel(sel) {
   if ($(sel).classList.contains('on')) return closePanels();
   closePanels();
   pendingPanel = sel;
+  $('#panelVeil').classList.add('on');
   $(sel).classList.add('on');
   stage.hint(false); // 面板在场时「点击·空格——继续」是误导
 }
-/** 异步面板：点击时先声明占位（关别人），取数完成后落位——期间用户改点别的即作废。 */
+/** 异步面板：点击时先声明占位（关别人 + 压暗舞台），取数完成后落位——期间用户改点别的即作废。 */
 function requestPanel(sel) {
   if ($(sel).classList.contains('on')) return closePanels(), false;
   closePanels();
   pendingPanel = sel;
+  $('#panelVeil').classList.add('on');
   stage.hint(false);
   return true;
 }
@@ -751,13 +755,9 @@ addEventListener('online', () => { if (app.user && !app.user.guest) app.sync?.fl
       post: (path, data) => api.post(path, data),
       onStatus: status => { app.syncStatus = status.text; renderAuthBar(); },
       onRemote: doc => {
+        // 只标记，不热切：runLoop 在拍间隙（自然停点）跟进，绝不在演出或等待拍中间换档。
         if (doc.id !== app.saveId) return;
         app.pendingRemote = doc.id;
-        if (!stage.revealing) setTimeout(() => {
-          if (app.pendingRemote !== doc.id) return;
-          app.pendingRemote = null;
-          loadSave(doc.id).catch(failNote);
-        }, 0);
       },
     });
     const unfinished = new Map();

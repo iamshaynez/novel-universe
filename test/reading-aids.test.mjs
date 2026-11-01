@@ -5,7 +5,7 @@ import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { compileGame, validateReadingConfig } from '../tools/compile-scenario.mjs';
 import { createRun, stateOf } from '../engine/state.mjs';
-import { trackModel, messageModel, evidenceModel, debtModel, mapModel, recapModel } from '../web/reading-aids.mjs';
+import { trackModel, messageModel, evidenceModel, relationsModel, mapModel, recapModel } from '../web/reading-aids.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const { ir } = compileGame(join(root, 'games/g01-jiexianyuan'), join(root, 'universe'));
@@ -114,14 +114,102 @@ describe('证据实物桌：持有人和结局去向必须随真实分支变化'
   });
 });
 
-describe('关系、地图与回读：辅助不能抢先剧透', () => {
-  it('债务关系只在对应拍后开放', () => {
-    assert.equal(debtModel(ir, state()).unlocked, false);
-    const open = debtModel(ir, state({ 'aid.debt': true }));
-    assert.equal(open.unlocked, true);
-    assert.ok(open.rows.length >= 3);
+describe('关系网：中段锚点与揭晓纪律', () => {
+  const FLAGS = ['tr.t1', 'tr.t2', 'tr.t3', 'tr.t4', 'tr.t7', 'tr.t9',
+    'card.char.dujuan', 'card.char.qinjie', 'card.char.laojin', 'card.char.laopeng',
+    'card.char.heguodong', 'card.char.suwan', 'card.char.liaozhikun',
+    'card.qh.note', 'card.qh.rainboots', 'paper.drafts', 'paper.summary', 'paper.handbook',
+    'aid.debt', 'card.lzk.name', 'card.lzk.oneman',
+    'has_original', 'original_locker', 'original_carry', 'copy_locker', 'copy_dj', 'no_copy'];
+  const validate = reading => validateReadingConfig(reading, {
+    scenes: ir.scenes,
+    nodes: ir.nodes,
+    flags: new Set(FLAGS),
+    endings: ir.endings,
+    locations: Object.fromEntries(ir.canon.locations.map(l => [l.id, l])),
+  });
+  const ids = model => ({ nodes: model.nodes.map(n => n.id), edges: model.edges.map(e => `${e.from}>${e.to}`) });
+
+  it('关系数据编译合法；边引用未知节点与悬空 flag 都会被拒绝', () => {
+    assert.ok(ir.reading.relations.nodes.length >= 10);
+    assert.ok(validateReadingConfig(ir.reading, {
+      scenes: ir.scenes, nodes: ir.nodes, flags: new Set(FLAGS), endings: ir.endings,
+      locations: Object.fromEntries(ir.canon.locations.map(l => [l.id, l])),
+    }));
+    const danglingNode = structuredClone(ir.reading);
+    danglingNode.relations.edges[0].to = 'not-a-node';
+    assert.throws(() => validate(danglingNode), /未知节点/);
+    const danglingFlag = structuredClone(ir.reading);
+    danglingFlag.relations.nodes[0].unlock = 'never.set';
+    assert.throws(() => validate(danglingFlag), /未在本作置位/);
+    const danglingReveal = structuredClone(ir.reading);
+    danglingReveal.relations.nodes.find(n => n.id === 'lzk').reveal = 'never.set';
+    assert.throws(() => validate(danglingReveal), /未在本作置位/);
   });
 
+  it('传呼台与河音两簇随第一章落图；苏晚在揭名前只是「夜班接线员」', () => {
+    assert.equal(relationsModel(ir, state()).nodes.length, 0);
+    const ch1 = ids(relationsModel(ir, state({ 'card.char.dujuan': true, 'tr.t1': true, 'tr.t2': true })));
+    assert.deepEqual(new Set(ch1.nodes), new Set(['dujuan', 'chuantai', 'suwan', 'heqinghe', 'heyin', 'xiaoke']));
+    assert.deepEqual(new Set(ch1.edges), new Set(['suwan>chuantai', 'dujuan>chuantai', 'heqinghe>chuantai', 'heqinghe>heyin', 'xiaoke>heyin']));
+    const labels = relationsModel(ir, state({ 'card.char.dujuan': true, 'tr.t1': true })).nodes.map(n => n.label);
+    assert.ok(labels.includes('夜班接线员'));
+    assert.ok(!labels.includes('苏晚'));
+  });
+
+  it('走访中段不泄底：两张号牌并案前，图上没有「他」，也没有债', () => {
+    const mid = relationsModel(ir, state({
+      'card.char.dujuan': true, 'card.char.laojin': true, 'card.char.qinjie': true,
+      'card.char.heguodong': true, 'card.char.laopeng': true, 'card.qh.note': true,
+      'tr.t1': true, 'tr.t2': true, 'tr.t3': true, 'tr.t4': true, 'tr.t7': true, 'tr.t9': true,
+    }));
+    const seen = JSON.stringify(mid);
+    assert.ok(!seen.includes('lzk') && !seen.includes('他'));
+    assert.ok(!seen.includes('一人两张号牌') && !seen.includes('借条') && !seen.includes('廖志坤'));
+    assert.ok(mid.nodes.some(n => n.id === 'heguodong'));
+    assert.ok(mid.edges.some(e => e.label === '父女'));
+  });
+
+  it('paper.summary 那一拍两张号牌并成一个人：先遮罩为「他」，揭名后才见廖志坤', () => {
+    const fused = relationsModel(ir, state({ 'paper.summary': true, 'tr.t2': true }));
+    const lzk = fused.nodes.find(n => n.id === 'lzk');
+    assert.equal(lzk.label, '他');
+    assert.equal(lzk.masked, true);
+    assert.ok(fused.edges.some(e => e.label === '一人两张号牌 · 呼她的机'));
+    const named = relationsModel(ir, state({ 'paper.summary': true, 'tr.t2': true, 'card.lzk.name': true }));
+    assert.equal(named.nodes.find(n => n.id === 'lzk').label, '廖志坤');
+    assert.equal(named.nodes.find(n => n.id === 'lzk').masked, false);
+  });
+
+  it('债务三边只在 aid.debt 后并入：签借条、签担保、折价接账', () => {
+    const before = relationsModel(ir, state({ 'paper.summary': true, 'card.lzk.name': true, 'tr.t2': true, 'card.qh.note': true, 'card.char.heguodong': true }));
+    assert.ok(!before.nodes.some(n => n.id === 'debt'));
+    const debt = relationsModel(ir, state({
+      'paper.summary': true, 'card.lzk.name': true, 'tr.t2': true, 'card.qh.note': true,
+      'card.char.heguodong': true, 'aid.debt': true,
+    }));
+    assert.ok(debt.nodes.some(n => n.id === 'debt'));
+    assert.deepEqual(debt.edges.filter(e => e.to === 'debt').map(e => e.label), ['签借条', '签担保', '折价接账 · 全额收']);
+  });
+
+  it('回读真相图全解锁并补「经她的手」；真相边永不进局中图谱', () => {
+    const allRead = {
+      'card.char.dujuan': true, 'tr.t1': true, 'tr.t2': true, 'paper.summary': true,
+      'card.lzk.name': true, 'aid.debt': true, 'card.char.heguodong': true, 'card.qh.note': true,
+      'card.char.laopeng': true, 'card.char.laojin': true, 'card.char.qinjie': true, 'card.char.suwan': true,
+    };
+    const inPlay = relationsModel(ir, state(allRead));
+    assert.ok(!inPlay.edges.some(e => e.truth));
+    const full = relationsModel(ir, state(allRead), { full: true });
+    assert.equal(full.nodes.length, ir.reading.relations.nodes.length);
+    assert.ok(full.edges.some(e => e.truth && e.label === '十点那条留言，经她的手'));
+    const suwan = full.nodes.find(n => n.id === 'suwan');
+    assert.equal(suwan.label, '苏晚');
+    assert.equal(suwan.masked, false);
+  });
+});
+
+describe('地图与回读：辅助不能抢先剧透', () => {
   it('地点示意图随剧情进度出现，并高亮当前位置', () => {
     const start = mapModel(ir, state({}, { node: 'ch0-open', view: { bg: { id: 'chuantai', params: { time: 'night' } } } }));
     assert.deepEqual(start.nodes.map(n => n.id), ['chuantai']);

@@ -64,12 +64,40 @@
         "holders": { "copy_locker": "更衣柜", "copy_dj": "杜鹃饭盒", "E1": "安全副本 · 场外", "E2": "已烧毁", "E3": "廖志坤" }
       }
     ],
-    "debt": {
-      "unlock": "aid.debt",
-      "rows": [
-        { "from": "贺国栋", "relation": "签借条", "to": "三万七 · 利滚利" },
-        { "from": "贺青禾", "relation": "签担保", "to": "同一笔债务" },
-        { "from": "廖志坤", "relation": "折价接账 → 全额收", "to": "中间差额" }
+    "relations": {
+      "note": "只画正文已经落地的事实，不抢答。",
+      "nodes": [
+        { "id": "heqinghe", "label": "贺青禾", "unlock": "tr.t2", "x": 320, "y": 88 },
+        { "id": "heyin", "label": "河音音像店", "kind": "place", "unlock": "tr.t2", "x": 128, "y": 78 },
+        { "id": "qinjie", "label": "秦姐", "unlock": "card.char.qinjie", "x": 52, "y": 160 },
+        { "id": "xiaoke", "label": "小柯", "unlock": "tr.t2", "x": 178, "y": 158 },
+        { "id": "chuantai", "label": "锦声传呼台", "kind": "place", "unlock": "card.char.dujuan", "x": 512, "y": 78 },
+        { "id": "dujuan", "label": "杜鹃", "unlock": "card.char.dujuan", "x": 588, "y": 158 },
+        { "id": "suwan", "label": "苏晚", "alias": "夜班接线员", "unlock": "tr.t1", "reveal": "card.char.suwan", "x": 442, "y": 150 },
+        { "id": "laojin", "label": "老金", "unlock": "card.char.laojin", "x": 582, "y": 232 },
+        { "id": "heguodong", "label": "贺国栋", "unlock": "card.char.heguodong", "x": 72, "y": 300 },
+        { "id": "lzk", "label": "廖志坤", "alias": "他", "unlock": "paper.summary", "reveal": "card.lzk.name", "x": 320, "y": 196 },
+        { "id": "debt", "label": "借条 · 三万七利滚利", "kind": "paper", "unlock": "aid.debt", "x": 170, "y": 252 },
+        { "id": "paichusuo", "label": "派出所", "kind": "place", "unlock": "card.char.laopeng", "x": 452, "y": 302 },
+        { "id": "laopeng", "label": "老彭", "unlock": "card.char.laopeng", "x": 556, "y": 300 }
+      ],
+      "edges": [
+        { "from": "heqinghe", "label": "顶班店员", "to": "heyin", "unlock": "tr.t2" },
+        { "from": "xiaoke", "label": "店员留碟", "to": "heyin", "unlock": "tr.t2" },
+        { "from": "qinjie", "label": "店主", "to": "heyin", "unlock": "card.char.qinjie" },
+        { "from": "heqinghe", "label": "呼机 6688-7 机主", "to": "chuantai", "unlock": "tr.t2" },
+        { "from": "dujuan", "label": "白班同事", "to": "chuantai", "unlock": "card.char.dujuan" },
+        { "from": "suwan", "label": "夜班", "to": "chuantai", "unlock": "tr.t1" },
+        { "from": "laojin", "label": "管台里的材料", "to": "chuantai", "unlock": "card.char.laojin" },
+        { "from": "heqinghe", "label": "父女", "to": "heguodong", "unlock": "card.qh.note" },
+        { "from": "laopeng", "label": "经办", "to": "paichusuo", "unlock": "card.char.laopeng" },
+        { "from": "lzk", "label": "一人两张号牌 · 呼她的机", "to": "heqinghe", "unlock": "paper.summary", "key": true },
+        { "from": "heguodong", "label": "签借条", "to": "debt", "unlock": "aid.debt", "key": true },
+        { "from": "heqinghe", "label": "签担保", "to": "debt", "unlock": "aid.debt", "key": true },
+        { "from": "lzk", "label": "折价接账 · 全额收", "to": "debt", "unlock": "aid.debt", "key": true }
+      ],
+      "truth": [
+        { "from": "suwan", "label": "十点那条留言，经她的手", "to": "heqinghe", "truth": true }
       ]
     },
     "recap": [

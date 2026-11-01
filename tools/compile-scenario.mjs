@@ -187,7 +187,21 @@ export function validateReadingConfig(reading, { scenes, nodes, flags, endings, 
     for (const f of item.variantFlags ?? []) flag(f);
     if (item.emptyWhen) flag(item.emptyWhen);
   }
-  if (reading.debt?.unlock) flag(reading.debt.unlock);
+  if (reading.relations) {
+    const seen = new Set();
+    for (const node of reading.relations.nodes ?? []) {
+      if (!node.id || seen.has(node.id)) throw new Error(`reading: 关系节点 id 缺失或重复: ${node.id}`);
+      seen.add(node.id);
+      if (typeof node.x !== 'number' || typeof node.y !== 'number') throw new Error(`reading: 关系节点 ${node.id} 缺少 x/y 坐标`);
+      if (node.unlock) flag(node.unlock);
+      if (node.reveal) flag(node.reveal);
+    }
+    for (const edge of [...(reading.relations.edges ?? []), ...(reading.relations.truth ?? [])]) {
+      if (!seen.has(edge.from) || !seen.has(edge.to)) throw new Error(`reading: 关系边引用未知节点: ${edge.from} / ${edge.to}`);
+      if (edge.unlock) flag(edge.unlock);
+      if (edge.truth && edge.unlock) throw new Error(`reading: 真相边只属于回读，不得配 unlock: ${edge.label}`);
+    }
+  }
   for (const row of reading.recap ?? []) {
     if (!endingIds.has(row.id)) throw new Error(`reading: 未知结局 ${row.id}`);
   }

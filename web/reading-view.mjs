@@ -1,10 +1,10 @@
-import { trackModel, messageModel, evidenceModel, debtModel, mapModel, recapModel } from '/reading-aids.mjs';
+import { trackModel, messageModel, evidenceModel, relationsModel, mapModel, recapModel } from '/reading-aids.mjs';
 
 const $ = s => document.querySelector(s);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
 }[ch]));
-const TABS = [['tracks', '轨迹'], ['messages', '留言'], ['evidence', '证物'], ['debt', '关系'], ['map', '地图'], ['recap', '回读']];
+const TABS = [['tracks', '轨迹'], ['messages', '留言'], ['evidence', '证物'], ['relations', '关系'], ['map', '地图'], ['recap', '回读']];
 const KIND = { original: '原始底单', hand: '手抄本', draft: '转写底稿', summary: '汇总纸', copy: '复印件' };
 
 function tracksView(ir, state) {
@@ -38,12 +38,34 @@ function evidenceView(ir, state, mark) {
   </article>`).join('')}</div>`;
 }
 
-function debtView(ir, state, mark) {
-  const model = debtModel(ir, state);
-  if (!model.unlocked) return '<div class="ra-locked">借条、担保和收账安排在这段对话之后开放。</div>';
-  return `<div class="ra-note">借条与担保不是同一支签名；接账与救人也不是同一件事。</div><div class="ra-debt">${model.rows.map(row => `<div class="ra-debt-row">
-    <span class="ra-from">${mark(row.from)}</span><span class="ra-relation">${esc(row.relation)}</span><span class="ra-to">${mark(row.to)}</span>
-  </div>`).join('')}</div>`;
+/** 关系图共用投影：局中只画已落地事实，回读态传 full 揭全图与真相边。 */
+export function relationsSvg(model) {
+  const pos = new Map(model.nodes.map(n => [n.id, n]));
+  const lines = model.edges.flatMap(e => {
+    const a = pos.get(e.from), b = pos.get(e.to);
+    if (!a || !b) return [];
+    const cls = e.truth ? 'truth' : e.key ? 'key' : '';
+    return [`<line class="${cls}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"></line>`];
+  }).join('');
+  const dots = model.nodes.map(n => `<g class="kind-${esc(n.kind)}${n.masked ? ' masked' : ''}">` +
+    (n.kind === 'paper'
+      ? `<rect x="${n.x - 13}" y="${n.y - 9}" width="26" height="18" rx="2"></rect>`
+      : `<circle cx="${n.x}" cy="${n.y}" r="7"></circle>`) +
+    `<text x="${n.x}" y="${n.y + 26}" text-anchor="middle">${esc(n.label)}</text></g>`).join('');
+  return `<svg class="ra-rel" viewBox="0 0 640 360" role="img" aria-label="人物关系示意图：${model.nodes.length} 方，${model.edges.length} 条已落地关系">
+    <title>人物关系示意图（只含已落地事实）</title>${lines}${dots}
+  </svg>`;
+}
+
+/** 导出供 node 侧证据脚本复用（纯字符串投影，不触碰 DOM）。 */
+export function relationsView(ir, state, mark) {
+  const model = relationsModel(ir, state);
+  if (!model.nodes.length) return '<div class="ra-locked">夜班与走访进行后，已经落地的人物关系会在这里成图。</div>';
+  const byId = new Map(model.nodes.map(n => [n.id, n.label]));
+  const rows = model.edges.map(e => `<div class="ra-edge${e.key ? ' key' : ''}${e.truth ? ' truth' : ''}">
+    <span>${mark(byId.get(e.from) ?? '')}</span><em>${esc(e.label)}</em><span>${mark(byId.get(e.to) ?? '')}</span>
+  </div>`).join('');
+  return `${model.note ? `<div class="ra-note">${esc(model.note)}</div>` : ''}${relationsSvg(model)}<div class="ra-edges">${rows}</div>`;
 }
 
 function mapView(ir, state) {
@@ -66,12 +88,18 @@ function mapView(ir, state) {
 function recapView(ir, state, mark) {
   const model = recapModel(ir, state);
   if (!model.unlocked) return '<div class="ra-locked">完成第一支结局后，这里才开放三支回读对照。</div>';
+  const full = relationsModel(ir, state, { full: true });
   return `<div class="ra-note">你已经走到一支结局。可以对照三支的证据与人物去向，再决定是否回读。</div><div class="ra-recap">${model.rows.map(row => `<article class="ra-recap-card${row.current ? ' current' : ''}">
     <h4>${esc(row.id)} · ${esc(row.title)}</h4><dl>
       <dt>证据</dt><dd>${mark(row.evidence)}</dd>
       <dt>人物</dt><dd>${mark(row.people)}</dd>
       <dt>选择</dt><dd>${mark(row.point)}</dd>
-    </dl></article>`).join('')}</div>`;
+    </dl></article>`).join('')}</div>
+  ${full.nodes.length ? `<div class="ra-note">真相全图——三支结局共用这张关系网，红边是案子落地的走向。</div>${relationsSvg(full)}<div class="ra-edges">${(() => {
+    const byId = new Map(full.nodes.map(n => [n.id, n.label]));
+    return full.edges.filter(e => e.truth || e.key).map(e =>
+      `<div class="ra-edge${e.key ? ' key' : ''}${e.truth ? ' truth' : ''}"><span>${mark(byId.get(e.from) ?? '')}</span><em>${esc(e.label)}</em><span>${mark(byId.get(e.to) ?? '')}</span></div>`).join('');
+  })()}</div>` : ''}`;
 }
 
 /** 面板只是模型投影；页签切换不触碰剧情状态。 */
@@ -93,6 +121,6 @@ export function renderReadingPanel({ ir, state, tab, onTab, mark }) {
   else [...nav.children].forEach((button, i) => button.setAttribute('aria-selected', String(TABS[i][0] === tab)));
   const body = $('#readBody');
   if (!state) { body.innerHTML = '<div class="ra-locked">开始阅读后，导读会跟随当前场景。</div>'; return; }
-  const views = { tracks: tracksView, messages: messagesView, evidence: evidenceView, debt: debtView, map: mapView, recap: recapView };
+  const views = { tracks: tracksView, messages: messagesView, evidence: evidenceView, relations: relationsView, map: mapView, recap: recapView };
   body.innerHTML = (views[tab] ?? tracksView)(ir, state, mark);
 }

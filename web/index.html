@@ -633,11 +633,22 @@
   .ra-kind{font-size:10px;color:#8f8567;letter-spacing:.14em}
   .ra-holder{margin-top:12px;color:#7d6226;font-size:12px;line-height:1.7}
   .ra-paper.empty{opacity:.62}
-  .ra-debt{display:grid;gap:10px}
-  .ra-debt-row{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;padding:11px;border:1px solid rgba(168,148,106,.65);background:rgba(255,252,242,.2)}
-  .ra-from{font-family:var(--kai);font-weight:700;color:#2e2818}
-  .ra-relation{color:var(--blood);text-align:center;font-size:12px}
-  .ra-to{text-align:right;color:#6e6549;font-size:12px}
+  .ra-rel{display:block;width:100%;height:auto;max-height:340px;border:1px solid rgba(168,148,106,.55);background:rgba(255,252,242,.18)}
+  .ra-rel line{stroke:rgba(122,106,72,.5);stroke-width:1.5}
+  .ra-rel line.key{stroke:var(--blood);stroke-width:2.2;opacity:.9}
+  .ra-rel line.truth{stroke:var(--blood);stroke-width:2.2;stroke-dasharray:7 5}
+  .ra-rel circle{fill:#c9a15f;stroke:#e9dcbd;stroke-width:3}
+  .ra-rel g.kind-place circle{fill:rgba(255,252,242,.3);stroke:#8f8567}
+  .ra-rel rect{fill:rgba(255,252,242,.3);stroke:var(--blood);stroke-width:1.6;stroke-dasharray:4 3}
+  .ra-rel g.masked circle{fill:none;stroke:var(--blood);stroke-dasharray:3 3}
+  .ra-rel text{fill:#332e21;font:12px var(--sans);letter-spacing:.04em}
+  .ra-rel g.masked text{fill:var(--blood);font-family:var(--kai);font-weight:700}
+  .ra-edges{display:grid;gap:8px;margin-top:12px}
+  .ra-edge{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;padding:8px 11px;border:1px solid rgba(168,148,106,.5);background:rgba(255,252,242,.16)}
+  .ra-edge span{font-family:var(--kai);font-weight:700;color:#2e2818}
+  .ra-edge span:last-child{text-align:right}
+  .ra-edge em{font-style:normal;color:#6e6549;text-align:center;font-size:12px}
+  .ra-edge.key em,.ra-edge.truth em{color:var(--blood)}
   .ra-map{display:block;width:100%;height:auto;max-height:360px;border:1px solid rgba(168,148,106,.55);background:rgba(255,252,242,.18)}
   .ra-map text{fill:var(--blood);font:12px var(--sans);letter-spacing:.04em}
   .ra-map .road{stroke:#8f8567;stroke-width:5;stroke-linecap:round;fill:none}
@@ -659,8 +670,8 @@
     .ra-track-label{width:30px;height:30px}
     .ra-stop{min-width:96px;padding:5px 7px}
     .ra-converge{margin-left:42px}
-    .ra-debt-row{grid-template-columns:1fr;gap:4px}
-    .ra-relation,.ra-to{text-align:left}
+    .ra-edge{grid-template-columns:1fr;gap:4px}
+    .ra-edge span:last-child,.ra-edge em{text-align:left}
     .ra-card{padding:10px}
     .ra-map text{font-size:11px}
   }

@@ -66,7 +66,9 @@ const MASKED_SPEAKERS = new Set(['他', '她', '它']);
 
 const charOf = name => {
   const sp = app.ir.speakers[name];
-  return sp ? app.ir.characters[sp.char] : null;
+  if (!sp) return null;
+  // 演示字段以正典块为准（ADR-005）：ir.characters 是瘦身索引，没有 bio_public
+  return { ...app.ir.characters[sp.char], bio_public: canonChar(sp.char)?.bio_public ?? '' };
 };
 
 /** 峰值拍数据行：按 tid 从 IR 取转写节点（证物拍/并轨拍的呈堂材料，不依赖存档）。 */

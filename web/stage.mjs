@@ -451,6 +451,7 @@ export class Stage {
   static waveChip(hz) {
     return `<svg class="tr-wave" viewBox="0 0 96 20" aria-hidden="true"><path d="${Stage.voiceprint(hz, 96, 20)}"/></svg>`;
   }
+  /** 声纹卡独占一拍：卡在、正文不出；卡退场后正文才起拍——登场介绍不与台词叠印。 */
   async charCard({ name, hz, side, theme, bio }) {
     const ep = this.epoch;
     const ink = inkify(theme);
@@ -466,9 +467,12 @@ export class Stage {
     p.style.strokeDasharray = '1000'; p.style.strokeDashoffset = '1000'; reflow(p);
     p.style.transition = 'stroke-dashoffset 1s ease .25s'; p.style.strokeDashoffset = '0';
     this.audio.blip(hz);
-    await sleep(this.auto ? 60 : 1400);
-    if (ep !== this.epoch) card.remove(); // 切档：卡随旧幕退场（reset 的兜底清场之外的在途卡）
-    return card;
+    await sleep(this.auto ? 60 : 1500);
+    if (ep !== this.epoch) { card.remove(); return null; } // 切档：卡随旧幕退场（reset 的兜底清场之外的在途卡）
+    card.classList.remove('on');
+    await sleep(this.auto ? 30 : 700);
+    card.remove();
+    return null; // 卡已自行退场：调用方的 dismissCard 成为空操作
   }
   dismissCard(card) { if (card) { card.classList.remove('on'); setTimeout(() => card.remove(), 900); } }
 

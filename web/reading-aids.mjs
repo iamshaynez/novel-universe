@@ -82,10 +82,26 @@ export function evidenceModel(ir, state) {
   return { rows };
 }
 
-export function debtModel(ir, state) {
-  const debt = ir.reading?.debt;
-  const unlocked = Boolean(debt && has(state, debt.unlock));
-  return { unlocked, rows: unlocked ? debt.rows : [] };
+export function relationsModel(ir, state, opts = {}) {
+  const g = ir.reading?.relations;
+  if (!g) return { note: '', nodes: [], edges: [] };
+  const full = Boolean(opts.full);
+  const nodes = g.nodes
+    .filter(n => full || !n.unlock || has(state, n.unlock))
+    .map(n => ({
+      id: n.id,
+      label: full || !n.reveal || has(state, n.reveal) ? n.label : (n.alias ?? n.label),
+      masked: !full && Boolean(n.reveal) && !has(state, n.reveal),
+      kind: n.kind ?? 'cast',
+      x: n.x,
+      y: n.y,
+    }));
+  const visible = new Set(nodes.map(n => n.id));
+  // 边跟随剧本落地的拍点（unlock）；两端任一未出场则不画，避免悬空连线。
+  const edges = [...(g.edges ?? []), ...(full ? (g.truth ?? []) : [])]
+    .filter(e => (full || !e.unlock || has(state, e.unlock)) && visible.has(e.from) && visible.has(e.to))
+    .map(e => ({ from: e.from, to: e.to, label: e.label, key: Boolean(e.key), truth: Boolean(e.truth) }));
+  return { note: g.note ?? '', nodes, edges };
 }
 
 export function mapModel(ir, state) {

@@ -1,0 +1,31 @@
+g01 声纹卡修复（undefined 与登场节奏）验收证据
+日期：2026-11-01 · 分支 fix/charcard-bio-and-rhythm
+
+一、用户报告与根因
+
+报告：声纹卡弹出时先出现「undefined」；卡片挡正文；建议弹出时正文停止播放。
+
+根因 1（undefined）：编译器产出的 ir.characters 是瘦身索引
+（id/name/voice_hz/stage，无 bio_public），player 的 charOf 直接以它渲染
+c.bio_public → 卡上字面显示 undefined。杜鹃等全部人物的档案简介从来没露出过。
+修复：charOf 以正典块（ADR-005 演出层数据合同，canon.characters，自带
+bio_public: c.bio_public ?? ''）补齐演示字段；ir 与正典零变更（不扰动 irHash，
+存量存档不触发重锚）。
+
+根因 2（挡正文/节奏）：charCard 展示 1.4s 后返回时卡片仍留在 DOM，
+正文台词同时起拍逐字打出，直到整句完成才 dismissCard——卡与台词全程叠印。
+修复：声纹卡独占一拍——展示 1500ms → 退场淡出 700ms → 移除后才放行正文
+（auto 冒烟走 60/30ms 快道）；返回 null 使调用方 dismissCard 成为空操作。
+印章（seal）与 desk/collapse 峰值拍本就是自移除独占拍，声纹卡对齐同一节奏合同。
+
+二、自动验证
+
+- npm test 263/263；npm run verify PASS（E1/E2/E3，2160 条路线）。
+- node --check player/stage 通过；git diff --check 通过。
+
+三、真实浏览器验证存档（Chromium 实测）
+
+- cc-bio 实际渲染：「锦声传呼台白班接线员，记性好，爱带叶儿粑。<br>声线 232 Hz · 左侧站位」；
+  全页无 undefined。
+- 节奏合同：卡显示期间正文 0 行；卡移除后杜鹃台词起拍。
+- 截图：g01-声纹卡-独占一拍与bio修复.png。

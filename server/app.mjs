@@ -92,11 +92,20 @@ export function createApp({ db, games, webDir, engineDir = fileURLToPath(new URL
     if (!file || !existsSync(file)) throw httpError(404, `未找到 ${pathname}`);
     // no-cache = 每次回源校验（部署必达手机）；ETag/304 让校验零成本。
     // 前端零打包直出，静态层绝不给可过期的宽限。
+    // index.html 是注入后的定稿体（SW 注册 URL 带 shell 戳）：ETag 只看壳戳——
+    // 文件字节不变但注入体变时 304 不得复用旧 body（本地复现实证过）。
+    const isShell = file === join(webDir, 'index.html');
     const st = await stat(file);
-    const etag = `"${st.size}-${Math.round(st.mtimeMs)}"`;
+    const etag = isShell
+      ? `"${offline.shellStamp}-${st.size}"`
+      : `"${st.size}-${Math.round(st.mtimeMs)}"`;
     if (req?.headers?.['if-none-match'] === etag) {
       res.writeHead(304, { ETag: etag, 'Cache-Control': 'no-cache' });
       return res.end();
+    }
+    if (isShell) {
+      res.writeHead(200, { 'Content-Type': MIME['.html'], 'Cache-Control': 'no-cache', ETag: etag });
+      return res.end(offline.shellHtml);
     }
     const data = await readFile(file);
     res.writeHead(200, {

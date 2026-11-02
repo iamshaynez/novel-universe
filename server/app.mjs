@@ -61,7 +61,8 @@ const MIME = {
 
 function json(res, status, body) {
   const data = JSON.stringify(body);
-  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
+  // no-store：API 响应绝不允许被任何 CDN/代理层缓存改写（版本对时是部署诊断的命脉）
+  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
   res.end(data);
 }
 function httpError(status, message) {
@@ -164,7 +165,8 @@ export function createApp({ db, games, webDir, engineDir = fileURLToPath(new URL
 
     // ---- 版本指纹（无需会话）：footer 部署追踪 ----
     if (req.method === 'GET' && a === 'version' && !b) {
-      return json(res, 200, { version: PKG_VERSION, sha: GIT_SHA, bundle, boot: BOOT_AT.toISOString(), now: new Date().toISOString() });
+      // shell 壳戳 = 当前壳/引擎字节指纹：手机页脚一眼对出是否换到新壳（排查换壳失效的命脉）
+      return json(res, 200, { version: PKG_VERSION, sha: GIT_SHA, bundle, shell: offline.shellStamp, boot: BOOT_AT.toISOString(), now: new Date().toISOString() });
     }
 
     // ---- 同步信箱：只有已注册账号可写；游客由客户端本地优先，兼容期另行导入 ----

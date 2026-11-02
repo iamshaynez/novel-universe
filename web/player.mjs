@@ -690,7 +690,7 @@ function armForceUpdate(fpNew) {
 async function tickVtag() {
   const v = await api.j('/api/version').catch(() => null);
   if (!v) { $('#vtag').textContent = 'v? · /api/version 不可达'; return; }
-  $('#vtag').textContent = `v${v.version} · ${v.sha} · 起 ${fmtClock(v.boot)} · 服务器 ${fmtClock(v.now)}`;
+  $('#vtag').textContent = `v${v.version} · 壳 ${String(v.shell ?? v.sha).slice(0, 6)} · 起 ${fmtClock(v.boot)} · 服务器 ${fmtClock(v.now)}`;
   const action = sentinelAction(fpBase, v);
   if (action === 'observe') { fpBase = v; return; } // 出身指纹：本页加载时服务器是谁
   if (action === 'reload') return armForceUpdate(codeOf(v));

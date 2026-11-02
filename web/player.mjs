@@ -4,7 +4,7 @@
 import { StageAudio } from '/audio.mjs';
 import { Stage, callerHz } from '/stage.mjs';
 import { renderReadingPanel } from '/reading-view.mjs';
-import { codeOf, sentinelAction } from '/resilience.mjs';
+import { codeOf, sentinelAction, updatePlan } from '/resilience.mjs';
 import { LocalRuntime } from '/runtime.mjs';
 import { openLocalStore } from '/store.mjs';
 import { SyncClient } from '/sync.mjs';
@@ -650,17 +650,25 @@ function reloadForUpdate() {
 }
 function armForceUpdate(fpNew) {
   if (AUTO) return; // 冒烟不自戕
-  try {
-    if (sessionStorage.getItem(FP_RELOADED) === fpNew) return; // 此版已换过：防环
-    sessionStorage.setItem(FP_RELOADED, fpNew);
-  } catch { /* 静默 */ }
-  stage.toast('服务器已更新——即将自动载入新版');
-  if (!app.running && !$('#endcard').classList.contains('on')) {
-    setTimeout(reloadForUpdate, 800); // 封面/无局：直接换版（toast 露个脸）
-    return;
-  }
-  app.forceUpdate = true; // 局内/结案页：最近的停点换版
-  if (!stage.revealing) setTimeout(reloadForUpdate, 1200); // 已停在等待拍/选项：这里就是停点，就地换版
+  const arm = () => {
+    try {
+      if (sessionStorage.getItem(FP_RELOADED) === fpNew) return; // 此版已换过：防环
+      sessionStorage.setItem(FP_RELOADED, fpNew);
+    } catch { /* 静默 */ }
+    const plan = updatePlan({
+      running: app.running,
+      endcard: $('#endcard').classList.contains('on'),
+      pageAgeMs: performance.now(),
+    });
+    if (plan.act === 'defer') { // 刚落地的局（章节卡/开场演出）：稍后重评，不打断
+      setTimeout(arm, 15000 - performance.now() + 100);
+      return;
+    }
+    stage.toast('服务器已更新——即将自动载入新版');
+    if (plan.act === 'reload-now') { setTimeout(reloadForUpdate, 800); return; }
+    app.forceUpdate = true; // 局内：runLoop 在拍间隙（自然停点）换版，不与揭示竞速
+  };
+  arm();
 }
 async function tickVtag() {
   const v = await api.j('/api/version').catch(() => null);

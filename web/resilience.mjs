@@ -31,3 +31,16 @@ export const isFatalStatus = status =>
 
 /** 重连退避：第 attempt 次等待毫秒数，1s 起步逐次 +1s，封顶 5s。 */
 export const retryDelayMs = attempt => Math.min(1000 + attempt * 1000, 5000);
+
+/** 开卷续档策略：自动进局必须是可预期的行为，不是每次开页的劫持。
+ *  只有「PWA 独立窗口重开 + 标记新鲜（默认 7 天）」才直进上次的档——这保住 PWA
+ *  重开不摔封面的初衷；普通浏览器访问一律落封面，由显式续读入口进入。
+ *  上次崩溃的档（brokenId）不再自动进：坏档 × 自动续档不得成环。 */
+export function resumePlan({ marker, brokenId = null, nowMs, standalone = false, freshMs = 7 * 24 * 3600 * 1000 }) {
+  if (!marker?.saveId) return { act: 'title' };
+  if (brokenId && brokenId === marker.saveId) return { act: 'title', reason: 'broken' };
+  const fresh = Number.isFinite(marker.at) && nowMs >= marker.at && nowMs - marker.at <= freshMs;
+  if (!fresh) return { act: 'title', reason: 'stale' };
+  if (!standalone) return { act: 'title', reason: 'browser' };
+  return { act: 'resume' };
+}

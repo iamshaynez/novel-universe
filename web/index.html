@@ -309,12 +309,16 @@
     font-family:var(--sans);font-size:13px;letter-spacing:.16em;color:#8f8567;
     opacity:0;transition:opacity .6s;z-index:6;pointer-events:none}
   #hint.on{opacity:.9}
-  /* 版本指纹（footer 左下角）：部署追踪——v版本 · sha · 起服 · 服务器时间 */
+  /* 版本指纹（footer 左下角）：部署追踪——v版本 · sha · 起服 · 服务器时间；
+     它同时是「检查并更新」按钮：hover 亮起 + 换新版提示 */
   #vtag{position:absolute;left:10px;bottom:calc(5px + env(safe-area-inset-bottom,0px));
     max-width:70vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
     font-family:var(--sans);font-size:10px;letter-spacing:.06em;color:#8f8567;opacity:.62;
-    font-variant-numeric:tabular-nums;pointer-events:none;z-index:41;
-    text-shadow:0 0 3px rgba(23,19,13,.45)}
+    font-variant-numeric:tabular-nums;pointer-events:auto;cursor:pointer;z-index:41;
+    text-shadow:0 0 3px rgba(23,19,13,.45);
+    transition:opacity .2s,color .2s}
+  #vtag:hover,#vtag:focus-visible{opacity:1;color:var(--accent);outline:none}
+  #vtag:hover::after{content:" · 点击换新版";letter-spacing:.1em}
 
   /* 标题页:卷宗封面 */
   #title{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -830,7 +834,7 @@
   </div>
 
   <div id="toast"></div>
-  <div id="vtag" aria-hidden="true"></div>
+  <div id="vtag" role="button" tabindex="0" aria-label="检查并载入最新版本" title="检查并载入最新版本"></div>
 </div>
 <dialog id="installHelp" aria-labelledby="installTitle">
   <div class="install-paper">

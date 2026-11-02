@@ -77,13 +77,21 @@ if ('serviceWorker' in navigator) {
     const swUrl = window.__NU_SW_URL ?? '/sw.js';
     navigator.serviceWorker.register(swUrl, { scope: '/', updateViaCache: 'none' }).then(registration => {
       // 更新只在播放器声明的安全点激活；controllerchange 后才重载，避免新旧壳混用。
+      // 手动「检查并更新」也走这里：新壳可能还在 installing（预缓存下载中）——
+      // 等它装完再激活，而不是误判「没有新版」直接硬刷（旧壳导航会继续端旧资源）。
       window.nuActivateUpdate = async () => {
         await registration.update().catch(() => null);
-        if (registration.waiting) {
-          registration.waiting.postMessage({ type: 'NU_ACTIVATE' });
-          return;
-        }
-        location.reload();
+        const activate = worker => { worker.postMessage({ type: 'NU_ACTIVATE' }); return true; };
+        if (registration.waiting) return activate(registration.waiting);
+        const installing = registration.installing;
+        if (!installing) return false; // 没有可激活的新壳
+        if (installing.state === 'installed') return activate(installing);
+        return await new Promise(resolve => {
+          installing.addEventListener('statechange', () => {
+            if (installing.state === 'installed') resolve(activate(installing));
+            else if (installing.state === 'redundant') resolve(false); // 装坏了：交给调用方决定
+          });
+        });
       };
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (window.__nuSwReloaded) return;

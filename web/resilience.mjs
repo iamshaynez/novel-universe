@@ -44,3 +44,14 @@ export function resumePlan({ marker, brokenId = null, nowMs, standalone = false,
   if (!standalone) return { act: 'title', reason: 'browser' };
   return { act: 'resume' };
 }
+
+/** 手动「检查并更新」决策（用户点了版本指纹就立即生效，不受停点保护约束）：
+ *  current   —— 页面指纹与服务器一致：已是最新，不动；
+ *  activate  —— 有新版且 SW 通道在场：等新壳装完（installing/waiting）→ skipWaiting 激活；
+ *  reload    —— 有新版但无 SW 通道（或页面指纹未知）：直接重载，HTTP 层 no-cache 拉新；
+ *  offline   —— /api/version 不可达：提示稍后再点，绝不瞎刷新。 */
+export function manualUpdatePlan({ pageCode, serverCode, swReady }) {
+  if (!serverCode) return { act: 'offline' };
+  if (pageCode != null && pageCode === serverCode) return { act: 'current' };
+  return swReady ? { act: 'activate' } : { act: 'reload' };
+}

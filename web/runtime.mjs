@@ -1,10 +1,13 @@
 // 本地运行时：与旧服务端 advance/choose 同一份纯引擎，但所有推进先写 IndexedDB。
 import { createRun, advance, choose, stateOf, loadRun, submitPick } from '../engine/state.mjs';
-import { makeAnchor, resolveAnchor, bumpVV } from '../engine/save.mjs';
+import { makeAnchor, resolveAnchor, settleRun, bumpVV } from '../engine/save.mjs';
 
 const copy = value => structuredClone(value);
 const isoNow = () => new Date().toISOString();
 const makeId = () => globalThis.crypto?.randomUUID?.() ?? `local-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+// 对位结果分级：这三级意味着玩家位置被回拨（场首/章首/卷首），必须留底可回退
+const LOSSY_LEVELS = new Set(['scene-start', 'chapter-start', 'entry']);
 
 export class LocalRuntime {
   constructor({ ir, irHash = null, store, deviceId = 'device', now = isoNow, uuid = makeId }) {
@@ -37,17 +40,43 @@ export class LocalRuntime {
   async load(id) {
     const doc = await this.store.getSave(id);
     if (!doc) throw new Error(`本地存档不存在 ${id}`);
-    const run = loadRun(doc.run);
+    const originalNodeId = loadRun(doc.run).nodeId; // 迁移前的原始位置：位移判断与留底都以此为据（loadRun 不拷贝对象，只取标量）
+    const run = copy(loadRun(doc.run)); // 工作副本：doc 在留底完成前必须保持迁移前的原貌
     const previousHash = doc.irHash;
-    // 内容版本变化时只移动快照定位，不制造版本向量冲突。
-    if (previousHash !== this.irHash || !doc.anchor) {
+    const irChanged = previousHash !== this.irHash || !doc.anchor;
+    let level = null;
+    if (irChanged) {
+      // 内容版本变化时先按锚点对位（v1.1 结构优先：ID 在则原位，不因文案修订失位）
       const resolved = doc.anchor ? resolveAnchor(this.ir, doc.anchor) : { nodeId: run.nodeId, exact: true, level: 'legacy' };
       if (resolved.nodeId && resolved.nodeId !== run.nodeId) run.nodeId = resolved.nodeId;
+      level = resolved.level;
+    }
+    // 断链自愈：对位落点必须真的推得动，推不动沿 场首→章首→卷首 降级——
+    // 旧存档 × 新内容图的结合部不再把死局端给玩家
+    const settled = settleRun(this.ir, run, doc.anchor ?? {});
+    if (settled.nodeId !== run.nodeId) { run.nodeId = settled.nodeId; level = settled.level; }
+    const moved = run.nodeId !== originalNodeId;
+    const backupId = moved && LOSSY_LEVELS.has(level) ? await this.backupOriginal(doc) : null;
+    if (irChanged || moved) {
       doc.run = copy(run); doc.irHash = this.irHash; doc.anchor = makeAnchor(this.ir, run.nodeId);
       doc.summary = this.summary(run);
+      // v1.1：内容迁移是版本化写入（bump + 置脏）。同负载并发由服务器合并向量；
+      // 旧策略「不递增」会让远端永远收不到这次对位，反而制造静默回退。
+      doc.vv = bumpVV(doc, this.deviceId); doc.dirty = 1; doc.updatedAt = this.now();
       await this.store.putSave(doc);
     }
-    return { doc, state: this.state(run), migrated: previousHash !== this.irHash };
+    return { doc, state: this.state(run), migrated: previousHash !== this.irHash, level, moved, backupId };
+  }
+
+  /** 降级迁移前的进度留底：确定性 id（多设备同档同版本只留一份），forkOf 指回原档。 */
+  async backupOriginal(doc) {
+    const id = `${doc.id}-backup-${this.irHash}`;
+    if (await this.store.getSave(id)) return id;
+    const at = this.now();
+    const backup = { ...copy(doc), id, forkOf: doc.id, note: '内容更新前的进度备份',
+      vv: { [this.deviceId]: 1 }, createdAt: at, updatedAt: at, dirty: 1, deleted: 0 };
+    await this.store.putSave(backup);
+    return id;
   }
 
   async write(doc, run) {

@@ -10,16 +10,27 @@ export class SyncClient {
 
   status(text, extra = {}) { this.onStatus({ text, ...extra }); }
 
-  /** 落库远端档。notify=true 只用于「远端真领先」——那条路才允许播放器在停点跟进；
-   *  冲突与新档一律静默：正在玩的本地主线绝不被服务器副本热切（分叉已保命，玩家自己挑）。 */
+  /** 与 LocalRuntime 共用每档一把锁：applyRemote 的读改写不得插进一次推进的读改写中间，
+   *  否则远端副本会在推进 await 的间隙顶替底稿——玩家位置当场被拽走。 */
+  withSaveLock(id, fn) {
+    if (globalThis.navigator?.locks?.request) return globalThis.navigator.locks.request(`nu-save-${id}`, fn);
+    return fn();
+  }
+
+  /** 落库远端档。notify=true 只用于「远端真领先且负载确有变化」——那条路才允许播放器在停点跟进；
+   *  同负载的收敛（各自迁移到同一位置）静默；冲突与新档一律静默：
+   *  正在玩的本地主线绝不被服务器副本热切（分叉已保命，玩家自己挑）。 */
   async applyRemote(remote) {
     const clean = { ...remote, dirty: 0 };
     delete clean.seq;
-    const storeRemote = async (doc, notify = true) => { await this.store.putSave(doc); if (notify) this.onRemote(doc); };
-    const local = await this.store.getSave(remote.id);
+    const storeRemote = (doc, notify = true) => this.withSaveLock(doc.id, async () => {
+      await this.store.putSave(doc);
+      if (notify) this.onRemote(doc);
+    });
+    const local = await this.withSaveLock(remote.id, () => this.store.getSave(remote.id));
     if (!local) { await storeRemote(clean, false); return; }
     const relation = compareVV(local.vv, remote.vv);
-    if (relation === -1) { await storeRemote(clean); return; }
+    if (relation === -1) { await storeRemote(clean, !samePayload(local, remote)); return; }
     if (relation === 1) return; // 本机领先，留在下一次 push
     if (relation === 0 && samePayload(local, remote)) { await storeRemote(clean, false); return; }
     if (samePayload(local, remote)) {
@@ -27,10 +38,12 @@ export class SyncClient {
       delete merged.seq;
       await storeRemote(merged, false); return;
     }
-    if (local.dirty) {
+    // 并发且内容不同：本机谱系保命。干净档同样分叉——静默顶替会丢进度；
+    // 唯一例外是删除语义：干净副本撞上墓碑跟着删（活动局 dirty 仍分叉，玩家不丢手上的局）。
+    if (!local.deleted && (local.dirty || !remote.deleted)) {
       const forkId = `${local.id}-fork-${this.deviceId}-${Date.now().toString(36)}`;
       const fork = { ...local, id: forkId, forkOf: local.id, vv: { [this.deviceId]: 1 }, dirty: 1 };
-      await this.store.putSave(fork);
+      await this.withSaveLock(local.id, async () => { await this.store.putSave(fork); });
       // 主线槽位即将换血：本机谱系改走分叉，活动局必须跟着分叉走（onFork），
       // 否则下一拍 advance 读到被顶替的主线，位置悄悄回退。
       this.onFork(fork);
@@ -60,8 +73,10 @@ export class SyncClient {
         for (const result of response.results ?? []) {
           if (result.status === 'accepted') {
             if (result.doc) await this.applyRemote(result.doc);
-            const local = await this.store.getSave(result.id);
-            if (local && JSON.stringify(local.vv) === JSON.stringify(pushed.get(result.id))) await this.store.putSave({ ...local, dirty: 0 });
+            await this.withSaveLock(result.id, async () => {
+              const local = await this.store.getSave(result.id);
+              if (local && JSON.stringify(local.vv) === JSON.stringify(pushed.get(result.id))) await this.store.putSave({ ...local, dirty: 0 });
+            });
           } else if (result.doc) {
             await this.applyRemote(result.doc);
           }

@@ -9,7 +9,7 @@ import { syncFor } from '../server/sync.mjs';
 import { LocalRuntime } from '../web/runtime.mjs';
 import { MemoryStore } from '../web/store.mjs';
 import { SyncClient } from '../web/sync.mjs';
-import { compareVV, makeAnchor, resolveAnchor } from '../engine/save.mjs';
+import { compareVV, makeAnchor, resolveAnchor, canProceed, settleRun } from '../engine/save.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const games = loadGames(join(root, 'test/fixtures/games'), join(root, 'test/fixtures/universe'));
@@ -58,6 +58,137 @@ describe('本地运行时：无网络也能开局、推进、读档与收集', (
     const collection = await store.getCollection(ir.id);
     assert.ok(Array.isArray(collection.cards));
     assert.ok(Array.isArray(collection.endings));
+  });
+});
+
+// 手工小图：断链自愈场景专用（正式内容有 verify 门禁不允许坏链，测试要能故意造坏）
+const healLine = (id, next, { scene = 's1', chapter = 'c1' } = {}) =>
+  ({ id, type: 'line', text: `台词-${id}`, next, scene, chapter, enter: [] });
+const healEnding = id => ({ id, type: 'ending', endingId: 'E1', title: '终', scene: 's1', chapter: 'c1' });
+const healIr = (nodes, entry) => ({
+  id: 'g-heal', entry, chapters: [{ id: 'c1', title: '第一章' }], scenes: {}, characters: {}, speakers: {},
+  endings: [{ id: 'E1', title: '终' }], nodes,
+  canon: { characters: [], locations: [], events: [], lexicon: [] },
+});
+const healRun = nodeId => ({ nodeId, flags: {}, affinity: {}, choiceLog: [], seed: 1, ended: null, trLog: {}, trMisses: {} });
+
+describe('锚点对位 v1.1：结构优先，文案修订不再把玩家降级到场首', () => {
+  it('同 ID 停点的台词被改写：仍在原位，只标记指纹不再精确', () => {
+    const anchor = makeAnchor(ir, 'ch1-n2');
+    const edited = structuredClone(ir);
+    edited.nodes['ch1-n2'].text = '作者改写了这一句';
+    const resolved = resolveAnchor(edited, anchor);
+    assert.equal(resolved.nodeId, 'ch1-n2', 'ID 还在就必须原位——改一句台词不得失位');
+    assert.equal(resolved.level, 'same-id');
+    assert.equal(resolved.exact, false);
+  });
+
+  it('ID 被删但内容在场内平移过：按内容指纹找回原拍', () => {
+    const anchor = makeAnchor(ir, 'ch1-n2');
+    const moved = structuredClone(ir);
+    delete moved.nodes['ch1-n2'];
+    moved.nodes['ch1-n2b'] = { ...ir.nodes['ch1-n2'], id: 'ch1-n2b' };
+    moved.nodes['ch1-n1'].next = 'ch1-n2b';
+    const resolved = resolveAnchor(moved, anchor);
+    assert.equal(resolved.nodeId, 'ch1-n2b');
+    assert.equal(resolved.level, 'scene');
+  });
+
+  it('ID 与内容都认不出时才走降级阶梯：先退本场景开头', () => {
+    const anchor = makeAnchor(ir, 'ch1-n7');
+    const rewritten = structuredClone(ir);
+    delete rewritten.nodes['ch1-n7']; // 节点整个被删且内容无处在场（场景标签还在）
+    rewritten.nodes['ch1-n6'].next = 'ch1-n8';
+    const resolved = resolveAnchor(rewritten, anchor);
+    assert.equal(resolved.level, 'scene-start');
+    assert.equal(resolved.nodeId, 'ch1-n6');
+  });
+});
+
+describe('断链自愈：读档必须落在推得动的停点上', () => {
+  it('canProceed：结局是合法终点，正常停点可推，断链与失踪节点判死', () => {
+    const good = healIr({ a: healLine('a', 'b'), b: healLine('b', 'end'), end: healEnding('end') }, 'a');
+    assert.equal(canProceed(good, healRun('a')), true);
+    assert.equal(canProceed(good, healRun('end')), true, '结局不能再推进，但它是合法终点');
+    const bad = healIr({ a: healLine('a', 'ghost'), end: healEnding('end') }, 'a');
+    assert.equal(canProceed(bad, healRun('a')), false, 'next 指向被删节点必须判死');
+    assert.equal(canProceed(bad, healRun('nope')), false, '节点不存在必须判死');
+  });
+
+  it('canProceed：选项停点每个可见选项都必须可落位；转写停点正确项必须可推进', () => {
+    const choice = healIr({
+      q: { id: 'q', type: 'choice', scene: 's1', chapter: 'c1', options: [{ label: '甲', goto: 'a' }, { label: '乙', goto: 'b' }] },
+      a: healLine('a', 'end'), b: healLine('b', 'end'), end: healEnding('end'),
+    }, 'q');
+    assert.equal(canProceed(choice, healRun('q')), true);
+    choice.nodes.q.options[1].goto = 'ghost';
+    assert.equal(canProceed(choice, healRun('q')), false, '任一可选分支断链都不许把死局端给玩家');
+    const tr = healIr({
+      t: { id: 't', type: 'transcribe', transId: 't1', caller: '呼入者', target: '留言内容', next: 'end', scene: 's1', chapter: 'c1' },
+      end: healEnding('end'),
+    }, 't');
+    assert.equal(canProceed(tr, healRun('t')), true);
+    tr.nodes.t.next = 'ghost';
+    assert.equal(canProceed(tr, healRun('t')), false, '转写完成后的推进链断了必须判死');
+  });
+
+  it('settleRun：原位断链退到本场景第一个健康停点', () => {
+    const broken = healIr({
+      s1a: healLine('s1a', 's2a'), s2a: healLine('s2a', 's2b', { scene: 's2' }), s2b: healLine('s2b', 'ghost', { scene: 's2' }),
+    }, 's1a');
+    const settled = settleRun(broken, healRun('s2b'), { scene: 's2' });
+    assert.deepEqual(settled, { nodeId: 's2a', level: 'scene-start' });
+  });
+
+  it('settleRun：整场景断链退到本章开头；原位健康则原地不动', () => {
+    const broken = healIr({
+      s1a: healLine('s1a', 's1b'), s1b: healLine('s1b', 's2a'), s2a: healLine('s2a', 'ghost', { scene: 's2' }),
+    }, 's1a');
+    assert.deepEqual(settleRun(broken, healRun('s2a'), { scene: 's2' }), { nodeId: 's1a', level: 'chapter-start' });
+    const healthy = healIr({ a: healLine('a', 'end'), end: healEnding('end') }, 'a');
+    assert.deepEqual(settleRun(healthy, healRun('a'), { scene: 's1' }), { nodeId: 'a', level: null });
+  });
+});
+
+describe('内容迁移 v1.1：降级有留底，对位是版本化写入', () => {
+  it('文案修订后读档仍在原停点；迁移回写置脏，同步协议能看到这次对位', async () => {
+    const store = new MemoryStore();
+    const runtime = runtimeFor(store);
+    const started = await runtime.newGame(7);
+    const advanced = await runtime.advance(started.doc.id);
+    const edited = structuredClone(ir);
+    edited.nodes[advanced.state.node].text = '作者修订了一句台词';
+    const next = new LocalRuntime({ ir: edited, irHash: 'fixture-2', store, deviceId: 'A' });
+    const loaded = await next.load(started.doc.id);
+    assert.equal(loaded.state.node, advanced.state.node, '同 ID 原位，不退场首');
+    assert.equal(loaded.level, 'same-id');
+    assert.equal(loaded.backupId, null, '无损迁移不留底');
+    const after = await store.getSave(started.doc.id);
+    assert.equal(after.dirty, 1, '迁移回写必须置脏——否则远端永远收不到这次对位');
+    assert.ok(after.vv.A > advanced.doc.vv.A, '迁移是版本化写入，向量前进');
+  });
+
+  it('对位落在断链上：自愈降级到健康停点，原进度确定性备份成分支档', async () => {
+    const store = new MemoryStore();
+    const runtime = runtimeFor(store);
+    const started = await runtime.newGame(7);
+    const advanced = await runtime.advance(started.doc.id); // 停在 ch1-n2
+    const docBefore = await store.getSave(started.doc.id);
+    const broken = structuredClone(ir);
+    broken.nodes[advanced.state.node].next = 'node-that-was-removed';
+    const next = new LocalRuntime({ ir: broken, irHash: 'fixture-broken', store, deviceId: 'A' });
+    const loaded = await next.load(started.doc.id);
+    assert.equal(loaded.level, 'scene-start', '断链必须自愈到本场景健康停点');
+    assert.notEqual(loaded.state.node, advanced.state.node);
+    assert.ok(loaded.backupId, '降级必须留底');
+    assert.equal(loaded.backupId, `${started.doc.id}-backup-fixture-broken`, '备份 id 确定性：多设备同档同版本只留一份');
+    const backup = await store.getSave(loaded.backupId);
+    assert.equal(backup.run.nodeId, docBefore.run.nodeId, '备份保留迁移前的原始位置');
+    assert.equal(backup.forkOf, started.doc.id);
+    assert.equal(backup.dirty, 1, '留底随同步推到其他设备，进度永不单点');
+    const after = await store.getSave(started.doc.id);
+    assert.equal(after.dirty, 1);
+    assert.ok(after.vv.A > docBefore.vv.A);
   });
 });
 
@@ -132,10 +263,56 @@ describe('同步信箱：重放安全、并发不丢档', () => {
     assert.equal((await store.getSave('doc-follow')).run.nodeId, 'n3');
 
     notified = 0;
-    const fresh = { ...docFor('doc-new-remote', { A: 1 }, 'n2'), dirty: 0 };
+    const fresh = { ...docFor('doc-new-remote', { A: 1 }, 'n2') };
     await client.applyRemote(fresh);
     assert.equal(notified, 0, '新出现的远端档不通知（不在玩的档不热切）');
     assert.ok(await store.getSave('doc-new-remote'));
+  });
+
+  it('同负载并发（两台设备各自迁移过）：按向量合并不是冲突——seq 不得污染负载比较', async () => {
+    const dbm = openDb(':memory:'); migrate(dbm, join(root, 'server/migrations')); createUser(dbm, '同负载合并', 'hash');
+    try {
+      syncFor(dbm, 1, { cursor: 0, push: [docFor('doc-same-payload', { A: 2 })], collect: {} });
+      syncFor(dbm, 1, { cursor: 0, push: [docFor('doc-same-payload', { A: 3 })], collect: {} }); // 设备 A 迁移：A 分量前进
+      const fromB = docFor('doc-same-payload', { A: 2, B: 1 });                                   // 设备 B 同版迁移：B 分量前进
+      const response = syncFor(dbm, 1, { cursor: 0, push: [fromB], collect: {} });
+      assert.equal(response.results[0].status, 'accepted', '负载相同只是各自迁移：向量取大合并，不得制造假冲突分叉');
+      assert.deepEqual(response.results[0].doc?.vv, { A: 3, B: 1 });
+    } finally { dbm.close(); }
+  });
+
+  it('干净本机档被并发顶替不再静默：同样分叉保命', async () => {
+    const store = new MemoryStore();
+    await store.putSave({ ...docFor('doc-clean-live', { C: 2 }, 'n3'), dirty: 0 });
+    const serverCopy = { ...docFor('doc-clean-live', { B: 4 }, 'n1'), dirty: 0 };
+    let fork = null;
+    const client = new SyncClient({ store, deviceId: 'C', games: [ir.id], post: async () => ({}), onFork: f => { fork = f; } });
+    await client.applyRemote(serverCopy);
+    assert.ok(fork, '干净档被并发覆盖必须分叉保命——静默顶替会丢进度');
+    assert.equal(fork.run.nodeId, 'n3', '分叉承载本机位置');
+    assert.equal((await store.getSave('doc-clean-live')).run.nodeId, 'n1', '主线槽位按协议接受远端');
+  });
+
+  it('删除语义不回滚：干净副本撞上并发墓碑仍静默接受，不得分叉复活', async () => {
+    const store = new MemoryStore();
+    await store.putSave({ ...docFor('doc-clean-del', { C: 2 }, 'n3'), dirty: 0 });
+    const tomb = { ...docFor('doc-clean-del', { B: 1 }, 'n3'), deleted: 1, dirty: 0 };
+    let fork = null;
+    const client = new SyncClient({ store, deviceId: 'C', games: [ir.id], post: async () => ({}), onFork: f => { fork = f; } });
+    await client.applyRemote(tomb);
+    assert.equal(fork, null, '另一台设备删掉的档不得被干净副本复活');
+    assert.equal((await store.getSave('doc-clean-del')).deleted, 1);
+  });
+
+  it('真领先但负载相同（他机做过同版迁移）：静默落库，不再打扰玩家跟进', async () => {
+    const store = new MemoryStore();
+    await store.putSave({ ...docFor('doc-quiet', { C: 2 }, 'n3'), dirty: 0 });
+    const ahead = { ...docFor('doc-quiet', { C: 3, B: 1 }, 'n3'), dirty: 0, seq: 9 };
+    let notified = 0;
+    const client = new SyncClient({ store, deviceId: 'C', games: [ir.id], post: async () => ({}), onRemote: () => notified++ });
+    await client.applyRemote(ahead);
+    assert.equal(notified, 0, '位置一字未变的「领先」只是收敛，不该弹跟进提示');
+    assert.deepEqual((await store.getSave('doc-quiet')).vv, { C: 3, B: 1 });
   });
 });
 

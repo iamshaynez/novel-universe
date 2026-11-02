@@ -350,9 +350,9 @@ async function loadSave(saveId) {
   runLoop(r.state);
 }
 
-async function openSaves() {
+async function openSaves(refresh = false) {
   if (!app.gameId) { stage.toast('先开始游戏'); return; }
-  if (!requestPanel('#savesPanel')) return;
+  if (!refresh && !requestPanel('#savesPanel')) return; // 刷新态：面板已在场，直接重渲染
   const list = await app.store.listSaves(app.gameId);
   $('#savesList').innerHTML = list.length ? '' : '<div style="color:var(--ink-dim);font-size:12px">暂无本地存档</div>';
   for (const sv of list) {
@@ -362,6 +362,21 @@ async function openSaves() {
     const branch = sv.forkOf ? '分支 · ' : '';
     div.innerHTML = `<span>${branch}${label}存档 ${String(sv.id).slice(0, 8)}</span><span style="color:var(--ink-dim)">${sv.summary?.ended ? `已通关(${sv.summary.ended})` : (sv.dirty ? '仅本机 · 待同步' : '已同步')}</span>`;
     div.onclick = () => loadSave(sv.id).catch(failNote);
+    const del = document.createElement('button');
+    del.className = 'save-del';
+    del.type = 'button';
+    del.textContent = '删';
+    del.addEventListener('pointerdown', e => e.stopPropagation()); // 不得冒泡成「读取该档」
+    armConfirm(del, async () => {
+      if (sv.id === app.saveId) { stage.toast('正在进行的这一局不能删——回到封面后再来'); return; }
+      try {
+        await app.runtime.remove(sv.id);
+        queueSync(); // 墓碑随同步推到远端与其他设备
+        stage.toast('已删除——远端与其他设备将同步移除');
+        openSaves(true); // 原地刷新列表，不关面板
+      } catch (e) { failNote(e); }
+    });
+    div.appendChild(del);
     $('#savesList').appendChild(div);
   }
   settlePanel('#savesPanel');
@@ -552,7 +567,8 @@ $('#btnCodex').onclick = openCodex;
 // 武装后 500ms 内的点击一律忽略——反射性双击（间隔多在 300ms 内）不得触发破坏性动作，
 // 读到「确认？」再点必然超过 500ms。
 function armConfirm(btn, fn) {
-  btn.onclick = () => {
+  btn.onclick = e => {
+    e?.stopPropagation?.(); // 确认钮不得把点击冒泡给宿主行/卡片的默认动作
     if (btn.dataset.armed) {
       if (Date.now() - Number(btn.dataset.armedAt) < 500) return; // 反射双击：忽略
       btn.dataset.armed = ''; btn.classList.remove('armed');

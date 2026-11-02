@@ -24,7 +24,7 @@ curl -fsSL "https://codeload.github.com/iamshaynez/novel-universe/tar.gz/${SHA}"
 tar xzf src/src.tar.gz -C src --strip-components=1
 
 echo "== 构建 $IMG:$SHA / :main =="
-( cd src && docker build -t "$IMG:$SHA" -t "$IMG:main" . ) || { echo "构建失败"; exit 1; }
+( cd src && docker build --build-arg NU_SHA="$SHA" -t "$IMG:$SHA" -t "$IMG:main" . ) || { echo "构建失败"; exit 1; }
 
 echo "== 推送 ACR（服务器侧，国内路径） =="
 docker push "$IMG:$SHA" || { echo "推送 :$SHA 失败"; exit 1; }

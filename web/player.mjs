@@ -359,7 +359,8 @@ async function openSaves() {
     const div = document.createElement('div');
     div.className = 'save';
     const label = sv.summary?.chapterTitle ? `${sv.summary.chapterTitle} · ` : '';
-    div.innerHTML = `<span>${label}存档 ${String(sv.id).slice(0, 8)}</span><span style="color:var(--ink-dim)">${sv.summary?.ended ? `已通关(${sv.summary.ended})` : (sv.dirty ? '仅本机 · 待同步' : '已同步')}</span>`;
+    const branch = sv.forkOf ? '分支 · ' : '';
+    div.innerHTML = `<span>${branch}${label}存档 ${String(sv.id).slice(0, 8)}</span><span style="color:var(--ink-dim)">${sv.summary?.ended ? `已通关(${sv.summary.ended})` : (sv.dirty ? '仅本机 · 待同步' : '已同步')}</span>`;
     div.onclick = () => loadSave(sv.id).catch(failNote);
     $('#savesList').appendChild(div);
   }
@@ -769,6 +770,13 @@ addEventListener('online', () => { if (app.user && !app.user.guest) app.sync?.fl
         if (doc.id !== app.saveId) return;
         app.pendingRemote = doc.id;
       },
+      onFork: fork => {
+        // 冲突分叉：主线槽位按协议换血，但活动局跟着本机谱系走分叉——绝不读到被顶替的主线。
+        if (fork.forkOf !== app.saveId) return;
+        app.saveId = fork.id;
+        markLastPlay(fork.id);
+        stage.toast('检测到另一设备的同名进度——本机进度已另存为分支，当前进行继续');
+      },
     });
     const unfinished = new Map();
     for (const g of app.catalog) {
@@ -776,16 +784,17 @@ addEventListener('online', () => { if (app.user && !app.user.guest) app.sync?.fl
       row.style.cssText = 'display:flex;gap:8px;align-items:center;justify-content:center';
       const b = document.createElement('button');
       b.innerHTML = `${g.title}<span class="g-sub">${g.subtitle ?? ''}</span>${g.hook ? `<span class="g-hook">${g.hook}</span>` : ''}`;
-      b.onclick = () => startGame(g.id).catch(failNote);
+      b.onclick = () => (last && !AUTO) ? loadSave(last.id).catch(failNote) : startGame(g.id).catch(failNote);
       row.appendChild(b);
       const saves = await app.store.listSaves(g.id);
       for (const sv of saves) if (!sv.summary?.ended) unfinished.set(sv.id, sv);
       const last = saves.find(s => !s.summary?.ended);
       if (last && !AUTO) {
+        // 存档不膨胀：卡片点击优先续读未完成档；开新局必须是显式动作。
         const c = document.createElement('button');
-        c.innerHTML = `继续存档 ${String(last.id).slice(0, 8)}`;
+        c.innerHTML = `开新局`;
         c.style.cssText = 'font-size:13px;padding:6px 12px';
-        c.onclick = () => loadSave(last.id).catch(failNote);
+        c.onclick = () => startGame(g.id).catch(failNote);
         row.appendChild(c);
       }
       $('#gameList').appendChild(row);

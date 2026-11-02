@@ -1,0 +1,41 @@
+g01 换壳免疫缓存层（SW 注册带戳）验收证据
+日期：2026-11-02 · 分支 fix/sw-stamped-registration
+
+一、事故与根因（用户录屏实锤）
+
+用户手机录屏（11.6s，竖屏 iOS）：空舞台（HUD+章节标签+等待提示、零正文），
+每次点击重放「第一章」入场卡约 0.5-1 秒即被打断。放大 3.4s 帧读到 toast：
+「服务器已更新——即将自动载入新版」——旧壳（v0.5.3 之前）的急切 reload
+在杀一切进行中的演出（章节卡被换代令牌腰斩）。
+
+死循环根因在网络层：线上 /sw.js 响应头为 cache-control: max-age=16070400
+（186 天）且 cf-cache-status: EXPIRED——Cloudflare 区域配置（Cache
+Everything / Browser Cache TTL）在缓存并改写 sw.js（源站明明发 no-cache）。
+后果：客户端 SW 更新检查拿到旧脚本 → 新壳永远装不上；而 /api/version
+动态返回新 bundle → 旧壳哨兵每次对时都判「服务器已更新」→ 急切 reload
+→ 重载后若 lastPlay 指向已结局档则回封面 → 再点开局 → 章卡 → 再 reload。
+v0.5.3 的停点换版逻辑只保护新壳，救不了被缓存困死的旧壳。
+
+二、修复（应用侧免疫任何 CDN/HTTP 缓存行为）
+
+- 壳戳 shellStamp：sha256(壳+引擎文件字节)，独立于内容 bundle——破
+  bundle↔注入体循环依赖。
+- index.html 注入定稿体：window.__NU_SW_URL = "/sw.js?b=<shellStamp>"；
+  预缓存清单对 /index.html 的摘要按注入后定稿体计算（否则安装完整性
+  校验必挂——本地复现实证）；ETag 并入 shellStamp（否则 304 复用旧 body
+  掩盖注入——本地复现实证）。
+- pwa.mjs 以带戳 URL 注册 + updateViaCache:'none'：唯一 URL 任何缓存层
+  都不可能喂旧脚本；换壳必达。旧壳手机下一次打开新 index 即逃逸。
+
+三、自动验证（TDD，先红后绿）
+
+- offline-first 新增：index 必须注入带戳注册 URL；带戳 sw.js 可达且 no-cache。
+- 全量 npm test 271/271；npm run verify PASS（E1/E2/E3，2160 条路线）。
+- 浏览器三变量矩阵（带戳+noViaCache / 带戳默认 / 纯路径+noViaCache）全部
+  安装+激活；逐条预缓存摘要与线上响应 28/28 匹配。
+- 截图：g01-换壳免疫缓存-带戳SW注册.png。
+
+四、遗留（需在 Cloudflare 控制台处理，应用侧已免疫）
+
+建议检查区域设置：Cache Rules 是否对 /sw.js 启用 Cache Everything；
+Browser Cache TTL 是否为 186 天。即便不处理，带戳注册 URL 已使旧路径失效。

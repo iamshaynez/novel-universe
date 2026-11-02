@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { codeOf, sentinelAction, isFatalStatus, retryDelayMs, updatePlan } from '../web/resilience.mjs';
+import { codeOf, sentinelAction, isFatalStatus, retryDelayMs, updatePlan, resumePlan } from '../web/resilience.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const player = () => readFile(join(root, 'web', 'player.mjs'), 'utf8');
@@ -45,6 +45,25 @@ describe('同步失败分类：瞬时失败退避，永久失败不空转', () =
     for (const status of [408, 429, 500, 502, 503, undefined, null]) assert.equal(isFatalStatus(status), false);
   });
   it('退避从 1 秒起步封顶 5 秒', () => assert.deepEqual([0, 1, 2, 3, 4, 9].map(retryDelayMs), [1000, 2000, 3000, 4000, 5000, 5000]));
+});
+
+describe('开卷续档策略：自动进局必须是可预期的，坏档不得死循环', () => {
+  const marker = saveId => ({ saveId, at: 1000 });
+  it('PWA 独立窗口重开且标记新鲜（7 天内）：直进上次的档', () => {
+    assert.equal(resumePlan({ marker: marker('s1'), brokenId: null, nowMs: 1000 + 3 * 86400e3, standalone: true }).act, 'resume');
+  });
+  it('普通浏览器访问落封面：由显式续读入口进入，不再不问自进', () => {
+    assert.equal(resumePlan({ marker: marker('s1'), brokenId: null, nowMs: 1000 + 3600e3, standalone: false }).act, 'title');
+  });
+  it('标记超过七天：即使 PWA 也落封面（防长期弃坑档每次劫持开卷）', () => {
+    assert.equal(resumePlan({ marker: marker('s1'), brokenId: null, nowMs: 1000 + 8 * 86400e3, standalone: true }).act, 'title');
+  });
+  it('上次崩溃的档不再自动进：坏档 × 自动续档不得成环', () => {
+    const plan = resumePlan({ marker: marker('s1'), brokenId: 's1', nowMs: 1000 + 3600e3, standalone: true });
+    assert.equal(plan.act, 'title');
+    assert.equal(plan.reason, 'broken');
+  });
+  it('无标记不动作', () => assert.equal(resumePlan({ marker: null, nowMs: 0 }).act, 'title'));
 });
 
 describe('播放器离线接线合同', () => {
@@ -89,6 +108,21 @@ describe('播放器离线接线合同', () => {
   it('版本可自查：页脚显示 shell 壳戳，手机一眼对出是否换到新壳', async () => {
     const src = await player();
     assert.match(src, /v\.shell/, 'vtag 必须渲染 /api/version 的 shell 壳戳');
+  });
+
+  it('存档面板接线：onclick 不得把事件对象误当 refresh 参数（b8d32c8 回归——点击存档无反应）', async () => {
+    const src = await player();
+    assert.match(src, /btnSaves'\)\.onclick = \(\) => openSaves\(\)/, '按钮必须箭头包裹，不得直挂带参函数');
+    assert.match(src, /refresh !== true && !requestPanel\('#savesPanel'\)/, 'openSaves 只认字面 true 的刷新态，事件对象一律走完整开面板流程');
+  });
+
+  it('致命错误有逃生舱：常驻错误条 + 重新对位 + 回封面，坏档不再自动续进', async () => {
+    const src = await player();
+    assert.match(src, /function showFatal/, '本地档推不动时必须有常驻错误条，而不是一条会消失的 toast');
+    assert.match(src, /btnRealign/, '提供「重新对位本档」动作：读档自愈链路就是恢复通道');
+    assert.match(src, /btnFatalTitle/, '提供「回到封面」动作');
+    assert.match(src, /brokenLastPlay/, '崩溃档要记账，下次开卷不得自动续进');
+    assert.match(src, /resumePlan\(\{/, '开卷续档必须过策略门，不得无条件直进');
   });
 
   it('开场兜底针对本地能力，而不是要求先登录', async () => {

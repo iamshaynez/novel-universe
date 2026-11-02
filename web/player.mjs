@@ -4,7 +4,7 @@
 import { StageAudio } from '/audio.mjs';
 import { Stage, callerHz } from '/stage.mjs';
 import { renderReadingPanel } from '/reading-view.mjs';
-import { codeOf, sentinelAction, updatePlan } from '/resilience.mjs';
+import { codeOf, sentinelAction, updatePlan, resumePlan } from '/resilience.mjs';
 import { LocalRuntime } from '/runtime.mjs';
 import { openLocalStore } from '/store.mjs';
 import { SyncClient } from '/sync.mjs';
@@ -248,6 +248,7 @@ async function renderBeat(s) {
 async function runLoop(s0) {
   const gen = app.gen;
   app.running = true;
+  let healed = false;
   try {
     let s = s0;
     while (s) {
@@ -263,16 +264,43 @@ async function runLoop(s0) {
       }
       try {
         s = await renderBeat(s);
+        if (!healed) {
+          // 首拍走通即撤销坏档记账：这档活着，下次开卷可以照常自动续进
+          healed = true;
+          app.store.setMeta('brokenLastPlay', null).catch(() => {});
+        }
       } catch (e) {
         if (gen !== app.gen) break;
-        stage.toast(`本地存档出了岔子：${e.message}——进度未被覆盖，请重开当前存档`);
         s = null;
+        await showFatal(`本地存档出了岔子：${e.message}——进度未被覆盖`);
       }
     }
   } finally {
     if (gen === app.gen) app.running = false;
   }
 }
+
+// 致命错误逃生舱：本地档推不动时给出常驻出路（重新对位 / 回封面），
+// 不再只剩一条会消失的 toast——那会把玩家逼向「重新开始」，进度看似丢失。
+async function showFatal(text) {
+  $('#fatalText').textContent = text;
+  $('#fatalBar').classList.add('on');
+  await app.store.setMeta('brokenLastPlay', app.saveId).catch(() => {}); // 下次开卷不自动续进这档
+}
+$('#btnRealign').onclick = async () => {
+  $('#fatalBar').classList.remove('on');
+  try {
+    await loadSave(app.saveId); // 读档即自愈：锚点对位 + 断链校验会把档落到推得动的停点
+  } catch (e) {
+    await showFatal(`重新对位失败：${e.message}`);
+  }
+};
+$('#btnFatalTitle').onclick = () => {
+  $('#fatalBar').classList.remove('on');
+  clearLastPlay();
+  sessionStorage.setItem('nu.reload.cause', 'fatalTitle');
+  location.reload();
+};
 
 async function showEnding(s) {
   const collection = await app.store.getCollection(app.gameId).catch(() => ({ endings: [] }));
@@ -330,6 +358,18 @@ async function startGame(gameId) {
   runLoop(r.state);
 }
 
+// 内容迁移话术：位置发生了什么，玩家必须知道——静默挪位等于进度无故蒸发
+const MIGRATE_NOTE = {
+  same: '作品内容有更新，进度已按原位续上',
+  legacy: '作品内容有更新，进度已按原位续上',
+  'same-id': '作品内容有修订，进度位置保留',
+  scene: '作品内容有更新，已对位到同一拍继续',
+  global: '作品内容有更新，已对位到同一拍继续',
+  'scene-start': '作品内容有更新，原位置已不可达——从本场景开头继续，原进度已备份为分支存档',
+  'chapter-start': '作品内容有更新，原位置已不可达——从本章开头继续，原进度已备份为分支存档',
+  entry: '作品内容有更新，原位置已不可达——从卷首继续，原进度已备份为分支存档',
+};
+
 async function loadSave(saveId) {
   const existing = await app.store.getSave(saveId);
   if (!existing) throw new Error('本地存档不存在');
@@ -347,20 +387,22 @@ async function loadSave(saveId) {
   resetRun();
   app.resume = true;
   queueSync();
+  if (r.level) stage.toast(MIGRATE_NOTE[r.level] ?? '作品内容有更新，进度已重新对位');
   runLoop(r.state);
 }
 
 async function openSaves(refresh = false) {
   if (!app.gameId) { stage.toast('先开始游戏'); return; }
-  if (!refresh && !requestPanel('#savesPanel')) return; // 刷新态：面板已在场，直接重渲染
+  // 只认字面 true 的刷新态：onclick 直挂时传进来的是事件对象，必须走完整开面板流程
+  if (refresh !== true && !requestPanel('#savesPanel')) return;
   const list = await app.store.listSaves(app.gameId);
   $('#savesList').innerHTML = list.length ? '' : '<div style="color:var(--ink-dim);font-size:12px">暂无本地存档</div>';
   for (const sv of list) {
     const div = document.createElement('div');
     div.className = 'save';
     const label = sv.summary?.chapterTitle ? `${sv.summary.chapterTitle} · ` : '';
-    const branch = sv.forkOf ? '分支 · ' : '';
-    div.innerHTML = `<span>${branch}${label}存档 ${String(sv.id).slice(0, 8)}</span><span style="color:var(--ink-dim)">${sv.summary?.ended ? `已通关(${sv.summary.ended})` : (sv.dirty ? '仅本机 · 待同步' : '已同步')}</span>`;
+    const prefix = sv.note ?? (sv.forkOf ? '分支 · ' : '');
+    div.innerHTML = `<span>${prefix}${label}存档 ${String(sv.id).slice(0, 8)}</span><span style="color:var(--ink-dim)">${sv.summary?.ended ? `已通关(${sv.summary.ended})` : (sv.dirty ? '仅本机 · 待同步' : '已同步')}</span>`;
     div.onclick = () => loadSave(sv.id).catch(failNote);
     const del = document.createElement('button');
     del.className = 'save-del';
@@ -464,7 +506,7 @@ document.addEventListener('keydown', e => {
 document.querySelectorAll('.pnl-x').forEach(b => b.onclick = () => closePanels());
 
 // ---- HUD 按钮 ----
-$('#btnSaves').onclick = openSaves;
+$('#btnSaves').onclick = () => openSaves(); // 箭头包裹：不得把事件对象漏进 openSaves 的 refresh 参数（b8d32c8 回归）
 $('#btnRead').onclick = () => openRead();
 $('#btnReadEnd').onclick = () => { $('#endcard').classList.remove('on'); openRead('recap'); };
 // 底单回看：本局转写记录（悬疑玩家要翻回去对时间戳与号码）
@@ -712,11 +754,17 @@ function markLastPlay(saveId) {
 function clearLastPlay() {
   try { localStorage.removeItem(LASTPLAY); } catch { /* 静默 */ }
 }
-/** 开卷续档：直接读本地存档；网络与账号状态完全不参与。 */
+/** 开卷续档：只有 PWA 独立窗口重开且标记新鲜才直进（防「每次开页被劫持进局」）；
+ *  普通浏览器访问落封面，由封面续读入口显式进入；坏档不自动进，防死循环。
+ *  网络与账号状态完全不参与。 */
+const isStandalonePWA = () => matchMedia?.('(display-mode: standalone)')?.matches || navigator.standalone === true;
 async function tryResume() {
   let marker = null;
   try { marker = JSON.parse(localStorage.getItem(LASTPLAY) ?? 'null'); } catch { clearLastPlay(); return; }
   if (!marker?.saveId || AUTO) return;
+  const brokenId = await app.store.getMeta('brokenLastPlay');
+  const plan = resumePlan({ marker, brokenId, nowMs: Date.now(), standalone: isStandalonePWA() });
+  if (plan.act !== 'resume') return; // 标记保留：封面续读入口仍在，只是不再不问自进
   const doc = await app.store.getSave(marker.saveId);
   if (!doc || doc.deleted || doc.summary?.ended) { clearLastPlay(); return; }
   try {
@@ -799,12 +847,14 @@ addEventListener('online', () => { if (app.user && !app.user.guest) app.sync?.fl
       const row = document.createElement('div');
       row.style.cssText = 'display:flex;gap:8px;align-items:center;justify-content:center';
       const b = document.createElement('button');
-      b.innerHTML = `${g.title}<span class="g-sub">${g.subtitle ?? ''}</span>${g.hook ? `<span class="g-hook">${g.hook}</span>` : ''}`;
+      const saves = await app.store.listSaves(g.id);
+      const last = saves.find(s => !s.summary?.ended);
+      // 续读意图显式化：卡片直接告诉玩家「点这里是从哪续」，选择权在开卷那一刻
+      const resumeHint = last && !AUTO ? `<span class="g-sub">续读 · ${last.summary?.chapterTitle ?? '进行中'} · 存档 ${String(last.id).slice(0, 8)}</span>` : '';
+      b.innerHTML = `${g.title}<span class="g-sub">${g.subtitle ?? ''}</span>${g.hook ? `<span class="g-hook">${g.hook}</span>` : ''}${resumeHint}`;
       b.onclick = () => (last && !AUTO) ? loadSave(last.id).catch(failNote) : startGame(g.id).catch(failNote);
       row.appendChild(b);
-      const saves = await app.store.listSaves(g.id);
       for (const sv of saves) if (!sv.summary?.ended) unfinished.set(sv.id, sv);
-      const last = saves.find(s => !s.summary?.ended);
       if (last && !AUTO) {
         // 存档不膨胀：卡片点击优先续读未完成档；开新局必须是显式动作。
         const c = document.createElement('button');
@@ -821,6 +871,7 @@ addEventListener('online', () => { if (app.user && !app.user.guest) app.sync?.fl
         const cause = sessionStorage.getItem('nu.reload.cause');
         if (cause === 'browser') { sessionStorage.removeItem('nu.reload.cause'); stage.toast('页面被刷新——本地进度已保留，正在回到上次停点'); }
         else if (cause === 'server-updated') { sessionStorage.removeItem('nu.reload.cause'); stage.toast('已换到新版——本地进度保留，正在续读'); }
+        else if (cause === 'fatalTitle') { sessionStorage.removeItem('nu.reload.cause'); stage.toast('已回到封面——本地进度未被删除，可从存档面板或重新对位进入'); }
         else if (cause) sessionStorage.removeItem('nu.reload.cause');
       } catch { /* 静默 */ }
       await tryResume();

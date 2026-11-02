@@ -172,6 +172,44 @@ describe('真实同步接口：注册后才同步，游客不被强迫联网', (
   });
 });
 
+describe('存档删除：本机与远端都可清（墓碑经同步传播）', () => {
+  it('删除即墓碑：本机列表消失、置脏待推、重复删除幂等', async () => {
+    const store = new MemoryStore();
+    const runtime = runtimeFor(store);
+    const started = await runtime.newGame(7);
+    await runtime.advance(started.doc.id);
+    const tomb = await runtime.remove(started.doc.id);
+    assert.equal(tomb.deleted, 1, '删除是墓碑不是物理清除——同步协议需要它传播');
+    assert.equal(tomb.dirty, 1, '墓碑必须置脏，否则永远留在本机');
+    assert.equal((await store.listSaves(ir.id)).length, 0, '本机列表立即消失');
+    await runtime.remove(started.doc.id); // 幂等：已删再删不炸
+    assert.equal((await store.listSaves(ir.id)).length, 0);
+  });
+
+  it('墓碑经同步传播：另一台设备的同名活档被替换，两端列表都清空', async () => {
+    const db = openDb(':memory:'); migrate(db, join(root, 'server/migrations')); createUser(db, '删除同步', 'hash');
+    try {
+      const storeA = new MemoryStore(), storeB = new MemoryStore();
+      const post = async (path, body) => syncFor(db, 1, body);
+      const A = new SyncClient({ store: storeA, deviceId: 'A', games: [ir.id], post });
+      const B = new SyncClient({ store: storeB, deviceId: 'B', games: [ir.id], post });
+      const runtime = runtimeFor(storeA);
+      const started = await runtime.newGame(7);
+      await runtime.advance(started.doc.id);
+      await A.flush();
+      await B.flush(); // B 拉到活档
+      assert.equal((await storeB.listSaves(ir.id)).length, 1);
+      await runtime.remove(started.doc.id);
+      await A.flush(); // 推墓碑
+      await B.flush(); // B 拉墓碑：活档被替换
+      assert.equal((await storeB.listSaves(ir.id)).length, 0, '远端删除必须传播到 B');
+      assert.equal((await storeA.listSaves(ir.id)).length, 0);
+      const docB = await storeB.getSave(started.doc.id);
+      assert.equal(docB?.deleted, 1, 'B 侧保留墓碑：已删除状态跨设备稳定');
+    } finally { db.close(); }
+  });
+});
+
 describe('内容包与离线壳', () => {
   it('目录、IR、引擎和 sw.js 都由真实 HTTP 提供，IR 长缓存且壳含完整清单', async () => {
     const server = createApp({ db: null, games, webDir: join(root, 'web') });

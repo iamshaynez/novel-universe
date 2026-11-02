@@ -4,10 +4,11 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { codeOf, sentinelAction, isFatalStatus, retryDelayMs, updatePlan, resumePlan } from '../web/resilience.mjs';
+import { codeOf, sentinelAction, isFatalStatus, retryDelayMs, updatePlan, resumePlan, manualUpdatePlan } from '../web/resilience.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const player = () => readFile(join(root, 'web', 'player.mjs'), 'utf8');
+const pwa = () => readFile(join(root, 'web', 'pwa.mjs'), 'utf8');
 
 describe('换版执行计划：开局演出与进行中的局不被急切重载打断', () => {
   it('新鲜页面一律缓换：章节卡/开场演出刚落地，稍后再评估', () => {
@@ -64,6 +65,25 @@ describe('开卷续档策略：自动进局必须是可预期的，坏档不得�
     assert.equal(plan.reason, 'broken');
   });
   it('无标记不动作', () => assert.equal(resumePlan({ marker: null, nowMs: 0 }).act, 'title'));
+});
+
+describe('手动换版决策：版本指纹即按钮，用户主动点击即时生效', () => {
+  const same = 'bundle:aaa', newer = 'bundle:bbb';
+  it('页面与服务器同指纹：已是最新，不动', () => {
+    assert.equal(manualUpdatePlan({ pageCode: same, serverCode: same, swReady: true }).act, 'current');
+  });
+  it('有新版且 SW 通道在场：走激活新壳（waiting/installing → skipWaiting），不打断式硬刷', () => {
+    assert.equal(manualUpdatePlan({ pageCode: same, serverCode: newer, swReady: true }).act, 'activate');
+  });
+  it('有新版但无 SW 通道（注册失败/不支持的浏览器）：直接重载，HTTP 层 no-cache 拉新', () => {
+    assert.equal(manualUpdatePlan({ pageCode: same, serverCode: newer, swReady: false }).act, 'reload');
+  });
+  it('页面指纹未知（首拍对时未完成）：当作有新版处理——重载即自愈', () => {
+    assert.equal(manualUpdatePlan({ pageCode: null, serverCode: same, swReady: false }).act, 'reload');
+  });
+  it('服务器不可达：提示稍后再点，绝不瞎刷新', () => {
+    assert.equal(manualUpdatePlan({ pageCode: same, serverCode: null, swReady: true }).act, 'offline');
+  });
 });
 
 describe('播放器离线接线合同', () => {
@@ -123,6 +143,21 @@ describe('播放器离线接线合同', () => {
     assert.match(src, /btnFatalTitle/, '提供「回到封面」动作');
     assert.match(src, /brokenLastPlay/, '崩溃档要记账，下次开卷不得自动续进');
     assert.match(src, /resumePlan\(\{/, '开卷续档必须过策略门，不得无条件直进');
+  });
+
+  it('手动换版接线：版本指纹可点击检查新版，即时强制换壳（不受停点保护与防环限制）', async () => {
+    const src = await player();
+    assert.match(src, /manualUpdatePlan\(\{/, '点击必须先过决策（已是最新/激活新壳/直接重载/不可达）');
+    assert.match(src, /vtag'\)\.addEventListener\('click', checkUpdate\)/, '版本指纹页脚就是换版按钮');
+    assert.match(src, /已是最新/, '同指纹要有明确反馈，不瞎刷新');
+    assert.match(src, /新壳还在路上/, '激活通道未就绪时给可重试的反馈，不盲目重载回旧壳');
+  });
+
+  it('SW 激活通道覆盖 installing 态：新壳还在下载时等它装完再激活，而不是误判无新版', async () => {
+    const src = await pwa();
+    assert.match(src, /registration\.installing/, '必须等待 installing 的新壳');
+    assert.match(src, /statechange/, '下载中的壳完成（installed）后立即激活');
+    assert.match(src, /NU_ACTIVATE/, '激活仍走 skipWaiting → controllerchange → 重载的既有通道');
   });
 
   it('开场兜底针对本地能力，而不是要求先登录', async () => {

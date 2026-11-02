@@ -229,4 +229,19 @@ describe('内容包与离线壳', () => {
       assert.match(sw, /engine\/state\.mjs/);
     } finally { server.close(); }
   });
+
+  it('SW 注册 URL 带 bundle 戳：CDN 缓存不了它，换壳不被网络层卡死', async () => {
+    const server = createApp({ db: null, games, webDir: join(root, 'web') });
+    await new Promise(resolveListen => server.listen(0, resolveListen));
+    const base = `http://127.0.0.1:${server.address().port}`;
+    try {
+      const html = await (await fetch(`${base}/`)).text();
+      const m = html.match(/__NU_SW_URL\s*=\s*"\/sw\.js\?b=([0-9a-f]+)"/);
+      assert.ok(m, 'index.html 必须注入带 bundle 戳的 SW 注册 URL（否则 CDN 缓存 sw.js 时旧壳永远换不掉）');
+      const stamped = await fetch(`${base}/sw.js?b=${m[1]}`);
+      assert.equal(stamped.status, 200);
+      assert.match(stamped.headers.get('cache-control') ?? '', /no-cache/);
+      assert.match(await stamped.text(), /jinjiang-offline-/);
+    } finally { server.close(); }
+  });
 });

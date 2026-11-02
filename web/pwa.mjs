@@ -72,7 +72,10 @@ if (standalone()) showInstalled();
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(registration => {
+    // 带 bundle 戳的注册 URL + updateViaCache:none：SW 更新检查绕开一切 HTTP 缓存，
+    // CDN 改写 /sw.js 响应头也困不住旧壳（换壳必达）。
+    const swUrl = window.__NU_SW_URL ?? '/sw.js';
+    navigator.serviceWorker.register(swUrl, { scope: '/', updateViaCache: 'none' }).then(registration => {
       // 更新只在播放器声明的安全点激活；controllerchange 后才重载，避免新旧壳混用。
       window.nuActivateUpdate = async () => {
         await registration.update().catch(() => null);

@@ -4,7 +4,7 @@
 import { StageAudio } from '/audio.mjs';
 import { Stage, callerHz } from '/stage.mjs';
 import { renderReadingPanel } from '/reading-view.mjs';
-import { codeOf, sentinelAction, updatePlan, resumePlan } from '/resilience.mjs';
+import { codeOf, sentinelAction, updatePlan, resumePlan, manualUpdatePlan } from '/resilience.mjs';
 import { LocalRuntime } from '/runtime.mjs';
 import { openLocalStore } from '/store.mjs';
 import { SyncClient } from '/sync.mjs';
@@ -704,8 +704,27 @@ const FP_RELOADED = 'nu.server.fp.reloaded';
 let fpBase = null; // 出身指纹（页面生命周期内变量：每次加载重新认定，跨重载不残留）
 function reloadForUpdate() {
   try { sessionStorage.setItem('nu.reload.cause', 'server-updated'); } catch { /* 静默 */ }
-  if (window.nuActivateUpdate) window.nuActivateUpdate();
-  else location.reload();
+  if (window.nuActivateUpdate) {
+    // SW 通道激活（waiting/installing → skipWaiting → controllerchange 重载）；
+    // 没有可激活的新壳（sw.js 尚未就绪）兜底硬刷——防环记账在 armForceUpdate 里。
+    window.nuActivateUpdate().then(ok => { if (!ok) location.reload(); }).catch(() => location.reload());
+    return;
+  }
+  location.reload();
+}
+/** 手动「检查并更新」：版本指纹页脚即按钮。用户主动点击 → 即时强制换壳，
+ *  不受停点保护与防环记账约束（连点是重试不是环）；进度全在本地 IndexedDB，重载零丢失。 */
+async function checkUpdate() {
+  stage.toast('正在检查新版…');
+  const v = await api.j('/api/version').catch(() => null);
+  const plan = manualUpdatePlan({ pageCode: fpBase && codeOf(fpBase), serverCode: v && codeOf(v), swReady: !!window.nuActivateUpdate });
+  if (plan.act === 'offline') { stage.toast('检查失败：服务器不可达——稍后再点'); return; }
+  if (plan.act === 'current') { stage.toast(`已是最新 · v${v.version} 壳 ${String(v.shell ?? v.sha).slice(0, 6)}`); return; }
+  try { sessionStorage.setItem('nu.reload.cause', 'server-updated'); } catch { /* 静默 */ }
+  if (plan.act === 'reload') { location.reload(); return; }
+  stage.toast('有新版——正在载入');
+  const ok = await window.nuActivateUpdate().catch(() => false);
+  if (!ok) stage.toast('新壳还在路上——稍等几秒再点一次');
 }
 function armForceUpdate(fpNew) {
   if (AUTO) return; // 冒烟不自戕
@@ -743,6 +762,11 @@ async function tickVtag() {
 }
 tickVtag();
 setInterval(tickVtag, 30000);
+// 版本指纹页脚即换版按钮：点击/回车/空格 = 检查并强制载入最新版
+$('#vtag').addEventListener('click', checkUpdate);
+$('#vtag').addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.code === 'Space') { e.preventDefault(); e.stopPropagation(); checkUpdate(); }
+});
 
 // ---- 续档恢复：上次进行到哪个存档，开卷即回（PWA 重开/换版弹回不再摔在封面）----
 // 进度全在服务端：自动回去只是重新 GET 停点，不重放已推进的拍。

@@ -244,4 +244,16 @@ describe('内容包与离线壳', () => {
       assert.match(await stamped.text(), /jinjiang-offline-/);
     } finally { server.close(); }
   });
+
+  it('版本指纹可自查：/api/version 报 shell 壳戳且 API 响应 no-store', async () => {
+    const server = createApp({ db: null, games, webDir: join(root, 'web') });
+    await new Promise(resolveListen => server.listen(0, resolveListen));
+    const base = `http://127.0.0.1:${server.address().port}`;
+    try {
+      const res = await fetch(`${base}/api/version`);
+      const body = await res.json();
+      assert.match(body.shell ?? '', /^[0-9a-f]{16}$/, '必须携带 shell 壳戳——否则用户无法排查手机是否换到新壳');
+      assert.match(res.headers.get('cache-control') ?? '', /no-store/, 'API 响应必须 no-store，免疫任何 CDN 层缓存改写');
+    } finally { server.close(); }
+  });
 });

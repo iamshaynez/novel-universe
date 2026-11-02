@@ -1,0 +1,43 @@
+g01 手动换版按钮（版本指纹即按钮）验收证据
+日期：2026-11-02 · 分支 feat/manual-update-button
+
+一、需求
+
+客户端提供「强制更新到最新版本」的入口。此前换版只有 30 秒指纹哨兵自动触发，
+且在停点保护下推迟执行——用户没有任何主动换版的手段（尤其部署公告后想立即
+换版、或自动路径被 15s 新鲜页 defer 卡住时）。
+
+二、设计
+
+- 版本指纹页脚（#vtag）即按钮：role=button + tabindex + Enter/Space 键盘可达，
+  hover 亮起并提示「点击换新版」。选它做入口因为它就是版本信息的家，不为
+  低频动作增加 HUD 常驻按钮。
+- manualUpdatePlan（web/resilience.mjs 纯函数，node:test 直测）：
+  current（同指纹报「已是最新」，不瞎刷）/ activate（有新版且 SW 通道在场：
+  等新壳装完 → skipWaiting）/ reload（无 SW 通道或页面指纹未知：直接重载拉新）/
+  offline（/api/version 不可达：提示稍后再点，绝不瞎刷新）。
+- 手动点击即时生效，不受停点保护与防环记账（FP_RELOADED）约束——用户主动
+  点击是明确意图，进度全在本地 IndexedDB，重载零丢失；连点是重试不是环。
+- pwa.mjs nuActivateUpdate 覆盖 installing 态：新壳预缓存下载中时等它装完
+  （statechange → installed）再发 NU_ACTIVATE，而不是误判「没有新版」直接
+  硬刷回旧壳。返回布尔值，自动哨兵路径（reloadForUpdate）保留无新壳时硬刷
+  兜底，手动路径对 false 给「新壳还在路上——稍等几秒再点一次」的可重试反馈。
+- ADR-007 换版合同段补记手动入口与 installing 覆盖。
+
+三、自动验证（TDD，先红后绿）
+
+- session-resilience 新增 7 场景：manualUpdatePlan 五分支（同指纹/激活/重载/
+  指纹未知/不可达）+ 接线合同（manualUpdatePlan 接线、vtag 点击、已是最新与
+  新壳在路上反馈）+ pwa installing 态等待合同（registration.installing +
+  statechange + NU_ACTIVATE）。
+- 全量 npm test 300/300；npm run verify PASS（E1/E2/E3，2160 条路线）。
+
+四、真实浏览器验证（http://127.0.0.1:3179，Chromium IAB）
+
+1. 同版点击：页脚「v0.2.0 · 壳 95cdf4」→ 点击 → toast「已是最新 · v0.2.0
+   壳 95cdf4」；elementFromPoint(170,708) 命中 DIV#vtag（无遮挡、可点）。
+2. 真换版：给 index.html 追加注释并重启服务（bundle 5c8573e3→6e4cc3d1、
+   壳 95cdf4b6→5927907a），旧壳页面不刷新直接点击 → toast「有新版——正在
+   载入」→ SW 更新/激活/controllerchange 重载全程约 2 秒 → 重载后页脚
+   「壳 592790」、boot toast「已换到新版——本地进度保留，正在续读」。
+   页面换到新壳，验证注释随之清出工作区。

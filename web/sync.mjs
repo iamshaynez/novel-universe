@@ -2,8 +2,9 @@
 import { compareVV, mergeVV, samePayload, publicDoc } from '../engine/save.mjs';
 
 export class SyncClient {
-  constructor({ store, deviceId, post, games = [], onStatus = () => {}, onRemote = () => {} }) {
-    this.store = store; this.deviceId = deviceId; this.post = post; this.games = games; this.onStatus = onStatus; this.onRemote = onRemote;
+  constructor({ store, deviceId, post, games = [], onStatus = () => {}, onRemote = () => {}, onFork = () => {} }) {
+    this.store = store; this.deviceId = deviceId; this.post = post; this.games = games;
+    this.onStatus = onStatus; this.onRemote = onRemote; this.onFork = onFork;
     this.cursor = 0; this.busy = null; this.paused = false; this.attempt = 0;
   }
 
@@ -28,7 +29,11 @@ export class SyncClient {
     }
     if (local.dirty) {
       const forkId = `${local.id}-fork-${this.deviceId}-${Date.now().toString(36)}`;
-      await this.store.putSave({ ...local, id: forkId, forkOf: local.id, vv: { [this.deviceId]: 1 }, dirty: 1 });
+      const fork = { ...local, id: forkId, forkOf: local.id, vv: { [this.deviceId]: 1 }, dirty: 1 };
+      await this.store.putSave(fork);
+      // 主线槽位即将换血：本机谱系改走分叉，活动局必须跟着分叉走（onFork），
+      // 否则下一拍 advance 读到被顶替的主线，位置悄悄回退。
+      this.onFork(fork);
     }
     await storeRemote(clean, false);
   }

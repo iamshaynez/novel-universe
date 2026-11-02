@@ -53,8 +53,7 @@ describe('播放器离线接线合同', () => {
     assert.match(src, /import \{ LocalRuntime \}/);
     assert.match(src, /import \{ openLocalStore \}/);
     assert.match(src, /import \{ SyncClient \}/);
-    assert.match(src, /app\.runtime\.advance\(app\.saveId/);
-    assert.match(src, /app\.runtime\.choose\(app\.saveId/);
+    assert.match(src, /app\.runtime\.advance\(app\.saveId/);    assert.match(src, /app\.runtime\.choose\(app\.saveId/);
     assert.doesNotMatch(src, /api\.post\(`\/api\/saves\/\$\{app\.saveId\}\/advance/);
     assert.doesNotMatch(src, /api\.post\(`\/api\/saves\/\$\{app\.saveId\}\/choose/);
   });
@@ -76,6 +75,15 @@ describe('播放器离线接线合同', () => {
     assert.match(src, /queueSync\(\)/);
     assert.match(src, /本地存档出了岔子/);
     assert.doesNotMatch(src, /async function reconnect\(/);
+  });
+
+  it('存档不膨胀：封面卡片优先续读未完成档，开新局必须是显式动作；冲突分叉重定向活动局', async () => {
+    const src = await player();
+    assert.match(src, /b\.onclick = \(\) => \(last && !AUTO\) \? loadSave\(last\.id\)/, '卡片点击优先续读未完成存档');
+    assert.match(src, /开新局/, '存在未完成档时提供显式开新局入口');
+    assert.match(src, /onFork/, '同步冲突分叉必须回调播放器');
+    assert.match(src, /app\.saveId = fork\.id/, '活动局改走分叉谱系：不读到被顶替的主线');
+    assert.match(src, /分支/, '存档列表标注分叉谱系');
   });
 
   it('开场兜底针对本地能力，而不是要求先登录', async () => {

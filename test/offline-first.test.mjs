@@ -105,6 +105,22 @@ describe('同步信箱：重放安全、并发不丢档', () => {
     assert.equal((await store.getSave('doc-live')).run.nodeId, 'n1', '主线槽位按同步协议接受远端，但玩家不被拽走');
   });
 
+  it('冲突分叉必须以 onFork 告知：分叉承载本机谱系与位置，活动局改走分叉继续', async () => {
+    const store = new MemoryStore();
+    await store.putSave({ ...docFor('doc-active', { C: 7 }, 'n5'), dirty: 1 });
+    const serverCopy = { ...docFor('doc-active', { B: 2 }, 'n1'), dirty: 0 };
+    let fork = null, remoteNotified = 0;
+    const client = new SyncClient({ store, deviceId: 'C', games: [ir.id], post: async () => ({}),
+      onRemote: () => remoteNotified++, onFork: f => { fork = f; } });
+    await client.applyRemote(serverCopy);
+    assert.ok(fork, '分叉必须回调 onFork——否则活动局下一拍会读到被顶替的主线，位置悄悄回退');
+    assert.equal(fork.run.nodeId, 'n5', '分叉承载本机位置');
+    assert.equal(fork.forkOf, 'doc-active');
+    assert.ok(await store.getSave(fork.id), '分叉已落库且 dirty 待推');
+    assert.equal((await store.getSave(fork.id)).dirty, 1);
+    assert.equal(remoteNotified, 0, '冲突不是跟进：不触发 onRemote');
+  });
+
   it('远端真正领先才通知跟进（跨设备续玩），新拉到的档不通知', async () => {
     const store = new MemoryStore();
     await store.putSave({ ...docFor('doc-follow', { C: 2 }, 'n1'), dirty: 0 });

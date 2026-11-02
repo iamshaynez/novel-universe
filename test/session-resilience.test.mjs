@@ -86,6 +86,11 @@ describe('播放器离线接线合同', () => {
     assert.match(src, /分支/, '存档列表标注分叉谱系');
   });
 
+  it('版本可自查：页脚显示 shell 壳戳，手机一眼对出是否换到新壳', async () => {
+    const src = await player();
+    assert.match(src, /v\.shell/, 'vtag 必须渲染 /api/version 的 shell 壳戳');
+  });
+
   it('开场兜底针对本地能力，而不是要求先登录', async () => {
     const src = await player();
     assert.match(src, /本地开卷失败：/);

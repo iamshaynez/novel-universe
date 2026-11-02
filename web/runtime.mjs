@@ -106,6 +106,18 @@ export class LocalRuntime {
     return doc;
   }
 
+  /** 删除即墓碑：置脏 + 版本向量自增，随同步推到服务器与其他设备（活档并发时活档胜的协议不变）。 */
+  async remove(id) {
+    return this.locked(id, async () => {
+      const doc = await this.store.getSave(id);
+      if (!doc) throw new Error(`本地存档不存在 ${id}`);
+      if (doc.deleted) return doc; // 幂等
+      const tomb = { ...doc, deleted: 1, dirty: 1, vv: bumpVV(doc, this.deviceId), updatedAt: this.now() };
+      await this.store.putSave(tomb);
+      return tomb;
+    });
+  }
+
   async fork(doc) {
     const at = this.now();
     const fork = { ...copy(doc), id: this.uuid(), forkOf: doc.id, vv: { [this.deviceId]: 1 }, createdAt: at, updatedAt: at, dirty: 1, deleted: 0 };

@@ -4,10 +4,26 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { codeOf, sentinelAction, isFatalStatus, retryDelayMs } from '../web/resilience.mjs';
+import { codeOf, sentinelAction, isFatalStatus, retryDelayMs, updatePlan } from '../web/resilience.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const player = () => readFile(join(root, 'web', 'player.mjs'), 'utf8');
+
+describe('换版执行计划：开局演出与进行中的局不被急切重载打断', () => {
+  it('新鲜页面一律缓换：章节卡/开场演出刚落地，稍后再评估', () => {
+    assert.equal(updatePlan({ running: true, endcard: false, pageAgeMs: 3000 }).act, 'defer');
+    assert.equal(updatePlan({ running: false, endcard: false, pageAgeMs: 500 }).act, 'defer');
+    assert.equal(updatePlan({ running: true, endcard: false, pageAgeMs: 14999 }).act, 'defer');
+  });
+  it('局内换版只认停点：交给 runLoop 置 forceUpdate，不得定时器急切 reload', () => {
+    const plan = updatePlan({ running: true, endcard: false, pageAgeMs: 60000 });
+    assert.equal(plan.act, 'wait-stop');
+  });
+  it('封面无局直接换，结局页是天然停点也可换', () => {
+    assert.equal(updatePlan({ running: false, endcard: false, pageAgeMs: 60000 }).act, 'reload-now');
+    assert.equal(updatePlan({ running: false, endcard: true, pageAgeMs: 60000 }).act, 'reload-now');
+  });
+});
 
 describe('版本哨兵：服务器重启不弹回封面，真正换版才换', () => {
   const v = (version, sha, boot) => ({ version, sha, boot });

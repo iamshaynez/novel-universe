@@ -55,6 +55,36 @@ export function historyNeedsSnap(back, panY) {
   return back || panY > 8;
 }
 
+const STAGE_INTERACTIVE = '.opt,.ln.choice,.sidepanel,#endcard,#authPanel,#fatalBar,#title,#hud,input,textarea,select,button,dialog,[role="button"],[contenteditable]:not([contenteditable="false"])';
+
+/** 舞台只处理落在故事背景上的按键；表单、按钮与 IME 组合输入保持浏览器原语义。 */
+export function shouldHandleStageKey(event) {
+  if (event.defaultPrevented || event.isComposing || event.keyCode === 229) return false;
+  return !event.target?.closest?.(STAGE_INTERACTIVE);
+}
+
+/** 当前拍的活动区域：上边避让 HUD/时间轴，下边避让推进提示，保留原有 60% 运镜锚点。 */
+export function stageContentBounds({ viewportHeight, hudBottom = 0, timelineBottom = 0, hintTop = viewportHeight }) {
+  const height = Math.max(0, Number(viewportHeight) || 0);
+  const hudTop = historyTopInset(Number(hudBottom) || 0);
+  const timelineTop = timelineBottom > 0 ? Math.ceil(timelineBottom) + 12 : 0;
+  const top = Math.min(height, Math.max(hudTop, timelineTop));
+  const hint = Number.isFinite(hintTop) ? hintTop : height;
+  const bottom = Math.max(top, Math.floor(Math.min(height, hint)) - 12);
+  const anchor = Math.max(top, Math.min(Math.round(height * .60), bottom));
+  return { top, bottom, anchor };
+}
+
+/** 一般拍仍落在运镜锚点；当前拍若会穿过 HUD，则向上让位到可用区顶边。 */
+export function flowOffset({ anchor, contentTop, lastTop, lastHeight }) {
+  return Math.max(Math.round(anchor - (lastTop + lastHeight)), Math.round(contentTop - lastTop));
+}
+
+export function clampHistoryPan(value, maxPan) {
+  const pan = Number.isFinite(value) ? value : 0;
+  return Math.max(0, Math.min(pan, Math.max(0, maxPan)));
+}
+
 export class Stage {
   constructor(audio, { auto = false } = {}) {
     this.audio = audio;
@@ -81,8 +111,7 @@ export class Stage {
   // ---------- 手势：轻点推进;揭示中轻点 = 快进本拍;拖拽/滚轮 = 回看前文 ----------
   _bindGesture() {
     const root = this.root;
-    // 停点交互控件不参与舞台手势（选项/面板/按钮各有各的 pointerdown）
-    const INTERACTIVE = '.opt,.sidepanel,#endcard,#authPanel,#title,#hud';
+    // 停点交互控件不参与舞台手势（选项/面板/按钮各有各的点击语义）
     const act = () => {
       if (historyNeedsSnap(this._back, this.panY)) return this.snapBack();
       if (this.revealing) this.fast = true;
@@ -92,7 +121,7 @@ export class Stage {
     let ptr = null;
     root.addEventListener('pointerdown', e => {
       this.audio.ensure();
-      if (e.target.closest(INTERACTIVE)) return;
+      if (e.target.closest(STAGE_INTERACTIVE)) return;
       ptr = { id: e.pointerId, y: e.clientY, pan: this.panY, moved: false };
       try { root.setPointerCapture(e.pointerId); } catch { /* 旧浏览器无捕获 */ }
     });
@@ -111,23 +140,38 @@ export class Stage {
     root.addEventListener('pointercancel', e => { if (ptr?.id === e.pointerId) ptr = null; });
     // 滚轮/触控板回看（面板与卡片内部滚动不受影响；行模式 ×16 归一为像素）
     root.addEventListener('wheel', e => {
-      if (e.target.closest(INTERACTIVE)) return;
+      if (e.target.closest(STAGE_INTERACTIVE)) return;
       const dy = e.deltaY * (e.deltaMode === 1 ? 16 : 1);
       if (this.panY <= 0 && dy >= 0) return; // 已钉在现在：向下滚没有可前进的内容
       this.panTo(this.panY - dy, false);
     }, { passive: true });
     addEventListener('keydown', e => {
+      if (!shouldHandleStageKey(e)) return;
       const delta = historyKeyDelta(e.key, root.clientHeight);
       if (delta !== null) {
-        if (e.target.closest?.(INTERACTIVE)) return;
         if (delta < 0 && this.panY <= 0) return; // 已在现在：向下不劫持页面或控件按键
         e.preventDefault();
         this.panTo(this.panY + delta);
         return;
       }
-      if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); act(); }
+      if (e.code === 'Space' || e.key === 'Enter') { e.preventDefault(); act(); }
     });
-    addEventListener('resize', () => this.relayout());
+    const viewportChanged = () => { this._syncViewport(); this.relayout(); };
+    this._syncViewport();
+    addEventListener('resize', viewportChanged);
+    globalThis.visualViewport?.addEventListener('resize', viewportChanged);
+    globalThis.visualViewport?.addEventListener('scroll', viewportChanged);
+    if (globalThis.ResizeObserver) {
+      this.layoutObserver = new ResizeObserver(() => this.relayout());
+      for (const sel of ['#hud', '#timeline', '#hint']) this.layoutObserver.observe($(sel));
+    }
+  }
+  _syncViewport() {
+    const viewport = globalThis.visualViewport;
+    const height = Math.max(1, Math.round(viewport?.height ?? innerHeight));
+    const top = Math.max(0, Math.round(viewport?.offsetTop ?? 0));
+    this.root.style.setProperty('--visual-height', `${height}px`);
+    this.root.style.setProperty('--visual-top', `${top}px`);
   }
   hint(on) {
     const h = $('#hint');
@@ -143,15 +187,29 @@ export class Stage {
   rush() { if (this.revealing) this.fast = true; }
 
   // ---------- 回看（往回自由滑动）：panY 叠加在自动排版 off 之上 ----------
-  _maxPan() {
+  _contentBounds() {
+    const rootTop = this.root.getBoundingClientRect().top;
+    const hudBottom = Math.max(0, ($('#hud')?.getBoundingClientRect().bottom ?? rootTop) - rootTop);
+    this.root.style.setProperty('--hud-bottom', `${Math.ceil(hudBottom)}px`);
+    const timeline = $('#timeline');
+    const timelineBottom = timeline?.classList.contains('on')
+      ? Math.max(0, timeline.getBoundingClientRect().bottom - rootTop) : 0;
+    const hint = $('#hint');
+    const hintTop = hint ? hint.getBoundingClientRect().top - rootTop : this.root.clientHeight;
+    const bounds = stageContentBounds({ viewportHeight: this.root.clientHeight, hudBottom, timelineBottom, hintTop });
+    this.root.style.setProperty('--content-top', `${bounds.top}px`);
+    this.root.style.setProperty('--content-bottom-clip', `${Math.max(0, this.root.clientHeight - bounds.bottom)}px`);
+    return bounds;
+  }
+  _maxPan(contentTop = null) {
     const first = this.lines[0];
     if (!first) return 0;
-    const top = historyTopInset($('#hud')?.getBoundingClientRect().bottom ?? 0);
+    const top = contentTop ?? this._contentBounds().top;
     return Math.max(0, Math.round(top - this.off - first.offsetTop));
   }
   /** panY 夹取到 [0, maxPan] 并落位；animate=false 供拖拽逐帧跟手。 */
   panTo(v, animate = true) {
-    this.panY = Math.max(0, Math.min(v, this._maxPan()));
+    this.panY = clampHistoryPan(v, this._maxPan());
     if (!animate) this.flow.style.transition = 'none';
     this.flow.style.transform = `translate(-50%, ${this.off + this.panY}px)`;
     if (!animate) { reflow(this.flow); this.flow.style.transition = ''; }
@@ -172,9 +230,16 @@ export class Stage {
   relayout() {
     const last = this.lines[this.lines.length - 1]; if (!last) return;
     const prevOff = this.off;
-    this.off = Math.round(this.root.clientHeight * .60 - (last.offsetTop + last.offsetHeight));
+    const bounds = this._contentBounds();
+    if (last.classList.contains('choice')) last.style.maxHeight = `${Math.max(0, bounds.bottom - bounds.top)}px`;
+    this.off = flowOffset({
+      anchor: bounds.anchor, contentTop: bounds.top,
+      lastTop: last.offsetTop, lastHeight: last.offsetHeight,
+    });
     if (this.panY > 8) this.panY += prevOff - this.off; // 回看锁定：新行落卷不打扰阅读位置
+    this.panY = clampHistoryPan(this.panY, this._maxPan(bounds.top));
     this.flow.style.transform = `translate(-50%, ${this.off + this.panY}px)`;
+    this._setBack(this.panY > 8);
   }
   _dim() {
     this.lines.forEach((el, i) => {
@@ -242,10 +307,17 @@ export class Stage {
     return new Promise(res => {
       const c = this._append('choice', '');
       options.forEach((label, i) => {
-        const d = document.createElement('div');
+        const d = document.createElement('button');
+        d.type = 'button';
         d.className = 'opt';
         d.innerHTML = `<span class="branch"></span><span class="txt">${this.mark(label)}</span>`;
-        d.addEventListener('pointerdown', ev => { ev.stopPropagation(); c.innerHTML = ''; res(i); });
+        d.addEventListener('click', ev => {
+          ev.stopPropagation();
+          if (c.dataset.picked) return;
+          c.dataset.picked = '1';
+          c.innerHTML = '';
+          res(i);
+        });
         c.appendChild(d);
         setTimeout(() => d.classList.add('in'), 500 + i * 400);
       });
@@ -267,20 +339,24 @@ export class Stage {
       </div>`;
       const els = [];
       const pick = i => {
+        if (c.dataset.picked) return;
+        c.dataset.picked = '1';
         c.style.pointerEvents = 'none';
         if (options[i] === target) {
           c.innerHTML = `<div class="tr-done${dead ? ' dead' : ''}">已入机——${this.mark(`「${options[i]}」`)}${dead && stamp ? `<span class="tr-stamp">${stamp}</span>` : ''}</div>`;
           if (dead) this.audio.page();
         } else {
           els[i]?.classList.add('wrong'); // 听岔了：朱线划掉，底单上留着错痕
+          if (els[i]) els[i].disabled = true;
         }
         res(i);
       };
       options.forEach((text, i) => {
-        const d = document.createElement('div');
+        const d = document.createElement('button');
+        d.type = 'button';
         d.className = 'opt';
         d.innerHTML = `<span class="branch"></span><span class="txt">${this.mark(text)}</span>`;
-        d.addEventListener('pointerdown', ev => { ev.stopPropagation(); pick(i); });
+        d.addEventListener('click', ev => { ev.stopPropagation(); pick(i); });
         c.appendChild(d); els.push(d);
         setTimeout(() => d.classList.add('in'), 400 + i * 400);
       });
@@ -566,7 +642,7 @@ export class Stage {
       track.appendChild(dot); track.appendChild(tag);
     });
   }
-  showTimeline() { $('#timeline').classList.add('on'); }
+  showTimeline() { $('#timeline').classList.add('on'); this.relayout(); }
   lightEvent(ev) {
     const d = document.getElementById(`tl-${ev.id}`), t = document.getElementById(`tlt-${ev.id}`);
     if (d) d.classList.add('lit');

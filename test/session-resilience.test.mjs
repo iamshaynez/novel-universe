@@ -100,8 +100,8 @@ describe('播放器离线接线合同', () => {
   it('本地进度先落盘，开卷直接续读；账号查询在后台，不阻塞首屏', async () => {
     const src = await player();
     assert.match(src, /app\.store = await openLocalStore\(\)/);
-    assert.match(src, /app\.runtime\.newGame\(/);
-    assert.match(src, /app\.runtime\.load\(saveId\)/);
+    assert.match(src, /runtime\.newGame\(/);
+    assert.match(src, /runtime\.load\(saveId\)/);
     assert.match(src, /await tryResume\(\)/);
     assert.match(src, /api\.j\('\/api\/auth\/me'\)\.then/);
     assert.match(src, /本机进度 · 可离线游玩/);

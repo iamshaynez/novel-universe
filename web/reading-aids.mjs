@@ -8,7 +8,7 @@ const sceneIndex = (ir, scene) => {
 const currentIndex = (ir, state) => sceneIndex(ir, state.node);
 const has = (state, flag) => Boolean(state.flags?.[flag]);
 const endingOf = state => state.endingId ??
-  (has(state, 'evidence_submitted') ? 'E1' : has(state, 'evidence_burned') ? 'E2' : has(state, 'evidence_surrendered') ? 'E3' : null);
+  (has(state, 'evidence_submitted') ? 'E1' : has(state, 'evidence_to_father') ? 'E2' : has(state, 'lzk_to_bridge') ? 'E3' : null);
 
 export function trackModel(ir, state) {
   const reading = ir.reading;

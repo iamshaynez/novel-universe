@@ -5,7 +5,7 @@
   "subtitle": "锦江悬疑宇宙 · 第一号档案 · 一九九九",
   "hook": "一座城市把秘密排进你的耳机。你只递话，不问话。",
   "set_in": "1999",
-  "canon": ">=0.7 <1",
+  "canon": ">=1 <2",
   "assumes": [],
   "player": { "name": "你", "voice_hz": 218 },
   "reading": {
@@ -44,24 +44,24 @@
       {
         "id": "original", "label": "十月二十六 · 原始底单", "kind": "original", "unlock": "has_original",
         "variantFlags": ["original_locker", "original_carry"],
-        "holders": { "default": "苏晚 · 贴身", "original_locker": "更衣柜", "original_carry": "苏晚 · 贴身", "E1": "已上交", "E2": "已烧毁", "E3": "廖志坤" }
+        "holders": { "default": "苏晚 · 贴身", "original_locker": "更衣柜", "original_carry": "苏晚 · 贴身", "E1": "已上交", "E2": "贺国栋收存", "E3": "苏晚收存" }
       },
       {
         "id": "handbook", "label": "廖志坤的手抄本", "kind": "hand", "unlock": "paper.handbook",
-        "holders": { "default": "廖志坤", "E1": "已上交", "E2": "廖志坤带走", "E3": "廖志坤卷走" }
+        "holders": { "default": "廖志坤", "E1": "已上交", "E2": "贺国栋收存", "E3": "廖志坤 · 带去桥头" }
       },
       {
         "id": "drafts", "label": "三晚转写底稿", "kind": "draft", "unlock": "paper.drafts",
-        "holders": { "default": "苏晚", "E1": "整理上交", "E2": "已烧毁", "E3": "廖志坤" }
+        "holders": { "default": "苏晚", "E1": "整理上交", "E2": "贺国栋收存", "E3": "苏晚收存" }
       },
       {
-        "id": "summary", "label": "四留言汇总纸", "kind": "summary", "unlock": "paper.summary",
-        "holders": { "default": "苏晚", "E1": "整理上交", "E2": "已烧毁", "E3": "廖志坤" }
+        "id": "summary", "label": "四留言对照纸", "kind": "summary", "unlock": "paper.summary",
+        "holders": { "default": "苏晚", "E1": "整理上交", "E2": "贺国栋收存", "E3": "苏晚收存" }
       },
       {
         "id": "copy", "label": "原件复印件", "kind": "copy",
         "anyUnlock": ["copy_locker", "copy_dj"], "emptyWhen": "no_copy", "emptyHolder": "未留复印件",
-        "holders": { "copy_locker": "更衣柜", "copy_dj": "杜鹃饭盒", "E1": "安全副本 · 场外", "E2": "已烧毁", "E3": "廖志坤" }
+        "holders": { "copy_locker": "更衣柜", "copy_dj": "杜鹃饭盒", "E1": "安全副本 · 场外", "E2": "随原件 · 贺国栋", "E3": "苏晚收存" }
       }
     ],
     "relations": {
@@ -97,13 +97,14 @@
         { "from": "lzk", "label": "折价接账 · 全额收", "to": "debt", "unlock": "aid.debt", "key": true }
       ],
       "truth": [
-        { "from": "suwan", "label": "十点那条留言，经她的手", "to": "heqinghe", "truth": true }
+        { "from": "suwan", "label": "她删掉了「来不来，你自己定」", "to": "heqinghe", "truth": true },
+        { "from": "lzk", "label": "他在岸边，会水，没有伸手", "to": "heqinghe", "truth": true }
       ]
     },
     "recap": [
-      { "id": "E1", "title": "上交", "evidence": "两半证据上交；安全副本留场外", "people": "苏晚读完电大；廖志坤被追逃", "point": "让第三方知道" },
-      { "id": "E2", "title": "烧掉", "evidence": "苏晚的纸证烧毁；廖带走手抄本", "people": "苏晚继续夜班，不再点铅笔点", "point": "不再面对" },
-      { "id": "E3", "title": "交易", "evidence": "全部纸证被廖卷走", "people": "苏晚转白班，继续为新号递话", "point": "从链上获利" }
+      { "id": "E1", "title": "上交", "evidence": "两半证据上交；安全副本留场外", "people": "苏晚读完电大；廖志坤被追逃；笔录补记青禾十点三十五的来电", "point": "让第三方知道" },
+      { "id": "E2", "title": "桥头", "evidence": "底单、手抄本与对照纸交到贺国栋手里", "people": "贺国栋知道女儿死时身边有人；他决定再去所里", "point": "把真相还给债主" },
+      { "id": "E3", "title": "亲述", "evidence": "苏晚收存底单；廖志坤带手抄本去桥头", "people": "廖志坤当面对贺国栋讲出那一晚；苏晚重新点起铅笔点", "point": "让他自己说" }
     ],
     "map": {
       "note": "示意 · 不按比例",

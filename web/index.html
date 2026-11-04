@@ -402,16 +402,29 @@
   .tr-note{font-size:11px;color:#8f8567;letter-spacing:.18em;margin:6px 0 2px;font-family:var(--kai)}
   .tr-rule{font-size:11px;color:rgba(110,101,73,.9);letter-spacing:.1em}
 
-  /* 存档:档案室抽屉里的纸片 */
-  #savesPanel{position:absolute;right:2%;top:10%;width:min(360px,92vw);max-height:70%;overflow:auto;display:none;
+  /* 存档:档案室抽屉里的纸片；封面与局内共用全部作品视图 */
+  #savesPanel{position:absolute;right:2%;top:10%;width:min(560px,92vw);max-height:70%;overflow:auto;display:none;
     background:linear-gradient(150deg,#e9dcbd,#ddd0a9);border:1px solid #a8946a;border-radius:3px;padding:14px;z-index:21;
     font-family:var(--sans);color:#2e2818;
     box-shadow:0 24px 70px rgba(0,0,0,.7),inset 0 0 0 4px rgba(23,19,13,.10)}
   #savesPanel.on{display:block}
   #savesPanel h3{font-size:13px;color:#7c704f;margin-bottom:8px;letter-spacing:.28em;font-family:var(--kai)}
-  .save{padding:8px;border-radius:2px;cursor:pointer;font-size:13px;display:flex;justify-content:space-between;gap:8px;
+  .save-note{font-size:11px;color:#7c704f;line-height:1.7;margin:0 0 8px;letter-spacing:.06em}
+  .save{padding:8px 2px;border-radius:2px;font-size:13px;display:flex;justify-content:space-between;gap:8px;
     border-bottom:1px dashed rgba(124,112,79,.4);align-items:center}
   .save:hover{background:rgba(124,112,79,.12)}
+  button.save-main{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:4px;
+    background:transparent;border:0;border-radius:2px;color:#2e2818;padding:4px 6px;text-align:left;
+    font:13px/1.6 var(--sans);letter-spacing:0;white-space:normal;cursor:pointer;box-shadow:none}
+  button.save-main:hover{background:transparent;border:0;color:#2e2818;transform:none;box-shadow:none}
+  .save-title{font-family:var(--kai);font-size:15px;font-weight:700;color:#2e2818;overflow-wrap:anywhere}
+  .save-meta,.save-time{font-size:11px;color:#7c704f;line-height:1.6;overflow-wrap:anywhere}
+  .save-time{font-variant-numeric:tabular-nums;white-space:nowrap}
+  .save-badges{display:flex;flex-wrap:wrap;gap:5px}
+  .save-badge{display:inline-flex;align-items:center;min-height:20px;padding:0 6px;border:1px solid rgba(124,112,79,.35);
+    border-radius:2px;font-size:10px;color:#655c48;line-height:1.4}
+  .save-badge.pending{border-color:rgba(158,58,43,.45);color:var(--blood)}
+  .save-empty{padding:20px 8px;text-align:center;color:#7c704f;font-size:12px;line-height:1.8}
   /* 删除钮：行内显式动作，armConfirm 二次确认（确认态红框复用 .armed） */
   .save-del{flex:none;min-height:30px;min-width:34px;padding:4px 9px;background:transparent;
     border:1px solid rgba(124,112,79,.45);border-radius:2px;color:#655c48;font:12px var(--sans);cursor:pointer}
@@ -484,6 +497,13 @@
   .ec-btns button:hover{background:#87392c;border-color:#d49a6d;color:#f6e8c4}
   .ec-btns #btnBackTitle{background:transparent;border-color:#8d8063;color:#655c48}
   .ec-btns #btnBackTitle:hover{color:#2e2a20;background:#d9cba4}
+
+  .t-saves{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;margin-top:1vh;
+    font-family:var(--sans);font-size:11px;color:#857a5b;letter-spacing:.08em;line-height:1.8}
+  #title .t-saves button{background:transparent;border-color:#9b8a65;color:#655c48;padding:.4em 1.2em;box-shadow:none}
+  #title .t-saves button:hover{border-color:var(--blood);color:var(--blood);transform:none}
+  #title .t-saves button:disabled{opacity:.6;cursor:default}
+  .g-time{display:block;font-family:var(--sans);font-size:.52em;color:#7c704f;margin-top:.45em;letter-spacing:.08em;font-variant-numeric:tabular-nums}
 
   /* 账籍:封面下缘的身份批注（游客可玩，注册留存进度） */
   .t-auth{display:flex;align-items:center;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:1vh;
@@ -871,6 +891,10 @@
       <h1>档 案 库</h1>
       <div class="t-rule"><i></i><span>卷</span><i></i></div>
       <div id="gameList"></div>
+      <div class="t-saves">
+        <button id="btnAllSaves" type="button" disabled>全部存档</button>
+        <span id="saveCount">正在整理本机卷宗…</span>
+      </div>
       <div class="t-auth" id="authBar"></div>
       <div class="t-install">
         <button id="btnInstall" type="button" aria-haspopup="dialog">安装到手机</button>
@@ -881,7 +905,7 @@
   </div>
 
   <div id="panelVeil" aria-hidden="true"></div>
-  <div id="savesPanel" class="sidepanel"><h3>读取存档<button class="pnl-x" aria-label="关闭">×</button></h3><div id="savesList"></div></div>
+  <div id="savesPanel" class="sidepanel" role="dialog" aria-label="选择存档"><h3>选择存档 · 全部作品<button class="pnl-x" aria-label="关闭">×</button></h3><div class="save-note">按最后保存时间排序 · 本机时间</div><div id="savesList"></div></div>
   <div id="endsPanel" class="sidepanel"><h3>结案档案 · 已归档结局<button class="pnl-x" aria-label="关闭">×</button></h3><div id="endsList"></div></div>
   <div id="codexPanel" class="sidepanel"><h3>卷宗图鉴 · 时代与人物<button class="pnl-x" aria-label="关闭">×</button></h3><div id="codexList"></div></div>
   <div id="sheetPanel" class="sidepanel"><h3>转写底单 · 本局<button class="pnl-x" aria-label="关闭">×</button></h3><div id="sheetList"></div></div>

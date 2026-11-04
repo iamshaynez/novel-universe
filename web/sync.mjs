@@ -42,7 +42,8 @@ export class SyncClient {
     // 唯一例外是删除语义：干净副本撞上墓碑跟着删（活动局 dirty 仍分叉，玩家不丢手上的局）。
     if (!local.deleted && (local.dirty || !remote.deleted)) {
       const forkId = `${local.id}-fork-${this.deviceId}-${Date.now().toString(36)}`;
-      const fork = { ...local, id: forkId, forkOf: local.id, vv: { [this.deviceId]: 1 }, dirty: 1 };
+      const at = new Date().toISOString();
+      const fork = { ...local, id: forkId, forkOf: local.id, vv: { [this.deviceId]: 1 }, dirty: 1, createdAt: at, updatedAt: at };
       await this.withSaveLock(local.id, async () => { await this.store.putSave(fork); });
       // 主线槽位即将换血：本机谱系改走分叉，活动局必须跟着分叉走（onFork），
       // 否则下一拍 advance 读到被顶替的主线，位置悄悄回退。

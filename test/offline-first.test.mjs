@@ -327,6 +327,24 @@ describe('双客户端与同步故障', () => {
     assert.equal((await runtime.load(started.doc.id)).state.node, next.state.node);
     assert.equal((await store.listDirty()).length, 1);
   });
+
+  it('会话失效只暂停后台同步；重新登录后同一批本机进度可以继续上推', async () => {
+    const store = new MemoryStore();
+    const runtime = runtimeFor(store);
+    let expired = true;
+    const client = new SyncClient({ store, deviceId: 'A', games: [ir.id], post: async (path, body) => {
+      if (expired) { const error = new Error('登录已失效'); error.status = 401; throw error; }
+      return { cursor: 1, results: body.push.map(doc => ({ id: doc.id, status: 'accepted' })), pull: [], collect: {} };
+    } });
+    await runtime.newGame(7);
+    assert.equal(await client.flush(), false);
+    assert.equal(client.paused, true);
+    assert.equal((await store.listDirty()).length, 1, '暂停不能丢掉本机进度');
+    expired = false;
+    client.paused = false; // 登录成功由播放器解除暂停
+    assert.equal(await client.init(), true);
+    assert.equal((await store.listDirty()).length, 0);
+  });
 });
 
 describe('真实同步接口：注册后才同步，游客不被强迫联网', () => {

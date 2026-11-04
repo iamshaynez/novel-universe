@@ -57,11 +57,21 @@ describe('场景：时间和关键记忆在首次发生时就已成立', () => {
     assert.match(ch3, /晚上十点。333-1188/);
   });
 
-  it('E3 保留白班去向，新号来电不能在无解释的深夜', () => {
+  it('两位假协查不混淆：外貌区分、空间分工与信息递进各就各位', () => {
+    const a2b = after(chapter(3), '# chA2b').split('# chA2c')[0];
+    assert.match(a2b, /四十来岁/, '廖的辨认特征在 11.5 给出');
+    assert.doesNotMatch(a2b, /也是遗物登记/, '他翻的内容不得在 11.5 提前泄出');
+    assert.match(chapter(4), /上回跟你提过的那个男老师/, 'R4 递进追问同一人的内容');
+    assert.match(chapter(5), /台里我白天一回都没去过/, '空间分工：台里白天=苏晚，派出所与夜档=廖');
+    assert.match(chapter(5), /你前脚走，我后脚到/, '廖如何得知她追问须有来源');
+  });
+
+  it('E3 苏晚照常上班并重新点起铅笔点，廖带手抄本去桥头', () => {
     const e3 = after(chapter(5), '# E3');
-    assert.match(e3, /转了白班/);
+    assert.match(e3, /照常|上班/);
+    assert.match(e3, /第一个点/);
+    assert.match(e3, /手抄本/);
     assert.doesNotMatch(e3, /一个深夜/);
-    assert.match(e3, /下午|傍晚|交班/);
   });
 
   it('E1 的向师傅仍修传呼机，不出现修行情机', () => {
@@ -96,29 +106,34 @@ describe('场景：每条结局路线都结清自己造成的证据状态', () =
   const ir = compileGame(join(root, 'games/g01-jiexianyuan'), join(root, 'universe')).ir;
   const routes = enumerateRoutes(ir);
 
-  it('E3 新号转写的 HUD 日期与舞台昼夜也进入二〇〇〇年夏季白天', () => {
-    const t10 = Object.values(ir.nodes).find(n => n.type === 'transcribe' && n.transId === 't10');
-    const st = stateOf(ir, { ...createRun(ir), nodeId: t10.id });
-    assert.match(st.date ?? '', /二〇〇〇年/);
-    assert.match(st.date ?? '', /夏/);
-    assert.equal(st.view?.bg?.params?.time, 'day');
+  it('当夜原话与发出话在 t9 之前都已成立，删改的九个字有凭据', () => {
+    const beforeT9 = chapter(3).split('@transcribe t9')[0];
+    assert.match(beforeT9, /等你到十二点/);
+    assert.match(beforeT9, /来不来，你自己定/);
+    assert.match(beforeT9, /算了。不呼了/);
+    const t9 = Object.values(ir.nodes).find(n => n.type === 'transcribe' && n.transId === 't9');
+    assert.equal(t9.target, '十点，老地方，河对岸等你。就这样。');
+    assert.ok(!t9.target.includes('你自己定'), '发出的话不得保留被删掉的选择权');
   });
 
-  it('E1 上交有凭据；E2/E3 无论副本在哪都完成结清', () => {
+  it('终章对稿钉死差值：原话、发出话、「哪个删的」与十点四十七同场', () => {
+    const ch5 = chapter(5);
+    assert.match(ch5, /来不来，你自己定/);
+    assert.match(ch5, /哪个删的/);
+    assert.match(ch5, /十点四十七/);
+    assert.match(ch5, /她穿布鞋，走那种路/);
+    assert.match(ch5, /我会水/);
+  });
+
+  it('E1 上交有凭据；E2 真相交父亲；E3 廖亲述，纸证各自结清', () => {
     assert.ok(routes.length > 0);
     for (const r of routes) {
       if (r.ending === 'E1') {
         assert.ok(r.flags.can_indict, 'E1 必须先留安全副本');
         assert.ok(r.flags.evidence_submitted, 'E1 必须登记上交事实');
       }
-      if (r.ending === 'E2') {
-        assert.ok(r.flags.copies_resolved, 'E2 必须处理锁柜/杜鹃/无副本三种状态');
-        assert.ok(r.flags.evidence_burned, 'E2 必须登记证物烧毁事实');
-      }
-      if (r.ending === 'E3') {
-        assert.ok(r.flags.copies_resolved, 'E3 必须处理锁柜/杜鹃/无副本三种状态');
-        assert.ok(r.flags.evidence_surrendered, 'E3 必须登记证物交出事实');
-      }
+      if (r.ending === 'E2') assert.ok(r.flags.evidence_to_father, 'E2 必须登记真相交父亲');
+      if (r.ending === 'E3') assert.ok(r.flags.lzk_to_bridge, 'E3 必须登记廖去桥头亲述');
     }
   });
 

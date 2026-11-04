@@ -1,5 +1,6 @@
 // 本地优先存储：浏览器使用 IndexedDB；MemoryStore 供 node:test 与同步协议测试复用。
 // 所有玩法写入先落盘，网络同步只读取 dirty 文档，不参与推进。
+import { compareSaveDocs } from './save-view.mjs';
 
 const clone = value => value == null ? value : structuredClone(value);
 
@@ -9,7 +10,7 @@ export class MemoryStore {
   async putSave(doc) { this.saves.set(doc.id, clone(doc)); return doc; }
   async listSaves(gameId) {
     return [...this.saves.values()].filter(d => d.gameId === gameId && !d.deleted)
-      .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt))).map(clone);
+      .sort(compareSaveDocs).map(clone);
   }
   async listDirty() { return [...this.saves.values()].filter(d => d.dirty).map(clone); }
   async getCollection(gameId) { return clone(this.collections.get(gameId) ?? { gameId, endings: [], cards: [] }); }
@@ -56,7 +57,7 @@ export async function openLocalStore() {
     async putSave(doc) { return transaction(db, ['saves'], 'readwrite', tx => { tx.objectStore('saves').put(doc); return doc; }); },
     async listSaves(gameId) {
       const all = await transaction(db, ['saves'], 'readonly', tx => request(tx.objectStore('saves').index('gameId').getAll(gameId)));
-      return all.filter(d => !d.deleted).sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+      return all.filter(d => !d.deleted).sort(compareSaveDocs);
     },
     async listDirty() {
       const all = await transaction(db, ['saves'], 'readonly', tx => request(tx.objectStore('saves').getAll()));

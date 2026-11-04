@@ -33,11 +33,9 @@ describe('导读配置：内容引用与当前场景', () => {
     }), /reading.*场景|reading.*scene/);
   });
 
-  it('E2/E3 的当夜起点不得继承另一支结局的未来年份', () => {
-    for (const id of ['E2', 'E3']) {
-      const sceneId = ir.scenes[id];
-      assert.equal(ir.nodes[sceneId].adate, '十一月八日', `${id} 起始日期`);
-    }
+  it('E2/E3 的起点日期各归各的夜晚，不得继承另一支结局的未来年份', () => {
+    assert.equal(ir.nodes[ir.scenes.E2].adate, '十一月九日 · 凌晨四点', 'E2 起始日期');
+    assert.equal(ir.nodes[ir.scenes.E3].adate, '十一月八日', 'E3 起始日期');
   });
 
   it('stateOf 暴露当前 node，导读不靠正文反推场景', () => {
@@ -99,18 +97,18 @@ describe('证据实物桌：持有人和结局去向必须随真实分支变化'
     assert.equal(copy.holder, '未留复印件');
   });
 
-  it('E1 留安全副本上交，E2 苏晚纸证烧毁，E3 全部纸证进入交易', () => {
+  it('E1 留安全副本上交，E2 纸证交贺国栋，E3 苏晚收存底单、廖带手抄本去桥头', () => {
     const base = { has_original: true, 'paper.drafts': true, 'paper.summary': true, 'paper.handbook': true, copy_locker: true };
     const e1 = evidenceModel(ir, state({ ...base, evidence_submitted: true }, { endingId: 'E1' }));
     assert.equal(e1.rows.find(r => r.id === 'original').holder, '已上交');
     assert.equal(e1.rows.find(r => r.id === 'handbook').holder, '已上交');
     assert.equal(e1.rows.find(r => r.id === 'copy').holder, '安全副本 · 场外');
-    const e2 = evidenceModel(ir, state({ ...base, evidence_burned: true }, { endingId: 'E2' }));
-    for (const id of ['original', 'drafts', 'summary', 'copy']) assert.equal(e2.rows.find(r => r.id === id).holder, '已烧毁');
-    assert.equal(e2.rows.find(r => r.id === 'handbook').holder, '廖志坤带走');
-    const e3 = evidenceModel(ir, state({ ...base, evidence_surrendered: true }, { endingId: 'E3' }));
-    for (const id of ['original', 'drafts', 'summary', 'copy']) assert.equal(e3.rows.find(r => r.id === id).holder, '廖志坤');
-    assert.equal(e3.rows.find(r => r.id === 'handbook').holder, '廖志坤卷走');
+    const e2 = evidenceModel(ir, state({ ...base, evidence_to_father: true }, { endingId: 'E2' }));
+    for (const id of ['original', 'drafts', 'summary', 'handbook']) assert.equal(e2.rows.find(r => r.id === id).holder, '贺国栋收存');
+    assert.equal(e2.rows.find(r => r.id === 'copy').holder, '随原件 · 贺国栋');
+    const e3 = evidenceModel(ir, state({ ...base, lzk_to_bridge: true }, { endingId: 'E3' }));
+    for (const id of ['original', 'drafts', 'summary', 'copy']) assert.equal(e3.rows.find(r => r.id === id).holder, '苏晚收存');
+    assert.equal(e3.rows.find(r => r.id === 'handbook').holder, '廖志坤 · 带去桥头');
   });
 });
 
@@ -192,7 +190,7 @@ describe('关系网：中段锚点与揭晓纪律', () => {
     assert.deepEqual(debt.edges.filter(e => e.to === 'debt').map(e => e.label), ['签借条', '签担保', '折价接账 · 全额收']);
   });
 
-  it('回读真相图全解锁并补「经她的手」；真相边永不进局中图谱', () => {
+  it('回读真相图全解锁并补两条真相边；真相边永不进局中图谱', () => {
     const allRead = {
       'card.char.dujuan': true, 'tr.t1': true, 'tr.t2': true, 'paper.summary': true,
       'card.lzk.name': true, 'aid.debt': true, 'card.char.heguodong': true, 'card.qh.note': true,
@@ -202,7 +200,8 @@ describe('关系网：中段锚点与揭晓纪律', () => {
     assert.ok(!inPlay.edges.some(e => e.truth));
     const full = relationsModel(ir, state(allRead), { full: true });
     assert.equal(full.nodes.length, ir.reading.relations.nodes.length);
-    assert.ok(full.edges.some(e => e.truth && e.label === '十点那条留言，经她的手'));
+    assert.ok(full.edges.some(e => e.truth && e.label === '她删掉了「来不来，你自己定」'));
+    assert.ok(full.edges.some(e => e.truth && e.label === '他在岸边，会水，没有伸手'));
     const suwan = full.nodes.find(n => n.id === 'suwan');
     assert.equal(suwan.label, '苏晚');
     assert.equal(suwan.masked, false);

@@ -57,6 +57,15 @@ describe('场景：时间和关键记忆在首次发生时就已成立', () => {
     assert.match(ch3, /晚上十点。333-1188/);
   });
 
+  it('两位假协查不混淆：外貌区分、空间分工与信息递进各就各位', () => {
+    const a2b = after(chapter(3), '# chA2b').split('# chA2c')[0];
+    assert.match(a2b, /四十来岁/, '廖的辨认特征在 11.5 给出');
+    assert.doesNotMatch(a2b, /也是遗物登记/, '他翻的内容不得在 11.5 提前泄出');
+    assert.match(chapter(4), /上回跟你提过的那个男老师/, 'R4 递进追问同一人的内容');
+    assert.match(chapter(5), /台里我白天一回都没去过/, '空间分工：台里白天=苏晚，派出所与夜档=廖');
+    assert.match(chapter(5), /你前脚走，我后脚到/, '廖如何得知她追问须有来源');
+  });
+
   it('E3 苏晚照常上班并重新点起铅笔点，廖带手抄本去桥头', () => {
     const e3 = after(chapter(5), '# E3');
     assert.match(e3, /照常|上班/);

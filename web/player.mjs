@@ -8,6 +8,7 @@ import { codeOf, sentinelAction, updatePlan, resumePlan, manualUpdatePlan } from
 import { LocalRuntime } from '/runtime.mjs';
 import { openLocalStore } from '/store.mjs';
 import { SyncClient } from '/sync.mjs';
+import { compareSaveDocs, formatSaveTime, resumeSave, saveViewModel } from '/save-view.mjs';
 
 const $ = s => document.querySelector(s);
 const AUTO = new URLSearchParams(location.search).has('auto');
@@ -353,18 +354,27 @@ function useRuntime(ir) {
   indexIr();
 }
 
+let entryEpoch = 0;
 async function startGame(gameId) {
+  const epoch = ++entryEpoch;
   const ir = await loadIr(gameId);
-  useRuntime(ir);
+  if (epoch !== entryEpoch) return;
+  const meta = app.catalog.find(game => game.id === gameId);
+  const runtime = new LocalRuntime({ ir, irHash: meta?.irHash ?? null, store: app.store, deviceId: app.deviceId });
   const seed = globalThis.crypto?.getRandomValues ? globalThis.crypto.getRandomValues(new Uint32Array(1))[0] : 1;
-  const r = await app.runtime.newGame(seed);
+  const r = await runtime.newGame(seed);
+  if (epoch !== entryEpoch) {
+    await runtime.remove(r.doc.id);
+    return;
+  }
+  useRuntime(ir);
   app.saveId = r.doc.id;
   app.pendingRemote = null; // 主动开新局：不追任何远端跟进
   if (!AUTO) markLastPlay(r.doc.id);
   for (const k of Object.keys(r.state.flags ?? {})) if (k.startsWith('card.')) app.cards.add(k);
   $('#title').style.display = 'none';
   closeDialog('#endcard');
-  $('#savesPanel').classList.remove('on');
+  closePanels();
   $('#worldLabel').textContent = `${app.ir.canon.world}悬疑宇宙 · ${app.ir.code}`;
   resetRun();
   queueSync();
@@ -384,17 +394,23 @@ const MIGRATE_NOTE = {
 };
 
 async function loadSave(saveId) {
+  const epoch = ++entryEpoch;
   const existing = await app.store.getSave(saveId);
-  if (!existing) throw new Error('本地存档不存在');
+  if (!existing || existing.deleted) throw new Error('本地存档不存在');
+  if (epoch !== entryEpoch) return;
   const ir = await loadIr(existing.gameId);
+  if (epoch !== entryEpoch) return;
+  const meta = app.catalog.find(game => game.id === existing.gameId);
+  const runtime = new LocalRuntime({ ir, irHash: meta?.irHash ?? null, store: app.store, deviceId: app.deviceId });
+  const r = await runtime.load(saveId);
+  if (epoch !== entryEpoch) return;
   useRuntime(ir);
-  const r = await app.runtime.load(saveId);
   app.saveId = saveId;
   if (!AUTO) markLastPlay(saveId);
   $('#btnRead').hidden = !app.ir.reading;
   for (const k of Object.keys(r.state.flags ?? {})) if (k.startsWith('card.')) app.cards.add(k);
   $('#title').style.display = 'none';
-  $('#savesPanel').classList.remove('on');
+  closePanels();
   closeDialog('#endcard');
   $('#worldLabel').textContent = `${app.ir.canon.world}悬疑宇宙 · ${app.ir.code}`;
   resetRun();
@@ -404,37 +420,80 @@ async function loadSave(saveId) {
   runLoop(r.state);
 }
 
+let saveListEpoch = 0;
+async function listAllSaves() {
+  const groups = await Promise.all(app.catalog.map(async game => {
+    const saves = await app.store.listSaves(game.id);
+    return saves.map(doc => ({ doc, game }));
+  }));
+  return groups.flat().sort((a, b) => compareSaveDocs(a.doc, b.doc));
+}
+async function removeSaveDocument(doc) {
+  if (app.runtime && app.gameId === doc.gameId) return app.runtime.remove(doc.id);
+  // remove 只写版本化墓碑，不读取剧情 IR；离线也能删除尚未打开过的远端作品存档。
+  const runtime = new LocalRuntime({ ir: null, irHash: null, store: app.store, deviceId: app.deviceId });
+  return runtime.remove(doc.id);
+}
+function renderSaveRow({ doc, game }) {
+  const view = saveViewModel(doc, game);
+  const row = document.createElement('div');
+  row.className = 'save';
+  const main = document.createElement('button');
+  main.type = 'button'; main.className = 'save-main';
+  const span = (className, text) => {
+    const el = document.createElement('span'); el.className = className; el.textContent = text; return el;
+  };
+  main.append(
+    span('save-title', `${view.title} · ${view.chapter}`),
+    span('save-meta', `存档 ${view.shortId}${view.kind ? ` · ${view.kind}` : ''}`),
+  );
+  const time = document.createElement('time');
+  time.className = 'save-time'; time.textContent = `最后保存 ${view.time}`;
+  if (view.timestamp !== null) time.dateTime = new Date(view.timestamp).toISOString();
+  main.appendChild(time);
+  const badges = span('save-badges', '');
+  badges.append(span('save-badge', view.progress), span(`save-badge${doc.dirty ? ' pending' : ''}`, view.sync));
+  main.appendChild(badges);
+  main.setAttribute('aria-label', `${view.title}，${view.chapter}，${view.progress}，${view.sync}，最后保存 ${view.time}`);
+  main.onclick = () => loadSave(doc.id).catch(failNote);
+  const del = document.createElement('button');
+  del.className = 'save-del'; del.type = 'button'; del.textContent = '删';
+  del.setAttribute('aria-label', `删除${view.title}的存档 ${view.shortId}`);
+  del.addEventListener('pointerdown', event => event.stopPropagation());
+  armConfirm(del, async () => {
+    if (doc.id === app.saveId) { stage.toast('正在进行的这一局不能删——回到封面后再来'); return; }
+    try {
+      await removeSaveDocument(doc);
+      queueSync();
+      stage.toast('已删除——远端与其他设备将同步移除');
+      await Promise.all([openSaves(true), renderGameList()]);
+    } catch (error) { failNote(error); }
+  });
+  row.append(main, del);
+  return row;
+}
 async function openSaves(refresh = false) {
-  if (!app.gameId) { stage.toast('先开始游戏'); return; }
+  if (!app.store) { stage.toast('本机卷宗仍在准备，请稍候'); return; }
   // 只认字面 true 的刷新态：onclick 直挂时传进来的是事件对象，必须走完整开面板流程
   if (refresh !== true && !requestPanel('#savesPanel')) return;
-  const list = await app.store.listSaves(app.gameId);
-  $('#savesList').innerHTML = list.length ? '' : '<div style="color:var(--ink-dim);font-size:12px">暂无本地存档</div>';
-  for (const sv of list) {
-    const div = document.createElement('div');
-    div.className = 'save';
-    const label = sv.summary?.chapterTitle ? `${sv.summary.chapterTitle} · ` : '';
-    const prefix = sv.note ?? (sv.forkOf ? '分支 · ' : '');
-    div.innerHTML = `<span>${prefix}${label}存档 ${String(sv.id).slice(0, 8)}</span><span style="color:var(--ink-dim)">${sv.summary?.ended ? `已通关(${sv.summary.ended})` : (sv.dirty ? '仅本机 · 待同步' : '已同步')}</span>`;
-    div.onclick = () => loadSave(sv.id).catch(failNote);
-    const del = document.createElement('button');
-    del.className = 'save-del';
-    del.type = 'button';
-    del.textContent = '删';
-    del.addEventListener('pointerdown', e => e.stopPropagation()); // 不得冒泡成「读取该档」
-    armConfirm(del, async () => {
-      if (sv.id === app.saveId) { stage.toast('正在进行的这一局不能删——回到封面后再来'); return; }
-      try {
-        await app.runtime.remove(sv.id);
-        queueSync(); // 墓碑随同步推到远端与其他设备
-        stage.toast('已删除——远端与其他设备将同步移除');
-        openSaves(true); // 原地刷新列表，不关面板
-      } catch (e) { failNote(e); }
-    });
-    div.appendChild(del);
-    $('#savesList').appendChild(div);
+  const epoch = ++saveListEpoch;
+  try {
+    const entries = await listAllSaves();
+    if (epoch !== saveListEpoch) return;
+    const list = $('#savesList');
+    list.replaceChildren();
+    if (!entries.length) {
+      const empty = document.createElement('div'); empty.className = 'save-empty';
+      empty.textContent = '还没有任何存档——先从封面选择一部作品开卷。';
+      list.appendChild(empty);
+    } else for (const entry of entries) list.appendChild(renderSaveRow(entry));
+    settlePanel('#savesPanel');
+  } catch (error) {
+    if (epoch === saveListEpoch) {
+      closePanels();
+      failNote(error);
+    }
   }
-  settlePanel('#savesPanel');
 }
 
 let readReturnFocus = null;
@@ -520,6 +579,7 @@ document.querySelectorAll('.pnl-x').forEach(b => b.onclick = () => closePanels()
 
 // ---- HUD 按钮 ----
 $('#btnSaves').onclick = () => openSaves(); // 箭头包裹：不得把事件对象漏进 openSaves 的 refresh 参数（b8d32c8 回归）
+$('#btnAllSaves').onclick = () => openSaves();
 $('#btnRead').onclick = () => openRead();
 $('#btnReadEnd').onclick = () => { closeDialog('#endcard'); openRead('recap'); };
 // 底单回看：本局转写记录（悬疑玩家要翻回去对时间戳与号码）
@@ -918,6 +978,46 @@ async function importLegacyGuest() {
 setInterval(() => { if (document.visibilityState === 'visible' && app.user && !app.user.guest) app.sync?.flush(); }, 60000);
 addEventListener('online', () => { if (app.user && !app.user.guest) app.sync?.flush(); });
 
+let gameListEpoch = 0;
+async function renderGameList() {
+  const epoch = ++gameListEpoch;
+  const rows = await Promise.all(app.catalog.map(async game => ({ game, saves: await app.store.listSaves(game.id) })));
+  if (epoch !== gameListEpoch || $('#title').style.display === 'none') return;
+  const list = $('#gameList');
+  list.replaceChildren();
+  let total = 0;
+  for (const { game: g, saves } of rows) {
+    total += saves.length;
+    const row = document.createElement('div');
+    row.className = 'game-row';
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'game-main';
+    const last = resumeSave(saves);
+    const span = (className, text) => {
+      const el = document.createElement('span'); el.className = className; el.textContent = text; return el;
+    };
+    b.append(document.createTextNode(g.title), span('g-sub', g.subtitle ?? ''));
+    if (g.hook) b.appendChild(span('g-hook', g.hook));
+    // 续读意图显式化：卡片直接告诉玩家「点这里是从哪续」，选择权在开卷那一刻
+    if (last && !AUTO) b.appendChild(span('g-sub', `续读 · ${last.summary?.chapterTitle ?? '进行中'} · 存档 ${String(last.id).slice(0, 8)}`));
+    else if (saves.length) b.appendChild(span('g-sub', `已有 ${saves.length} 份存档 · 可从全部存档选择`));
+    const timeSource = last ?? saves[0];
+    if (timeSource && !AUTO) b.appendChild(span('g-time', `最后保存 ${formatSaveTime(timeSource)}`));
+    b.onclick = () => (last && !AUTO) ? loadSave(last.id).catch(failNote) : startGame(g.id).catch(failNote);
+    row.appendChild(b);
+    if (last && !AUTO) {
+      // 存档不膨胀：卡片点击优先续读未完成档；开新局必须是显式动作。
+      const c = document.createElement('button');
+      c.type = 'button'; c.className = 'game-new'; c.textContent = '开新局';
+      c.onclick = () => startGame(g.id).catch(failNote);
+      row.appendChild(c);
+    }
+    list.appendChild(row);
+  }
+  $('#saveCount').textContent = total ? `共 ${total} 份 · 含已通关与分支` : '还没有存档 · 点作品开始';
+  $('#btnAllSaves').disabled = false;
+}
+
 // ---- 启动：本地库与内容目录优先；账号与同步均为后台可选能力 ----
 (async () => {
   try {
@@ -946,7 +1046,13 @@ addEventListener('online', () => { if (app.user && !app.user.guest) app.sync?.fl
     app.sync = new SyncClient({
       store: app.store, deviceId: app.deviceId, games: app.catalog.map(g => g.id),
       post: (path, data) => api.post(path, data),
-      onStatus: status => { app.syncStatus = status.text; renderAuthBar(); },
+      onStatus: status => {
+        app.syncStatus = status.text; renderAuthBar();
+        if (status.online === true) {
+          renderGameList().catch(() => {});
+          if ($('#savesPanel').classList.contains('on')) openSaves(true).catch(() => {});
+        }
+      },
       onRemote: doc => {
         // 只标记，不热切：runLoop 在拍间隙（自然停点）跟进，绝不在演出或等待拍中间换档。
         if (doc.id !== app.saveId) return;
@@ -960,32 +1066,7 @@ addEventListener('online', () => { if (app.user && !app.user.guest) app.sync?.fl
         stage.toast('检测到另一设备的同名进度——本机进度已另存为分支，当前进行继续');
       },
     });
-    const unfinished = new Map();
-    for (const g of app.catalog) {
-      const row = document.createElement('div');
-      row.className = 'game-row';
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'game-main';
-      const saves = await app.store.listSaves(g.id);
-      const last = saves.find(s => !s.summary?.ended);
-      // 续读意图显式化：卡片直接告诉玩家「点这里是从哪续」，选择权在开卷那一刻
-      const resumeHint = last && !AUTO ? `<span class="g-sub">续读 · ${last.summary?.chapterTitle ?? '进行中'} · 存档 ${String(last.id).slice(0, 8)}</span>` : '';
-      b.innerHTML = `${g.title}<span class="g-sub">${g.subtitle ?? ''}</span>${g.hook ? `<span class="g-hook">${g.hook}</span>` : ''}${resumeHint}`;
-      b.onclick = () => (last && !AUTO) ? loadSave(last.id).catch(failNote) : startGame(g.id).catch(failNote);
-      row.appendChild(b);
-      for (const sv of saves) if (!sv.summary?.ended) unfinished.set(sv.id, sv);
-      if (last && !AUTO) {
-        // 存档不膨胀：卡片点击优先续读未完成档；开新局必须是显式动作。
-        const c = document.createElement('button');
-        c.type = 'button';
-        c.className = 'game-new';
-        c.textContent = '开新局';
-        c.onclick = () => startGame(g.id).catch(failNote);
-        row.appendChild(c);
-      }
-      $('#gameList').appendChild(row);
-    }
+    await renderGameList();
     if (AUTO) await startGame(app.catalog[0].id);
     if (!AUTO) {
       try {

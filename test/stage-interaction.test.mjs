@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { historyKeyDelta, historyTopInset, historyNeedsSnap } from '../web/stage.mjs';
+import { historyKeyDelta, historyTopInset, historyNeedsSnap, shouldHandleStageKey, stageContentBounds, flowOffset, clampHistoryPan } from '../web/stage.mjs';
 
 describe('停点回看：键盘浏览已展示历史', () => {
   it('向上方向键往回翻，向下方向键回到较新文字', () => {
@@ -29,5 +29,41 @@ describe('停点回看：键盘浏览已展示历史', () => {
     for (const key of [' ', 'Space', 'Enter', 'Escape', 'ArrowLeft', 'ArrowRight', 'a']) {
       assert.equal(historyKeyDelta(key, 800), null);
     }
+  });
+});
+
+describe('舞台快捷键让位于输入与响应式可用区域', () => {
+  const target = hit => ({ closest: () => hit ? {} : null });
+
+  it('输入框、按钮和可编辑区域里的 Space/Enter 不推进剧情', () => {
+    assert.equal(shouldHandleStageKey({ code: 'Space', target: target(true) }), false);
+    assert.equal(shouldHandleStageKey({ key: 'Enter', target: target(true) }), false);
+    assert.equal(shouldHandleStageKey({ code: 'Space', target: target(false) }), true);
+  });
+
+  it('中文输入法组词与已被界面处理的按键不穿透到舞台', () => {
+    assert.equal(shouldHandleStageKey({ key: 'Enter', isComposing: true, target: target(false) }), false);
+    assert.equal(shouldHandleStageKey({ key: 'Enter', keyCode: 229, target: target(false) }), false);
+    assert.equal(shouldHandleStageKey({ key: 'Enter', defaultPrevented: true, target: target(false) }), false);
+  });
+
+  it('正文同时避让真实 HUD、时间轴与底部提示', () => {
+    assert.deepEqual(stageContentBounds({ viewportHeight: 844, hudBottom: 154.2, timelineBottom: 182.6, hintTop: 790 }), {
+      top: 195, bottom: 778, anchor: 506,
+    });
+    assert.deepEqual(stageContentBounds({ viewportHeight: 390, hudBottom: 96, timelineBottom: 0, hintTop: 344 }), {
+      top: 108, bottom: 332, anchor: 234,
+    });
+  });
+
+  it('当前拍特别高时先保住顶部，不让选项钻到 HUD 后面', () => {
+    assert.equal(flowOffset({ anchor: 234, contentTop: 108, lastTop: 600, lastHeight: 180 }), -492);
+    assert.equal(flowOffset({ anchor: 506, contentTop: 100, lastTop: 400, lastHeight: 60 }), 46);
+  });
+
+  it('旋转与视口收缩后回看位移立即夹回合法范围', () => {
+    assert.equal(clampHistoryPan(-40, 180), 0);
+    assert.equal(clampHistoryPan(240, 180), 180);
+    assert.equal(clampHistoryPan(72, 180), 72);
   });
 });

@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <title>锦江悬疑宇宙 · 文字舞台</title>
 <meta name="description" content="翻开锦江悬疑宇宙的案件档案，调查证物、追踪声纹，在文字舞台中亲手走到每一种结局。">
 <link rel="canonical" href="https://chengdu.xiaowenz.com/">
@@ -42,12 +42,15 @@
     --serif:"Songti SC","Noto Serif SC","Noto Serif CJK SC",serif;
     --kai:"Kaiti SC","STKaiti","KaiTi","Songti SC","Noto Serif SC",serif;
     --sans:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    --safe-top:env(safe-area-inset-top,0px); --safe-right:env(safe-area-inset-right,0px);
+    --safe-bottom:env(safe-area-inset-bottom,0px); --safe-left:env(safe-area-inset-left,0px);
+    --page-gutter:clamp(12px,2.4vw,32px);
   }
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{height:100%;overscroll-behavior:none}
-  body{position:fixed;inset:0;background:var(--bg);color:var(--ink);font-family:var(--serif);overflow:hidden}
-  #stage{position:relative;height:100vh;height:100dvh;overflow:hidden;user-select:none;
-    -webkit-touch-callout:none;touch-action:none}
+  body{background:var(--bg);color:var(--ink);font-family:var(--serif);overflow:hidden}
+  #stage{position:relative;height:100vh;height:100dvh;height:var(--visual-height,100dvh);overflow:hidden;user-select:none;
+    -webkit-touch-callout:none;touch-action:auto}
   /* 档案室空气:全屏纸纹颗粒 + 暗角 */
   #stage::before{content:"";position:absolute;inset:0;z-index:30;pointer-events:none;
     opacity:.07;mix-blend-mode:soft-light;
@@ -80,7 +83,7 @@
   @keyframes flick{0%,91%,95%,100%{opacity:.92}93%{opacity:.45}}
 
   /* 案卷纸面:全高居中纸卷,正文住在这里 */
-  #sheet{position:absolute;top:0;bottom:0;left:50%;transform:translateX(-50%);
+  #sheet{position:absolute;top:0;bottom:0;left:50%;transform:translateX(-50%);touch-action:none;
     width:min(880px,88vw);z-index:1;
     background:linear-gradient(90deg,#d6c7a0 0%,#e7dabd 9%,#e4d7b6 50%,#e0d1ac 91%,#d2c29a 100%);
     box-shadow:0 0 0 1px #b3a179,0 0 60px rgba(0,0,0,.6),inset 0 0 110px rgba(112,92,54,.25)}
@@ -108,7 +111,8 @@
     100%{transform:translate(3vw,116vh) rotate(8deg)}}
 
   /* 文字流(tape):纸上墨字 */
-  #tape{position:absolute;inset:0;pointer-events:none;z-index:2}
+  #tape{position:absolute;inset:0;pointer-events:none;z-index:2;
+    clip-path:inset(var(--content-top,0px) 0 var(--content-bottom-clip,0px) 0)}
   #flow{position:absolute;left:50%;width:min(760px,78vw);
     transform:translate(-50%,0);
     transition:transform .95s cubic-bezier(.22,.8,.24,1),opacity .85s ease}
@@ -182,8 +186,10 @@
     border-left:3px solid currentColor;padding-left:.5em}
   .ln.dlg{color:var(--ink-deep)}
   .ln.dlg.lslide{--dx:-16px}
-  .ln.choice{display:flex;flex-direction:column;gap:.55em;padding:.5em 0 .2em;pointer-events:auto}
-  .opt{display:flex;align-items:baseline;gap:.9em;cursor:pointer;padding:.34em .2em;
+  .ln.choice{display:flex;flex-direction:column;gap:.55em;padding:.5em 0 .2em;pointer-events:auto;
+    overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;user-select:text;scrollbar-width:thin}
+  .opt{display:flex;align-items:baseline;gap:.9em;width:100%;min-height:40px;cursor:pointer;padding:.34em .2em;
+    background:transparent;border:0;border-radius:0;text-align:left;font:inherit;letter-spacing:inherit;
     color:var(--paper-ink);opacity:0;transform:translateX(-14px);
     transition:opacity .6s ease,transform .6s ease,color .25s}
   .opt.in{opacity:1;transform:none}
@@ -191,6 +197,9 @@
   .opt .branch{flex:none;width:2.2em;height:1px;align-self:center;
     background:linear-gradient(90deg,transparent,var(--blood));transition:width .25s}
   .opt:hover .branch{width:3.2em}
+  .opt:focus-visible{outline:2px solid var(--accent-cold);outline-offset:2px;color:var(--blood)}
+  .opt .txt{min-width:0;overflow-wrap:anywhere}
+  .opt:disabled{cursor:default}
   /* 转写选错：朱线划掉留在底单上（听岔的痕） */
   .opt.wrong{pointer-events:none}
   .opt.wrong .txt{text-decoration:line-through;text-decoration-color:rgba(158,58,43,.75);
@@ -223,8 +232,8 @@
   .seal-cap.in{opacity:.9}
 
   /* 时间轴带:卷宗眉批 */
-  #timeline{position:absolute;top:8.5vh;left:50%;transform:translate(-50%,-16px);
-    display:flex;align-items:center;gap:14px;opacity:0;
+  #timeline{position:absolute;top:calc(var(--hud-bottom,0px) + 8px);left:50%;transform:translate(-50%,-16px);
+    display:flex;align-items:center;gap:14px;opacity:0;max-width:calc(100% - var(--safe-left) - var(--safe-right) - 24px);
     transition:opacity .9s ease,transform .9s ease;font-family:var(--sans);pointer-events:none;
     padding:6px 20px;z-index:3;
     border-block:1px solid rgba(51,46,33,.18)}
@@ -297,12 +306,13 @@
     background:var(--blood);box-shadow:0 0 0 1px rgba(158,58,43,.35)}
   .chip.in{transform:scale(1)}
   .topbtns{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;max-width:65vw}
-  #stage button{pointer-events:auto;background:#241e14;color:var(--ink);
+  :where(#stage) button:not(.opt){pointer-events:auto;background:#241e14;color:var(--ink);
     border:1px solid #6d5d3b;border-radius:3px;padding:4px 12px;cursor:pointer;
-    font-size:12px;font-family:var(--kai);letter-spacing:.16em;
+    font-size:12px;font-family:var(--kai);letter-spacing:.16em;white-space:nowrap;
     transition:transform .2s,border-color .2s,color .2s,box-shadow .2s}
-  #stage button:hover{border-color:var(--accent);color:#f0e6cd;transform:translateY(-1px);
+  :where(#stage) button:not(.opt):hover{border-color:var(--accent);color:#f0e6cd;transform:translateY(-1px);
     box-shadow:0 4px 14px rgba(0,0,0,.5)}
+  #stage button:focus-visible{outline:2px solid var(--accent-cold);outline-offset:2px}
 
   #hint{position:absolute;bottom:calc(3.4vh + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);
     width:max-content;max-width:92vw;text-align:center;
@@ -311,7 +321,7 @@
   #hint.on{opacity:.9}
   /* 版本指纹（footer 左下角）：部署追踪——v版本 · sha · 起服 · 服务器时间；
      它同时是「检查并更新」按钮：hover 亮起 + 换新版提示 */
-  #vtag{position:absolute;left:10px;bottom:calc(5px + env(safe-area-inset-bottom,0px));
+  #vtag{position:absolute;left:calc(10px + var(--safe-left));bottom:calc(5px + var(--safe-bottom));
     max-width:70vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
     font-family:var(--sans);font-size:10px;letter-spacing:.06em;color:#8f8567;opacity:.62;
     font-variant-numeric:tabular-nums;pointer-events:auto;cursor:pointer;z-index:41;
@@ -321,10 +331,12 @@
   #vtag:hover::after{content:" · 点击换新版";letter-spacing:.1em}
 
   /* 标题页:卷宗封面 */
-  #title{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  #title{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+    overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;user-select:text;
+    padding:calc(12px + var(--safe-top)) calc(12px + var(--safe-right)) calc(12px + var(--safe-bottom)) calc(12px + var(--safe-left));
     background:radial-gradient(ellipse at 50% 38%,#241d12 0%,#17130d 70%);z-index:20}
-  .t-paper{position:relative;display:flex;flex-direction:column;align-items:center;
-    width:min(640px,92vw);padding:5.5vh 5vw 4.5vh;gap:2.4vh;
+  .t-paper{position:relative;display:flex;flex-direction:column;align-items:center;flex:none;margin:auto;
+    width:min(640px,100%);padding:clamp(24px,5.5vh,52px) clamp(20px,5vw,64px) clamp(22px,4.5vh,42px);gap:clamp(9px,2.4vh,22px);
     background:linear-gradient(150deg,#e9dcbd,#ddd0a9);
     box-shadow:0 30px 90px rgba(0,0,0,.7),inset 0 0 0 4px rgba(23,19,13,.10),inset 0 0 0 5px rgba(168,148,106,.5)}
   .t-paper::before,.t-paper::after{content:"";position:absolute;width:34px;height:34px;pointer-events:none}
@@ -344,13 +356,17 @@
     font-family:var(--kai);font-size:15px;transform:rotate(-4deg)}
   #gameList{display:flex;flex-direction:column;gap:12px;margin-top:1vh;width:100%}
   #gameList button{background:rgba(255,252,242,.4);border:1px solid #b3a179;border-left:3px solid var(--blood);
-    border-radius:2px;color:#2e2818;padding:.8em 3em;font-size:clamp(14px,2.2vh,21px);cursor:pointer;
+    border-radius:2px;color:#2e2818;padding:.8em clamp(12px,3em,48px);font-size:clamp(14px,2.2vh,21px);cursor:pointer;
     letter-spacing:.14em;font-family:var(--kai);
     transition:transform .2s,background .2s,box-shadow .2s}
   #gameList button:hover{background:#f2e8cc;transform:translateY(-2px);box-shadow:0 6px 18px rgba(20,15,8,.25);color:#2e2818}
   #gameList .g-sub{display:block;font-family:var(--sans);font-size:.55em;color:#7c704f;margin-top:.4em;letter-spacing:.2em}
   #gameList .g-hook{display:block;font-family:var(--kai);font-size:.58em;color:#5d543e;margin-top:.55em;letter-spacing:.12em}
-  .t-foot{font-family:var(--sans);color:#857a5b;font-size:11px;letter-spacing:.3em}
+  .game-row{display:flex;gap:8px;align-items:stretch;justify-content:center;width:100%}
+  .game-main{flex:1;min-width:0}
+  #gameList .game-new{font-size:13px;padding:.55em 12px}
+  .game-new{flex:none;align-self:center}
+  .t-foot{font-family:var(--sans);color:#857a5b;font-size:11px;letter-spacing:.3em;text-align:center;line-height:1.8}
 
   /* 侧面板统一交互（关闭钮/互斥/点外关闭见 player.mjs）：标题行 flex 让出关闭钮 */
   .sidepanel h3{display:flex;align-items:center;justify-content:space-between;gap:8px}
@@ -359,10 +375,11 @@
   #panelVeil{position:absolute;inset:0;z-index:18;background:rgba(24,19,12,.44);
     opacity:0;pointer-events:none;transition:opacity .28s ease}
   #panelVeil.on{opacity:1;pointer-events:auto}
-  /* 舞台 touch-action:none 让位给拖拽回看；侧面板是 body 层（不受舞台约束），
-     恢复原生滚动让页签条可横滑；纸卡仍只纵滚防橡皮筋 */
-  .sidepanel{touch-action:auto}
-  .ec-paper,.ap-paper{touch-action:pan-y}
+  /* 舞台背景保留拖拽回看；纸卡与面板恢复原生滚动、文字选择和内部手势。 */
+  .sidepanel{touch-action:pan-y;overflow-y:auto;overscroll-behavior:contain;user-select:text;
+    top:calc(16px + var(--safe-top));right:calc(16px + var(--safe-right));
+    max-height:calc(var(--visual-height,100dvh) - var(--safe-top) - var(--safe-bottom) - 32px);scrollbar-width:thin}
+  .ec-paper,.ap-paper,.fb-paper{touch-action:pan-y;overscroll-behavior:contain;user-select:text}
   .read-tabs{touch-action:pan-x}
   button.armed{border-color:var(--blood);color:#e8b8ae;background:#5a221a;letter-spacing:.1em}
   .pnl-x{flex:none;background:transparent;border:1px solid #9b8a65;border-radius:2px;color:#655c48;
@@ -436,60 +453,67 @@
   .end-body i{font-style:normal;font-family:var(--kai);font-weight:700;margin-right:.6em}
   .end-body .end-tr{color:#7c2f24;background:rgba(158,58,43,.06);padding:.15em .5em;margin:.2em 0}
 
-  /* 结局:朱批结案 */
-  #endcard{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-    background:rgba(12,9,5,.84);opacity:0;pointer-events:none;transition:opacity 1.5s;z-index:22}
-  #endcard.on{opacity:1;pointer-events:auto}
-  .ec-paper{position:relative;display:flex;flex-direction:column;align-items:center;
-    width:min(560px,92vw);max-height:86vh;overflow:auto;padding:4.5vh 6vw;gap:2vh;
+  /* 全屏模态：原生 top layer 隔离背景焦点；可视高度包含软键盘与安全区。 */
+  #endcard,#authPanel,#fatalBar{position:fixed;inset:var(--visual-top,0px) 0 auto;width:100%;height:var(--visual-height,100dvh);
+    max-width:none;max-height:none;margin:0;border:0;padding:calc(12px + var(--safe-top)) calc(12px + var(--safe-right)) calc(12px + var(--safe-bottom)) calc(12px + var(--safe-left));
+    background:transparent;color:var(--ink);overflow:hidden}
+  #endcard:not([open]),#authPanel:not([open]),#fatalBar:not([open]){display:none}
+  #endcard[open],#authPanel[open],#fatalBar[open]{display:flex;align-items:center;justify-content:center}
+  #endcard::backdrop,#authPanel::backdrop,#fatalBar::backdrop{background:rgba(12,9,5,.88)}
+  .ec-paper{position:relative;display:flex;flex-direction:column;align-items:center;flex:none;margin:auto;
+    width:min(560px,100%);max-height:100%;overflow-y:auto;padding:clamp(22px,4.5vh,42px) clamp(20px,6vw,56px);gap:clamp(9px,2vh,18px);
     background:linear-gradient(150deg,#e9dcbd,#ddd0a9);
     box-shadow:0 30px 90px rgba(0,0,0,.7),inset 0 0 0 4px rgba(23,19,13,.10),inset 0 0 0 5px rgba(168,148,106,.5)}
   .ec-paper::before,.ec-paper::after{content:"";position:absolute;width:30px;height:30px;pointer-events:none}
   .ec-paper::before{top:10px;left:10px;border-top:2px solid #b09657;border-left:2px solid #b09657}
   .ec-paper::after{right:10px;bottom:10px;border-right:2px solid #b09657;border-bottom:2px solid #b09657}
-  .ec-seal{display:flex;align-items:center;justify-content:center;
+  .ec-seal{display:flex;align-items:center;justify-content:center;flex:none;
     width:54px;height:68px;border:3px double var(--blood);color:var(--blood);border-radius:6px;
     font-family:var(--kai);font-size:34px;transform:rotate(-7deg);opacity:.85;
     box-shadow:inset 0 0 0 2px rgba(158,58,43,.25)}
   .ec-label{color:var(--blood);letter-spacing:.5em;font-size:clamp(11px,1.6vh,16px);font-family:var(--kai)}
-  #endTitle{font-size:clamp(26px,5vh,46px);letter-spacing:.22em;font-family:var(--kai);color:#2e2818;font-weight:700}
+  #endTitle{font-size:clamp(26px,5vh,46px);letter-spacing:.22em;font-family:var(--kai);color:#2e2818;font-weight:700;text-align:center;overflow-wrap:anywhere}
   #endCollected{color:#7c704f;font-size:clamp(11px,1.6vh,14px);line-height:1.9;font-family:var(--sans);text-align:center}
-  .ec-btns{display:flex;gap:1.4em;margin-top:1vh}
+  .end-err{color:var(--blood);font:12px/1.7 var(--sans);text-align:center;overflow-wrap:anywhere}
+  .end-err:empty{display:none}
+  .ec-btns{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:1vh}
   #endcard.settle .ec-btns button{pointer-events:none}
-  #endcard.settle::after{content:"…";position:absolute;bottom:6vh;left:50%;transform:translateX(-50%);
+  #endcard.settle::after{content:"…";position:absolute;bottom:calc(3vh + var(--safe-bottom));left:50%;transform:translateX(-50%);
     color:var(--ink-dim);font-size:14px;letter-spacing:.5em;opacity:.6}
-  .ec-btns button{background:#7c2f24;border-color:#a85c45;color:#f0dfb8;padding:.55em 1.8em;font-size:14px}
+  .ec-btns button{background:#7c2f24;border-color:#a85c45;color:#f0dfb8;padding:.55em 1.2em;font-size:14px;min-height:44px}
   .ec-btns button:hover{background:#87392c;border-color:#d49a6d;color:#f6e8c4}
   .ec-btns #btnBackTitle{background:transparent;border-color:#8d8063;color:#655c48}
   .ec-btns #btnBackTitle:hover{color:#2e2a20;background:#d9cba4}
 
   /* 账籍:封面下缘的身份批注（游客可玩，注册留存进度） */
-  .t-auth{display:flex;align-items:center;gap:10px;justify-content:center;margin-top:1vh;
-    font-family:var(--sans);font-size:12px;color:#857a5b;letter-spacing:.14em}
+  .t-auth{display:flex;align-items:center;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:1vh;
+    font-family:var(--sans);font-size:12px;color:#857a5b;letter-spacing:.14em;line-height:1.8}
   .t-auth button{background:transparent;border:1px solid #9b8a65;border-radius:2px;color:#655c48;
     padding:.35em 1em;font-size:12px;font-family:var(--kai);letter-spacing:.2em;cursor:pointer;
     transition:color .2s,border-color .2s}
   .t-auth button:hover{border-color:var(--blood);color:var(--blood)}
-  #authPanel{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-    background:rgba(12,9,5,.84);opacity:0;pointer-events:none;transition:opacity .5s;z-index:23}
-  #authPanel.on{opacity:1;pointer-events:auto}
-  .ap-paper{position:relative;display:flex;flex-direction:column;align-items:center;
-    width:min(380px,92vw);padding:4vh 7vw 3.5vh;gap:1.6vh;
-    background:linear-gradient(150deg,#e9dcbd,#ddd0a9);
+  .ap-paper{position:relative;display:flex;flex-direction:column;align-items:stretch;flex:none;margin:auto;
+    width:min(420px,100%);max-height:100%;overflow-y:auto;padding:clamp(22px,4vh,36px) clamp(20px,6vw,38px);gap:12px;
+    background:linear-gradient(150deg,#e9dcbd,#ddd0a9);color:#332e21;scrollbar-width:thin;
     box-shadow:0 30px 90px rgba(0,0,0,.7),inset 0 0 0 4px rgba(23,19,13,.10),inset 0 0 0 5px rgba(168,148,106,.5)}
-  .ap-seal{display:flex;align-items:center;justify-content:center;width:44px;height:58px;
+  .ap-seal{display:flex;align-items:center;justify-content:center;align-self:center;flex:none;width:44px;height:58px;
     color:var(--blood);border:2px solid var(--blood);border-radius:3px;
     font-family:var(--kai);font-size:28px;transform:rotate(-6deg);opacity:.85;
     box-shadow:inset 0 0 0 1px rgba(158,58,43,.3)}
-  .ap-kicker{font-family:var(--kai);color:#7c704f;font-size:14px;letter-spacing:.32em}
-  .ap-in{width:100%;padding:.6em .8em;background:rgba(255,252,242,.5);border:1px solid #8b7f5e;
-    border-radius:2px;font:inherit;font-size:15px;color:#332e21;outline:none}
-  .ap-in:focus{border-color:var(--accent-cold)}
-  .ap-err{min-height:1.5em;font-size:12px;color:var(--blood);font-family:var(--sans);text-align:center}
-  .ap-btns{display:flex;gap:1em}
-  .ap-switch{font-size:12px;color:#7c704f;cursor:pointer;font-family:var(--sans);
-    text-decoration:underline dotted;text-underline-offset:4px}
-  .ap-switch:hover{color:var(--blood)}
+  .ap-kicker{align-self:center;font-family:var(--kai);color:#7c704f;font-size:14px;letter-spacing:.32em;text-align:center}
+  .ap-field{display:flex;flex-direction:column;gap:6px;width:100%;font-family:var(--sans);font-size:13px;color:#655c48}
+  .ap-field>span{letter-spacing:.08em}
+  .ap-in{width:100%;min-height:44px;padding:.6em .8em;background:rgba(255,252,242,.72);border:1px solid #8b7f5e;
+    border-radius:2px;font:inherit;font-size:16px;line-height:1.4;color:#332e21;outline:none;user-select:text}
+  .ap-in:focus-visible{border-color:var(--accent-cold);outline:2px solid var(--accent-cold);outline-offset:2px}
+  .ap-in[aria-invalid="true"]{border-color:var(--blood)}
+  .ap-err{min-height:1.5em;font-size:12px;line-height:1.5;color:var(--blood);font-family:var(--sans);text-align:center;overflow-wrap:anywhere}
+  .ap-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+  .ap-btns button{min-width:112px;min-height:44px}
+  #stage button.ap-switch{align-self:center;min-height:44px;padding:6px 12px;background:transparent;border:0;box-shadow:none;
+    color:#7c704f;font-size:12px;font-family:var(--sans);letter-spacing:.04em;text-decoration:underline dotted;text-underline-offset:4px}
+  #stage button.ap-switch:hover{color:var(--blood);transform:none;box-shadow:none}
+  #stage button:disabled{cursor:wait;opacity:.6}
 
   /* 可安装应用：封面只放一枚安静入口，原生提示不可用时给出主屏幕步骤 */
   .t-install{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:.4vh;
@@ -498,7 +522,8 @@
     padding:.35em 1em;font-size:12px;letter-spacing:.16em;box-shadow:none}
   #title .t-install button:hover{border-color:var(--blood);color:var(--blood);transform:none}
   #title .t-install button:disabled{opacity:.65;cursor:default;border-color:#a8946a;color:#7c704f}
-  #installHelp{width:min(430px,92vw);max-height:88vh;margin:auto;padding:0;border:1px solid #a8946a;border-radius:3px;
+  #installHelp{width:min(430px,calc(100vw - 24px - var(--safe-left) - var(--safe-right)));max-height:calc(100dvh - 24px - var(--safe-top) - var(--safe-bottom));margin:auto;padding:0;border:1px solid #a8946a;border-radius:3px;
+    overflow-y:auto;overscroll-behavior:contain;
     background:linear-gradient(150deg,#e9dcbd,#ddd0a9);color:#332e21;
     box-shadow:0 30px 90px rgba(0,0,0,.7),inset 0 0 0 4px rgba(23,19,13,.10)}
   #installHelp::backdrop{background:rgba(12,9,5,.84)}
@@ -510,11 +535,8 @@
     background:#241e14;color:#e6dabb;font:14px var(--kai);letter-spacing:.16em;cursor:pointer}
 
   /* 致命错误逃生舱：本地档推不动时的常驻纸条（模态，只给两条出路） */
-  #fatalBar{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-    background:rgba(12,9,5,.88);opacity:0;pointer-events:none;transition:opacity .4s;z-index:24}
-  #fatalBar.on{opacity:1;pointer-events:auto}
-  .fb-paper{position:relative;display:flex;flex-direction:column;align-items:center;
-    width:min(440px,92vw);padding:4vh 7vw;gap:1.6vh;
+  .fb-paper{position:relative;display:flex;flex-direction:column;align-items:center;flex:none;margin:auto;
+    width:min(440px,100%);max-height:100%;overflow-y:auto;padding:clamp(22px,4vh,36px) clamp(20px,6vw,42px);gap:12px;
     background:linear-gradient(150deg,#e9dcbd,#ddd0a9);
     box-shadow:0 30px 90px rgba(0,0,0,.7),inset 0 0 0 4px rgba(23,19,13,.10),inset 0 0 0 5px rgba(168,148,106,.5)}
   .fb-paper::before,.fb-paper::after{content:"";position:absolute;width:30px;height:30px;pointer-events:none}
@@ -525,7 +547,8 @@
     font-family:var(--kai);font-size:28px;transform:rotate(-6deg);opacity:.85}
   .fb-title{color:var(--blood);letter-spacing:.42em;font-size:clamp(11px,1.6vh,15px);font-family:var(--kai)}
   .fb-text{font-family:var(--sans);font-size:12.5px;color:#5d543e;letter-spacing:.06em;line-height:1.95;text-align:center}
-  .fb-btns{display:flex;gap:1em;margin-top:.6vh}
+  .fb-btns{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-top:.6vh}
+  .fb-btns button{min-height:44px}
 
   #toast{position:absolute;top:9%;left:50%;transform:translateX(-50%);
     background:#e9dcbd;border:1px solid #a8946a;border-left:3px solid var(--blood);border-radius:2px;
@@ -619,6 +642,7 @@
   @media (max-width:900px){
     #sheet{width:94vw}
     #flow{width:min(760px,84vw)}
+    .sh-tab{display:none}
     .anchor{display:none}
     #neon{display:none}
     .charcard{max-width:262px}
@@ -709,13 +733,94 @@
     .ra-map text{font-size:11px}
   }
 
-  @media (max-width:520px){
-    #hud button{font-size:11px;padding:5px 9px;letter-spacing:1px;min-height:34px}
-    #hud{gap:6px}
-    .sh-tab{display:none}
-    .t-seal{top:14px;right:14px;width:38px;height:52px;font-size:24px}
+  /* 统一边界：ID 样式只负责纸面外观，实际位置与可用高度都在这里收口。 */
+  #stage .sidepanel{top:calc(16px + var(--safe-top));right:calc(16px + var(--safe-right));
+    max-height:calc(var(--visual-height,100dvh) - var(--safe-top) - var(--safe-bottom) - 32px)}
+  #toast{top:calc(var(--hud-bottom,0px) + 8px);max-width:calc(100% - var(--safe-left) - var(--safe-right) - 24px);
+    width:max-content;text-align:center;line-height:1.6;overflow-wrap:anywhere}
+  .charcard{max-height:calc(var(--visual-height,100dvh) - var(--safe-top) - var(--safe-bottom) - 24px);overflow:hidden}
+  .desk{max-height:calc(var(--visual-height,100dvh) - var(--safe-top) - var(--safe-bottom) - 24px);overflow:hidden}
+  .coll-wave{width:min(300px,70vw)}
+
+  @media (min-width:701px) and (max-width:900px){
+    #hud{flex-direction:column;gap:8px;padding:calc(12px + var(--safe-top)) calc(16px + var(--safe-right)) 12px calc(16px + var(--safe-left))}
+    #hudL{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;width:100%}
+    #hudL .dt,#hudL .ch{margin-top:0}
+    #hudR{width:100%;align-items:stretch;gap:6px}
+    .bag{align-items:flex-start}
+    .chips{max-width:none;justify-content:flex-start}
+    #hud .topbtns{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:6px;width:100%;max-width:none}
+    #hud .topbtns button{width:100%;min-width:0;padding-inline:5px;letter-spacing:.08em}
+  }
+
+  @media (max-width:700px){
+    #sheet{width:calc(100% - var(--safe-left) - var(--safe-right))}
+    #flow{width:min(760px,calc(100% - var(--safe-left) - var(--safe-right) - 32px))}
+    #hud{flex-direction:column;gap:7px;padding:calc(10px + var(--safe-top)) calc(12px + var(--safe-right)) 10px calc(12px + var(--safe-left))}
+    #hudL{display:flex;flex-wrap:wrap;align-items:baseline;gap:3px 10px;width:100%;min-width:0}
+    #hudL .uni{flex-basis:100%}
+    #hudL .dt,#hudL .ch{margin-top:0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    #hudR{width:100%;align-items:stretch;gap:6px}
+    .bag{align-items:flex-start;gap:8px;min-height:18px}
+    .chips{max-width:none;justify-content:flex-start}
+    #hud .topbtns{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;width:100%;max-width:none}
+    #hud .topbtns button{width:100%;min-width:0;padding:6px 3px;font-size:11px;letter-spacing:.08em;white-space:nowrap}
+    #timeline{gap:8px;padding-inline:10px}
     .tl-track{width:30vw}
+    .tl-era{font-size:10px;letter-spacing:.08em;white-space:nowrap}
+    .t-seal{top:14px;right:14px;width:38px;height:52px;font-size:24px}
+    .t-kicker{max-width:82%;text-align:center;line-height:1.8;letter-spacing:.3em}
+    .game-row{flex-wrap:wrap}
+    .game-main{flex-basis:100%}
+    .game-new{margin:0 auto}
+    .t-auth,.t-install{flex-direction:column;gap:5px;text-align:center}
+    #stage .sidepanel{top:calc(8px + var(--safe-top));right:calc(8px + var(--safe-right));left:calc(8px + var(--safe-left));
+      width:auto;max-height:calc(var(--visual-height,100dvh) - var(--safe-top) - var(--safe-bottom) - 16px)}
+    .charcard{max-width:min(262px,calc(100vw - 24px));padding:1.1em 1.2em}
+    .cc-wave{width:min(150px,100%)}
+    .desk{width:calc(100% - var(--safe-left) - var(--safe-right) - 24px);padding:18px 16px}
+    .desk-row{display:grid;grid-template-columns:minmax(72px,1fr) 56px auto;gap:7px;padding:.45em 0}
+    .desk-caller{width:auto;min-width:0}
+    .desk-wave{width:56px}
+    .desk-text{grid-column:1/-1;white-space:normal;overflow:visible;text-overflow:clip;line-height:1.6;overflow-wrap:anywhere}
     #toast{font-size:12px}
+  }
+
+  @media (max-height:500px){
+    #flow{--ln-size:18px}
+    .ln{line-height:1.75}
+    .charcard{padding:12px 16px}
+    .cc-name{font-size:22px}
+    .cc-wave{width:120px;height:24px;margin:.45em 0}
+    .cc-bio{line-height:1.6}
+    .chcard{gap:1.4em}
+    .chcard .ch-bar{height:18vh}
+  }
+
+  @media (max-height:500px) and (min-width:600px){
+    #hud{flex-direction:row;gap:12px;padding-block:calc(8px + var(--safe-top)) 8px}
+    #hudL{display:block;width:auto;max-width:30%}
+    #hudL .dt,#hudL .ch{margin-top:3px}
+    #hudR{width:auto;max-width:70%;align-items:flex-end}
+    #hud .bag{justify-content:flex-end}
+    .chips{max-width:50vw;flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start}
+    #hud .topbtns{display:flex;flex-wrap:nowrap;gap:6px;max-width:100%;overflow-x:auto;padding:2px 2px 4px}
+    #hud .topbtns button{flex:none;width:auto;padding-inline:9px}
+    .t-paper{gap:8px;padding-block:18px}
+    .ap-paper,.fb-paper{gap:8px;padding-block:18px}
+    .ap-seal,.fb-seal{width:36px;height:42px;font-size:22px}
+  }
+
+  @media (pointer:coarse){
+    #stage button:not(.opt),#stage .opt{min-height:44px}
+    #stage .pnl-x,#stage .save-del{min-width:44px;min-height:44px}
+    #stage .read-tab{min-height:44px}
+    #vtag{min-height:44px;display:flex;align-items:center;bottom:var(--safe-bottom)}
+    #hint{bottom:calc(46px + var(--safe-bottom))}
+  }
+  @media (hover:none){
+    .opt:hover{transform:none}
+    .opt:hover .branch{width:2.2em}
   }
 </style>
 </head>
@@ -788,50 +893,55 @@
     <div id="readBody" role="tabpanel"></div>
   </div>
 
-  <div id="endcard">
+  <dialog id="endcard" aria-labelledby="endTitle" aria-describedby="endCollected" tabindex="-1" autofocus>
     <div class="ec-paper">
       <div class="ppgrain"></div>
       <div class="ec-seal">结</div>
       <div class="ec-label">— 案卷终页 —</div>
       <div id="endTitle"></div>
       <div id="endCollected"></div>
+      <div id="endError" class="end-err" role="alert"></div>
       <div class="ec-btns">
-        <button id="btnAgain">翻页重开</button>
-        <button id="btnEnds2">结案档案</button>
-        <button id="btnReadEnd">回读轨迹</button>
-        <button id="btnBackTitle">回到封面</button>
+        <button id="btnAgain" type="button">翻页重开</button>
+        <button id="btnEnds2" type="button">结案档案</button>
+        <button id="btnReadEnd" type="button">回读轨迹</button>
+        <button id="btnBackTitle" type="button">回到封面</button>
       </div>
     </div>
-  </div>
+  </dialog>
 
-  <div id="authPanel">
-    <div class="ap-paper">
+  <dialog id="authPanel" aria-labelledby="apTitle" tabindex="-1" autofocus>
+    <form id="authForm" class="ap-paper">
       <div class="ppgrain"></div>
       <div class="ap-seal">籍</div>
       <div class="ap-kicker" id="apTitle">注册 · 留存进度</div>
-      <input id="apUser" class="ap-in" placeholder="用户名（2-24 字）" autocomplete="username" maxlength="24">
-      <input id="apPass" class="ap-in" type="password" placeholder="密码（至少 8 位）" autocomplete="current-password">
-      <div class="ap-err" id="apErr"></div>
+      <label class="ap-field" for="apUser"><span>用户名（2–24 字）</span>
+        <input id="apUser" class="ap-in" name="username" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required minlength="2" maxlength="24" aria-describedby="apErr">
+      </label>
+      <label class="ap-field" for="apPass"><span>密码（8–128 位）</span>
+        <input id="apPass" class="ap-in" type="password" name="password" autocomplete="new-password" required minlength="8" maxlength="128" aria-describedby="apErr">
+      </label>
+      <div class="ap-err" id="apErr" role="alert" aria-live="polite"></div>
       <div class="ap-btns">
-        <button id="apSubmit">立档</button>
-        <button id="apClose">取消</button>
+        <button id="apSubmit" type="submit">立档</button>
+        <button id="apClose" type="button">取消</button>
       </div>
-      <div class="ap-switch" id="apSwitch">已有档案？直接登录</div>
-    </div>
-  </div>
+      <button class="ap-switch" id="apSwitch" type="button">已有档案？直接登录</button>
+    </form>
+  </dialog>
 
-  <div id="fatalBar">
+  <dialog id="fatalBar" aria-labelledby="fatalTitle" aria-describedby="fatalText" tabindex="-1" autofocus>
     <div class="fb-paper">
       <div class="ppgrain"></div>
       <div class="fb-seal">勘</div>
-      <div class="fb-title">这一档暂时推不动了</div>
+      <div class="fb-title" id="fatalTitle">这一档暂时推不动了</div>
       <div class="fb-text" id="fatalText"></div>
       <div class="fb-btns">
-        <button id="btnRealign">重新对位本档</button>
-        <button id="btnFatalTitle">回到封面</button>
+        <button id="btnRealign" type="button">重新对位本档</button>
+        <button id="btnFatalTitle" type="button">回到封面</button>
       </div>
     </div>
-  </div>
+  </dialog>
 
   <div id="toast"></div>
   <div id="vtag" role="button" tabindex="0" aria-label="检查并载入最新版本" title="检查并载入最新版本"></div>

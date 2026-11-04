@@ -27,8 +27,8 @@ const api = {
     }
     return body;
   },
-  post(path, data) {
-    return api.j(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data ?? {}) });
+  post(path, data, options = {}) {
+    return api.j(path, { ...options, method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data ?? {}) });
   },
 };
 
@@ -78,6 +78,12 @@ function peakRows(tids) {
     target: n.target,
     hz: n.callerChar ? (app.ir.characters[n.callerChar]?.voice_hz ?? callerHz(n.caller)) : callerHz(n.caller),
   }));
+}
+
+function closeDialog(selector) {
+  const dialog = $(selector);
+  dialog.classList.remove('on', 'settle');
+  if (dialog.open) dialog.close();
 }
 
 function resetRun() {
@@ -285,10 +291,11 @@ async function runLoop(s0) {
 async function showFatal(text) {
   $('#fatalText').textContent = text;
   $('#fatalBar').classList.add('on');
+  if (!$('#fatalBar').open) $('#fatalBar').showModal();
   await app.store.setMeta('brokenLastPlay', app.saveId).catch(() => {}); // 下次开卷不自动续进这档
 }
 $('#btnRealign').onclick = async () => {
-  $('#fatalBar').classList.remove('on');
+  closeDialog('#fatalBar');
   try {
     await loadSave(app.saveId); // 读档即自愈：锚点对位 + 断链校验会把档落到推得动的停点
   } catch (e) {
@@ -296,22 +303,28 @@ $('#btnRealign').onclick = async () => {
   }
 };
 $('#btnFatalTitle').onclick = () => {
-  $('#fatalBar').classList.remove('on');
+  closeDialog('#fatalBar');
   clearLastPlay();
   sessionStorage.setItem('nu.reload.cause', 'fatalTitle');
   location.reload();
 };
+for (const selector of ['#endcard', '#fatalBar']) {
+  $(selector).addEventListener('cancel', event => event.preventDefault());
+}
 
 async function showEnding(s) {
   const collection = await app.store.getCollection(app.gameId).catch(() => ({ endings: [] }));
   const seen = collection.endings.map(ending_id => ({ ending_id }));
   const names = seen.map(e => app.ir.endings.find(x => x.id === e.ending_id)?.title ?? e.ending_id);
   $('#endTitle').textContent = s.title;
+  $('#endError').textContent = '';
   $('#btnReadEnd').hidden = !app.ir.reading;
   $('#endCollected').innerHTML = `已收集结局 ${seen.length}/${app.ir.endings.length}` +
     (names.length ? `<br>${names.join(' · ')}` : '');
-  $('#endcard').classList.add('on', 'settle'); // 安静期：整局养成的连点惯性不得当场命中「回到封面」
-  setTimeout(() => $('#endcard').classList.remove('settle'), 1200);
+  const card = $('#endcard');
+  card.classList.add('on', 'settle'); // 安静期：整局养成的连点惯性不得当场命中「回到封面」
+  if (!card.open) card.showModal();
+  setTimeout(() => card.classList.remove('settle'), 1200);
 }
 
 async function loadIr(gameId) {
@@ -350,7 +363,7 @@ async function startGame(gameId) {
   if (!AUTO) markLastPlay(r.doc.id);
   for (const k of Object.keys(r.state.flags ?? {})) if (k.startsWith('card.')) app.cards.add(k);
   $('#title').style.display = 'none';
-  $('#endcard').classList.remove('on');
+  closeDialog('#endcard');
   $('#savesPanel').classList.remove('on');
   $('#worldLabel').textContent = `${app.ir.canon.world}悬疑宇宙 · ${app.ir.code}`;
   resetRun();
@@ -382,7 +395,7 @@ async function loadSave(saveId) {
   for (const k of Object.keys(r.state.flags ?? {})) if (k.startsWith('card.')) app.cards.add(k);
   $('#title').style.display = 'none';
   $('#savesPanel').classList.remove('on');
-  $('#endcard').classList.remove('on');
+  closeDialog('#endcard');
   $('#worldLabel').textContent = `${app.ir.canon.world}悬疑宇宙 · ${app.ir.code}`;
   resetRun();
   app.resume = true;
@@ -508,7 +521,7 @@ document.querySelectorAll('.pnl-x').forEach(b => b.onclick = () => closePanels()
 // ---- HUD 按钮 ----
 $('#btnSaves').onclick = () => openSaves(); // 箭头包裹：不得把事件对象漏进 openSaves 的 refresh 参数（b8d32c8 回归）
 $('#btnRead').onclick = () => openRead();
-$('#btnReadEnd').onclick = () => { $('#endcard').classList.remove('on'); openRead('recap'); };
+$('#btnReadEnd').onclick = () => { closeDialog('#endcard'); openRead('recap'); };
 // 底单回看：本局转写记录（悬疑玩家要翻回去对时间戳与号码）
 // 同频聚簇：同形声纹相邻并列——形状即线索，不标数字（播种层公平证据的回看强化）
 $('#btnSheet').onclick = () => {
@@ -566,7 +579,7 @@ async function openEnds() {
   settlePanel('#endsPanel');
 }
 $('#btnEnds').onclick = openEnds;
-$('#btnEnds2').onclick = () => { $('#endcard').classList.remove('on'); openEnds(); };
+$('#btnEnds2').onclick = () => { closeDialog('#endcard'); openEnds(); };
 
 // ---- 图鉴：时代词条 + 人物案卷（入档读全文，未入档悬影；案卷字段逐条解锁，未解锁 ？？？）----
 const canonChar = cid => app.ir.canon.characters.find(c => c.id === cid) ?? null;
@@ -631,7 +644,16 @@ const failNote = e => stage.toast(`出了点状况：${e.message}——稍候再
 
 armConfirm($('#btnRestart'), () => app.gameId && startGame(app.gameId).catch(failNote));
 armConfirm($('#btnTitle'), () => { clearLastPlay(); sessionStorage.setItem('nu.reload.cause', 'btnTitle'); location.reload(); });
-$('#btnAgain').onclick = () => startGame(app.gameId).catch(failNote);
+$('#btnAgain').onclick = async () => {
+  const button = $('#btnAgain');
+  button.disabled = true;
+  $('#endError').textContent = '';
+  try { await startGame(app.gameId); }
+  catch (error) {
+    if ($('#endcard').open) $('#endError').textContent = `重开失败：${error.message}——可重试或回到封面`;
+    else failNote(error);
+  } finally { button.disabled = false; }
+};
 armConfirm($('#btnBackTitle'), () => { clearLastPlay(); sessionStorage.setItem('nu.reload.cause', 'btnBackTitle'); location.reload(); }); // 回到封面=重载：二次确认
 $('#btnMute').onclick = e => {
   audio.muted = !audio.muted;
@@ -641,20 +663,27 @@ document.addEventListener('pointerdown', () => audio.ensure(), { once: true });
 
 // ---- 账籍：本机进度为默认；注册/登录只负责把本机进度同步到远端 ----
 const authMode = { now: 'register' }; // register | login
+let authBusy = false;
+let authReturnFocus = null;
+let authAttempt = 0;
+let authController = null;
+const escapeHtml = value => String(value).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
 function renderAuthBar() {
   const bar = $('#authBar');
-  const syncText = app.syncStatus ? ` · ${app.syncStatus}` : '';
+  const syncText = app.syncStatus ? ` · ${escapeHtml(app.syncStatus)}` : '';
   if (!app.user) {
-    bar.innerHTML = `<span>本机进度 · 可离线游玩${syncText}</span><button id="btnAuth">注册/登录同步</button>`;
+    bar.innerHTML = `<span>本机进度 · 可离线游玩${syncText}</span><button id="btnAuth" type="button">注册/登录同步</button>`;
     $('#btnAuth').onclick = () => openAuth('register');
     return;
   }
   if (app.user.guest) {
-    bar.innerHTML = `<span>本机进度 · 可离线游玩${syncText}</span><button id="btnAuth">注册留存</button>`;
+    bar.innerHTML = `<span>本机进度 · 可离线游玩${syncText}</span><button id="btnAuth" type="button">注册留存</button>`;
     $('#btnAuth').onclick = () => openAuth('register');
     return;
   }
-  bar.innerHTML = `<span>档案 · ${app.user.username}${syncText}</span><button id="btnLogout">退出</button>`;
+  const reauth = app.sync?.paused ? '<button id="btnReauth" type="button">重新登录</button>' : '';
+  bar.innerHTML = `<span>档案 · ${escapeHtml(app.user.username)}${syncText}</span>${reauth}<button id="btnLogout" type="button">退出</button>`;
+  if ($('#btnReauth')) $('#btnReauth').onclick = () => openAuth('login');
   $('#btnLogout').onclick = async () => {
     const synced = await app.sync?.flush();
     const dirty = await app.store.listDirty();
@@ -664,32 +693,97 @@ function renderAuthBar() {
     clearLastPlay(); sessionStorage.setItem('nu.reload.cause', 'btnLogout'); location.reload();
   };
 }
+function clearAuthError() {
+  $('#apErr').textContent = '';
+  for (const input of [$('#apUser'), $('#apPass')]) input.setAttribute('aria-invalid', 'false');
+}
+function setAuthBusy(busy) {
+  authBusy = busy;
+  $('#apSubmit').disabled = busy;
+  $('#apSwitch').disabled = busy;
+  $('#apUser').readOnly = busy;
+  $('#apPass').readOnly = busy;
+  $('#apSubmit').textContent = busy ? '正在核验…' : (authMode.now === 'register' ? '立档' : '登录');
+}
 function openAuth(mode) {
+  if (authBusy) return;
+  const dialog = $('#authPanel');
+  const wasOpen = dialog.open;
+  if (!wasOpen) authReturnFocus = document.activeElement;
   authMode.now = mode;
   $('#apTitle').textContent = mode === 'register' ? '注册 · 留存进度' : '登录 · 调取档案';
   $('#apSubmit').textContent = mode === 'register' ? '立档' : '登录';
   $('#apSwitch').textContent = mode === 'register' ? '已有档案？直接登录' : '还没有档案？注册一个';
-  $('#apErr').textContent = '';
+  $('#apPass').setAttribute('autocomplete', mode === 'register' ? 'new-password' : 'current-password');
+  clearAuthError();
   $('#apPass').value = '';
-  $('#authPanel').classList.add('on');
-  $('#apUser').focus();
+  if (!wasOpen) dialog.showModal();
+  if (matchMedia?.('(pointer:fine)')?.matches) $('#apUser').focus({ preventScroll: true });
+  else if (!wasOpen) dialog.focus({ preventScroll: true }); // 触屏由玩家点输入框，不主动掀键盘
 }
-$('#apClose').onclick = () => $('#authPanel').classList.remove('on');
-$('#authPanel').onclick = e => { if (e.target.id === 'authPanel') $('#authPanel').classList.remove('on'); };
+function closeAuth() {
+  if (authBusy) {
+    authAttempt++;
+    authController?.abort();
+    authController = null;
+    setAuthBusy(false);
+  }
+  if ($('#authPanel').open) $('#authPanel').close();
+}
+$('#apClose').onclick = closeAuth;
+$('#authPanel').addEventListener('click', event => { if (event.target === $('#authPanel')) closeAuth(); });
+$('#authPanel').addEventListener('cancel', event => { event.preventDefault(); closeAuth(); });
+$('#authPanel').addEventListener('close', () => {
+  clearAuthError();
+  const target = authReturnFocus;
+  authReturnFocus = null;
+  const fallback = $('#btnReauth') ?? $('#btnAuth') ?? $('#btnLogout');
+  const focus = target?.isConnected ? target : fallback;
+  focus?.focus({ preventScroll: true });
+});
 $('#apSwitch').onclick = () => openAuth(authMode.now === 'register' ? 'login' : 'register');
-$('#apPass').onkeydown = e => { if (e.key === 'Enter') $('#apSubmit').click(); };
-$('#apSubmit').onclick = async () => {
+$('#authForm').addEventListener('input', event => { if (event.target.classList.contains('ap-in')) clearAuthError(); });
+$('#authForm').addEventListener('keydown', event => {
+  if (event.key !== 'Enter' || event.isComposing || event.keyCode === 229 || event.defaultPrevented) return;
+  if (!event.target.classList.contains('ap-in')) return;
+  event.preventDefault();
+  if (!authBusy) $('#authForm').requestSubmit($('#apSubmit'));
+});
+$('#authForm').addEventListener('submit', async event => {
+  event.preventDefault();
+  if (authBusy) return;
+  clearAuthError();
+  const mode = authMode.now;
+  const attempt = ++authAttempt;
+  const controller = new AbortController();
+  authController = controller;
+  setAuthBusy(true);
+  let notice = '';
   try {
-    const r = await api.post(`/api/auth/${authMode.now}`, {
+    const r = await api.post(`/api/auth/${mode}`, {
       username: $('#apUser').value.trim(), password: $('#apPass').value,
-    });
+    }, { signal: controller.signal });
+    if (attempt !== authAttempt) return;
     app.user = r.user;
     if (app.sync) { app.sync.paused = false; app.sync.init(); }
-    stage.toast(authMode.now === 'register' ? `已立档：${r.user.username}，本机进度将同步到远端` : `档案调取：${r.user.username}，正在合并本机与远端进度`);
-    $('#authPanel').classList.remove('on');
+    notice = mode === 'register' ? `已立档：${r.user.username}，本机进度将同步到远端` : `档案调取：${r.user.username}，正在合并本机与远端进度`;
+  } catch (error) {
+    if (attempt === authAttempt && error.name !== 'AbortError') {
+      $('#apErr').textContent = error.message;
+      for (const input of [$('#apUser'), $('#apPass')]) input.setAttribute('aria-invalid', 'true');
+    }
+  } finally {
+    if (attempt === authAttempt) {
+      authController = null;
+      setAuthBusy(false);
+    }
+  }
+  if (notice && attempt === authAttempt) {
     renderAuthBar();
-  } catch (e) { $('#apErr').textContent = e.message; }
-};
+    closeAuth();
+    stage.toast(notice);
+  }
+});
 
 // ---- 版本指纹（footer 部署追踪）：v版本 · sha · 起服 · 服务器时间，30s 对时 ----
 // 看不到这条 = 浏览器还在吃旧缓存；时间不走 = 会话挂在旧实例上。
@@ -869,8 +963,10 @@ addEventListener('online', () => { if (app.user && !app.user.guest) app.sync?.fl
     const unfinished = new Map();
     for (const g of app.catalog) {
       const row = document.createElement('div');
-      row.style.cssText = 'display:flex;gap:8px;align-items:center;justify-content:center';
+      row.className = 'game-row';
       const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'game-main';
       const saves = await app.store.listSaves(g.id);
       const last = saves.find(s => !s.summary?.ended);
       // 续读意图显式化：卡片直接告诉玩家「点这里是从哪续」，选择权在开卷那一刻
@@ -882,8 +978,9 @@ addEventListener('online', () => { if (app.user && !app.user.guest) app.sync?.fl
       if (last && !AUTO) {
         // 存档不膨胀：卡片点击优先续读未完成档；开新局必须是显式动作。
         const c = document.createElement('button');
-        c.innerHTML = `开新局`;
-        c.style.cssText = 'font-size:13px;padding:6px 12px';
+        c.type = 'button';
+        c.className = 'game-new';
+        c.textContent = '开新局';
         c.onclick = () => startGame(g.id).catch(failNote);
         row.appendChild(c);
       }

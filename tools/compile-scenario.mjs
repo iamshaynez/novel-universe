@@ -130,11 +130,15 @@ function parseChapter(text, ch) {
         pendingDate = rest.trim();
       }
       else if (cmd === 'transcribe') {
-        // @transcribe <id> caller=<呼入方> target=<留言文本> —— 转写是带提交语义的停点节点
+        // @transcribe <id> caller=<呼入方> target=<入机留言> full=<呼入原话> over=<删过头> note=<点原话注记>
+        // —— 转写是带提交语义的停点节点；full/over 是手艺三选的干扰项（同章上文溯源，lint 保证），
+        //    note 是玩家点原话被划时的注记（t9：他白天递过话——紧一紧）
         if (!toks[0]) throw new Error(`${ch.id}: @transcribe 缺少 id`);
         const kv = parseKV(toks.slice(1));
         if (!kv.target) throw new Error(`${ch.id}: @transcribe 缺少 target`);
-        attach({ type: 'transcribe', transId: toks[0], caller: kv.caller ?? null, target: kv.target });
+        if (kv.full != null && kv.full === kv.target) throw new Error(`${ch.id}: @transcribe ${toks[0]} 的 full 与 target 相同`);
+        if (kv.over != null && (kv.over === kv.target || kv.over === kv.full)) throw new Error(`${ch.id}: @transcribe ${toks[0]} 的 over 与 target/full 重复`);
+        attach({ type: 'transcribe', transId: toks[0], caller: kv.caller ?? null, target: kv.target, full: kv.full ?? null, over: kv.over ?? null, note: kv.note ?? null });
       }
       else throw new Error(`${ch.id}: 未知指令 @${cmd}`);
       continue;

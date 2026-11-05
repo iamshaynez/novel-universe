@@ -35,17 +35,22 @@ export function stateOf(ir, run) {
   };
   if (n.type === 'line') return { ...base, kind: 'line', speaker: n.speaker ?? null, text: n.text };
   if (n.type === 'choice') return { ...base, kind: 'choice', options: visibleOptions(run, n).map(o => ({ label: o.label })) };
-  if (n.type === 'transcribe') return { ...base, kind: 'transcribe', id: n.id, tid: n.transId, caller: n.caller ?? null, caller_char: n.callerChar ?? null, target: n.target, misses: run.trMisses[n.transId] ?? 0, options: transcribeOptions(ir, run, n) };
+  if (n.type === 'transcribe') return { ...base, kind: 'transcribe', id: n.id, tid: n.transId, caller: n.caller ?? null, caller_char: n.callerChar ?? null, target: n.target, full: n.full ?? null, over: n.over ?? null, note: n.note ?? null, misses: run.trMisses[n.transId] ?? 0, options: transcribeOptions(ir, run, n) };
   if (n.type === 'ending') return { ...base, kind: 'ending', endingId: n.endingId, title: n.title };
   return { ...base, kind: 'beat' };
 }
 
-/** 转写选项（玩家只做选择题）：正确项 + 至多两条干扰项。
- *  干扰项只取本局已完成转写的历史留言（trLog，最新在前）——绝不引用未读内容，零剧透；
- *  全序按 (seed, tid) 确定性旋转，正确项不恒在首位，同 run 重试选项不跳位。 */
+/** 转写选项（玩家只做手艺三选）：正确项 + 至多两条干扰项。
+ *  干扰项优先用本拍手艺变体——full（呼入原话，贵）与 over（删过头，丢意思），二者都在
+ *  同章上文引语里出现过（溯源 lint 保证），零剧透；不足两条再回填本局已入机的历史留言
+ *  （trLog，最新在前）。全序按 (seed, tid) 确定性旋转，正确项不恒在首位，同 run 重试不跳位。 */
 export function transcribeOptions(ir, run, node) {
   const byTid = new Map(Object.values(ir.nodes).filter(n => n.type === 'transcribe').map(n => [n.transId, n]));
   const pool = [];
+  for (const d of [node.full, node.over]) {
+    if (pool.length >= 2) break;
+    if (d && d !== node.target && !pool.includes(d)) pool.push(d);
+  }
   for (const tid of Object.keys(run.trLog).reverse()) {
     if (pool.length >= 2) break;
     const t = byTid.get(tid)?.target;

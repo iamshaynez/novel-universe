@@ -62,10 +62,16 @@ export function checkSolarTerms(text, year) {
 export function checkTranscribeSource(md) {
   const errs = [];
   const quotes = [...md.matchAll(/「([^」]+)」/g)].map(m => ({ pos: m.index, text: m[1] }));
-  for (const m of md.matchAll(/@transcribe\s+(\S+)[^\n]*?target=([^\s\n]+)/g)) {
-    const [, tid, target] = m;
+  for (const m of md.matchAll(/@transcribe\s+(\S+)[^\n]*?target=([^\s\n]+)(?:[^\n]*?full=([^\s\n]+))?/g)) {
+    const [, tid, target, full] = m;
     const ok = quotes.some(q => q.pos < m.index && transcribeOk(q.text, target));
     if (!ok) errs.push(`转写 ${tid} 的目标「${target}」无法从同章上文的呼入原话按序敲出——接线员转写原话，不改写`);
+    if (full) {
+      // full 是「原话全发」选项：呼入者的完整话轮可以跨多句引语（如罗老三正事+私话两句），
+      // 溯源尺放宽为同章上文引语按序串接；target 仍守单句严尺（入机的必须是那句本身）。
+      const joined = quotes.filter(q => q.pos < m.index).map(q => q.text).join('');
+      if (!transcribeOk(joined, full)) errs.push(`转写 ${tid} 的 full「${full}」无法从同章上文的呼入原话按序敲出——原话选项必须溯源，不得凭空`);
+    }
   }
   return errs;
 }

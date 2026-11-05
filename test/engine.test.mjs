@@ -168,7 +168,7 @@ describe('场景：转写交互（g01）', () => {
     assert.equal(advance(r, g01).nodeId, r.nodeId, 'advance 越过了转写节点');
   });
 
-  it('submitPick（选择题）：首条无历史为单项确认；干扰项只取本局已入机旧留言（零剧透）；miss 后顺序不变', () => {
+  it('submitPick（选择题·手艺三选）：干扰项为本拍原话/删过头（同章溯源，零剧透）或已入机旧留言；miss 后顺序不变', () => {
     assert.ok(g01);
     let r = createRun(g01), guard = 0, seen = 0;
     while (guard++ < 800) {
@@ -180,24 +180,26 @@ describe('场景：转写交互（g01）', () => {
       seen++;
       assert.ok(st.options.includes(st.target), '正确项必须在选项里');
       assert.equal(new Set(st.options).size, st.options.length, '选项不得重复');
+      assert.ok(st.options.length <= 3, '选项至多三个');
       if (seen === 1) {
-        // 首条转写：本局还没有已入机留言，退化为单项确认
-        assert.equal(st.options.length, 1, '首条转写应为单项确认');
-      } else {
-        // 之后每条：干扰项必须全部来自已完成转写的 target（绝不引用未读内容）
-        const done = new Set(Object.values(r.trLog));
-        for (const o of st.options) {
-          if (o !== st.target) assert.ok(done.has(o), `干扰项 "${o}" 不是本局已入机的留言（剧透）`);
-        }
-        // 选错 → 原地计 miss，选项顺序不变；选对 → 点亮 tr.* 并推进
-        const wrongIdx = st.options.findIndex(o => o !== st.target);
-        assert.ok(wrongIdx >= 0, '有历史留言时应出干扰项');
-        const miss = submitPick(r, g01, wrongIdx);
-        assert.equal(miss.nodeId, r.nodeId, '选错不得推进');
-        assert.ok((miss.trMisses[st.tid] ?? 0) >= 1, '选错应计数');
-        assert.deepEqual(stateOf(g01, miss).options, st.options, 'miss 后选项顺序不得跳位');
-        r = miss;
+        // 首条转写（t1 带手艺变体）：无历史也有三选——原话/骨头/删过头
+        assert.equal(st.options.length, 3, '首条转写应为手艺三选');
+        assert.ok(st.options.includes(st.full), '原话选项在场');
+        assert.ok(st.options.includes(st.over), '删过头选项在场');
       }
+      // 零剧透不变式：干扰项要么是本拍手艺变体（同章上文溯源，lint 保证），要么来自已入机留言
+      const done = new Set(Object.values(r.trLog));
+      for (const o of st.options) {
+        if (o !== st.target) assert.ok(o === st.full || o === st.over || done.has(o), `干扰项 "${o}" 越界（剧透）`);
+      }
+      // 选错 → 原地计 miss，选项顺序不变；选对 → 点亮 tr.* 并推进
+      const wrongIdx = st.options.findIndex(o => o !== st.target);
+      assert.ok(wrongIdx >= 0, '应有干扰项');
+      const miss = submitPick(r, g01, wrongIdx);
+      assert.equal(miss.nodeId, r.nodeId, '选错不得推进');
+      assert.ok((miss.trMisses[st.tid] ?? 0) >= 1, '选错应计数');
+      assert.deepEqual(stateOf(g01, miss).options, st.options, 'miss 后选项顺序不得跳位');
+      r = miss;
       r = submitPick(r, g01, st.options.indexOf(st.target));
       assert.ok(r.flags[`tr.${st.tid}`], '选对应点亮 tr.* flag');
       assert.notEqual(r.nodeId, st.id, '选对后应推进');

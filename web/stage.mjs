@@ -335,7 +335,7 @@ export class Stage {
       const c = this._append('choice', '');
       c.innerHTML = `<div class="tr">
         <div class="tr-caller">${misses >= 1 ? `（第 ${misses + 1} 次尝试）` : ''}呼入 · ${this.mark(caller ?? '未知')}${hz ? Stage.waveChip(hz) : ''}</div>
-        <div class="tr-rule">规矩 · 只递话，不问话——照呼入原话入机</div>
+        <div class="tr-rule">手艺 · 按字收费——删到只剩骨头，意思不能丢</div>
       </div>`;
       const els = [];
       const pick = i => {

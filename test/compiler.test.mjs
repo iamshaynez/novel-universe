@@ -101,6 +101,23 @@ describe('编译：呼入者绑定与客串 class（声纹法证数据源）', (
     assert.equal(t2.callerChar, null, '未登记呼入者是刻意无档者：null 不报错');
   });
 
+  it('转写手艺字段：full/over/note 入节点；full=target、over 重复在编译期报错', () => {
+    const g = makeGame({
+      'chapters/ch1.md': '# a\n@bg rooftop\n@transcribe t1 caller=小桃 target=骨头。 full=原话，长的，贵。 over=删。 note=紧一紧\n== ending END_A A\n',
+    });
+    const { ir } = g.compile();
+    const t1 = Object.values(ir.nodes).find(n => n.transId === 't1');
+    assert.equal(t1.full, '原话，长的，贵。');
+    assert.equal(t1.over, '删。');
+    assert.equal(t1.note, '紧一紧');
+    assert.throws(() => makeGame({
+      'chapters/ch1.md': '# a\n@bg rooftop\n@transcribe t1 caller=小桃 target=骨头。 full=骨头。\n== ending END_A A\n',
+    }).compile(), /full 与 target 相同/);
+    assert.throws(() => makeGame({
+      'chapters/ch1.md': '# a\n@bg rooftop\n@transcribe t1 caller=小桃 target=骨头。 over=骨头。\n== ending END_A A\n',
+    }).compile(), /over 与 target\/full 重复/);
+  });
+
   it('canon 摘要块携带人物 class：universe 客串可辨别，缺省为 cast', () => {
     const momo = JSON.parse(readFileSync(join(fixtureUniverse, 'characters/momo.json'), 'utf8'));
     const g = makeGame({

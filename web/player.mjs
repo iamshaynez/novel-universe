@@ -236,7 +236,15 @@ async function renderBeat(s) {
       if (gen !== app.gen) return null;
       const r = await app.runtime.advance(app.saveId, pick);
       queueSync();
-      if (r.state.kind === 'transcribe' && r.state.id === cur.id) { stage.toast('听岔了——再听一遍'); cur = r.state; }
+      if (r.state.kind === 'transcribe' && r.state.id === cur.id) {
+        // 手艺反馈三路：点原话（太贵，t9 为胁迫注记）、点删过头（丢意思）、点旧单（听岔）
+        const picked = (cur.options ?? [cur.target])[pick];
+        const fb = picked === cur.full
+          ? (cur.note ?? '按字收费——原话发出去，哪个遭得住。')
+          : picked === cur.over ? '删多了。有的字删不得。'
+          : '听岔了——这是上一通的。';
+        stage.toast(fb); cur = r.state;
+      }
       // tid 用于底单/flag 追踪；同节点判定用 id
       else { app.sheet.set(cur.tid, { caller: cur.caller, target: cur.target, hz }); return r.state; }
     }

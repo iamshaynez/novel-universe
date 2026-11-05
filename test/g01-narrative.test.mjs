@@ -116,6 +116,22 @@ describe('场景：每条结局路线都结清自己造成的证据状态', () =
     assert.ok(!t9.target.includes('你自己定'), '发出的话不得保留被删掉的选择权');
   });
 
+  it('t9 强制选择：廖的原话作为选项在场，点了被注记驳回，只有紧的入机', () => {
+    const t9 = Object.values(ir.nodes).find(n => n.type === 'transcribe' && n.transId === 't9');
+    assert.equal(t9.full, '老地方，河对岸，等你到十二点。来不来，你自己定。就这样。', '原话必须在选项里');
+    assert.ok((t9.note ?? '').includes('紧一紧'), '点原话的驳回注记必须是那句胁迫');
+    let run = { ...createRun(ir), nodeId: t9.id };
+    let st = stateOf(ir, run);
+    const fi = st.options.indexOf(t9.full);
+    assert.ok(fi >= 0, '原话在选项里');
+    const miss = submitPick(run, ir, fi);
+    assert.equal(miss.nodeId, t9.id, '点原话不得入机');
+    assert.equal(miss.trMisses.t9 ?? 0, 1, '点原话计一次 miss');
+    st = stateOf(ir, miss);
+    const ok = submitPick(miss, ir, st.options.indexOf(t9.target));
+    assert.ok(ok.flags['tr.t9'], '只有紧的那条能点亮入机');
+  });
+
   it('终章对稿钉死差值：原话、发出话、「哪个删的」与十点四十七同场', () => {
     const ch5 = chapter(5);
     assert.match(ch5, /来不来，你自己定/);

@@ -13,8 +13,11 @@
                                沿阅读顺序绝对化（adate）直至改写；stateOf 纯透传
 @fact <事件id>                 触碰正典事件 → 置 flag fact.<id>
 @set <flag名>                  置任意 flag（如剧情门禁 can_indict）
-@transcribe <id> caller=<呼入方> target=<留言>
-                               转写停点（接线员原语，提交语义）
+@transcribe <id> caller=<呼入方> target=<入机留言> [full=<呼入原话>] [over=<删过头>] [note=<点原话注记>]
+                               转写停点（接线员原语，提交语义）。玩家做手艺三选：
+                               正确项=target（骨头）；full=按字收费发不起的原话，over=丢意思的
+                               过度删改——两者都必须能从同章上文引语按序敲出（溯源 lint 保证，
+                               零剧透）；note=玩家点原话被划时的注记（t9 胁迫台词）
 @peak <kind> [args]            峰值拍标记（舞台合同 v1）：折叠到下一停点，
                                kind 词表与预算归 content-lint，编译器保结构与落点
 名字：「台词」                   有主台词；无前缀为旁白
@@ -42,4 +45,5 @@
 ## IR 节点类型
 line / choice / transcribe / jump / ending；enter 指令集：flag、affinity。
 选项守卫 when=flag，隐藏选项不可 choose（引擎抛错）。
-transcribe 节点附 caller/callerChar（呼入者正典绑定，声纹法证数据源）。
+transcribe 节点附 caller/callerChar（呼入者正典绑定，声纹法证数据源）与 full/over/note
+（手艺三选干扰项与注记）；full 与 target 相同、over 与 target/full 重复 → 编译错误。

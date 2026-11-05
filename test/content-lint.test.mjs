@@ -54,6 +54,13 @@ describe('场景：转写溯源（target 须按序来自同章上文引语）', 
     assert.ok(errs.length === 1 && errs[0].includes('t1'), JSON.stringify(errs));
   });
 
+  it('full 原话选项同样溯源：凭空的原话报错', () => {
+    const good = '「呼我儿——降温了哈，被子换成厚的，莫要嘴硬。念你。」\n@transcribe t1 target=降温了，被子换成厚的。念你。 full=降温了哈，被子换成厚的，莫要嘴硬。念你。';
+    assert.deepEqual(checkTranscribeSource(good), []);
+    const bad = '「呼我儿——降温了哈，念你。」\n@transcribe t1 target=降温了，念你。 full=降温了哈，再宽限几天。';
+    assert.ok(checkTranscribeSource(bad).some(e => e.includes('full')), '凭空 full 应报错');
+  });
+
   it('target 出现在 @transcribe 之前的引语才作数（后文不算）', () => {
     const errs = checkTranscribeSource('# s1\n@transcribe t1 caller=测试 target=事后才说的话\n「事后才说的话。」\n');
     assert.ok(errs.length === 1, JSON.stringify(errs));

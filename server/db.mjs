@@ -57,6 +57,17 @@ export function migrationStatus(db, migrationsDir) {
     .map(f => ({ file: f, applied: applied.has(parseInt(f.slice(0, 3), 10)) }));
 }
 
+// ---- 作品发布状态：缺省草稿，只有显式记录为 1 才公开 ----
+export function getGamePublished(db, gameId) {
+  return (db.prepare('SELECT published FROM game_publications WHERE game_id = ?').get(gameId)?.published ?? 0) === 1;
+}
+export function setGamePublished(db, gameId, published) {
+  if (typeof published !== 'boolean') throw new TypeError('published 必须是 boolean');
+  db.prepare(`INSERT INTO game_publications(game_id, published, updated_at) VALUES (?, ?, datetime('now'))
+    ON CONFLICT(game_id) DO UPDATE SET published = excluded.published, updated_at = excluded.updated_at`)
+    .run(gameId, published ? 1 : 0);
+}
+
 // ---- 用户与会话 CRUD ----
 export function createUser(db, username, passwordHash) {
   const r = db.prepare('INSERT INTO users(username, password_hash) VALUES (?, ?)')

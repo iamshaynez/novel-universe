@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadGames, createApp } from '../server/app.mjs';
-import { openDb, migrate, createUser } from '../server/db.mjs';
+import { openDb, migrate, createUser, setGamePublished } from '../server/db.mjs';
 import { syncFor } from '../server/sync.mjs';
 import { LocalRuntime } from '../web/runtime.mjs';
 import { MemoryStore } from '../web/store.mjs';
@@ -347,9 +347,28 @@ describe('双客户端与同步故障', () => {
   });
 });
 
+describe('同步可见性：本机隐藏作品的脏档不阻塞其他游戏', () => {
+  it('客户端只推送当前目录内作品，隐藏档保留待以后恢复', async () => {
+    const store = new MemoryStore();
+    const visible = docFor('visible-dirty', { A: 1 });
+    const hidden = { ...docFor('hidden-dirty', { A: 1 }), gameId: 'g00-hidden' };
+    await store.putSave({ ...visible, dirty: 1 });
+    await store.putSave({ ...hidden, dirty: 1 });
+    let pushedIds = [];
+    const client = new SyncClient({ store, deviceId: 'A', games: [ir.id], post: async (path, body) => {
+      pushedIds = body.push.map(doc => doc.id);
+      return { cursor: 1, results: body.push.map(doc => ({ id: doc.id, status: 'accepted' })), pull: [], collect: {} };
+    } });
+    await client.flush();
+    assert.deepEqual(pushedIds, ['visible-dirty']);
+    assert.equal((await store.getSave('hidden-dirty')).dirty, 1, '隐藏档不得被误标为已同步');
+  });
+});
+
 describe('真实同步接口：注册后才同步，游客不被强迫联网', () => {
   it('注册会话可推送，游客推送被拒绝且不影响本地运行时', async () => {
     const db = openDb(':memory:'); migrate(db, join(root, 'server/migrations'));
+    setGamePublished(db, ir.id, true);
     const server = createApp({ db, games, webDir: join(root, 'web') });
     await new Promise(resolveListen => server.listen(0, resolveListen));
     const base = `http://127.0.0.1:${server.address().port}`;

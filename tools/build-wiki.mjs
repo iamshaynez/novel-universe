@@ -245,7 +245,7 @@ export function buildWikiHtml(universeDir) {
 </div>
 </body>
 </html>
-`;
+`.replace(/[ \t]+$/gm, '');
 }
 
 // 直接运行：写 docs/canon.html 并输出校验和（创作内部产物，不进入公网 web/）

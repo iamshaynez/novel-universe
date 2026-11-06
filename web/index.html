@@ -362,6 +362,14 @@
   #gameList button:hover{background:#f2e8cc;transform:translateY(-2px);box-shadow:0 6px 18px rgba(20,15,8,.25);color:#2e2818}
   #gameList .g-sub{display:block;font-family:var(--sans);font-size:.55em;color:#7c704f;margin-top:.4em;letter-spacing:.2em}
   #gameList .g-hook{display:block;font-family:var(--kai);font-size:.58em;color:#5d543e;margin-top:.55em;letter-spacing:.12em}
+  #gameList .g-draft{display:inline-block;font-family:var(--sans);font-size:.5em;color:#f1d3a0;background:#6b2d24;border-radius:2px;padding:.25em .7em;margin-top:.6em;letter-spacing:.12em}
+  .preview-badge{display:inline-block;margin-top:4px;padding:2px 7px;border:1px solid #b48558;border-radius:2px;color:#f1d3a0;background:rgba(93,39,29,.82);font:10px/1.6 var(--sans);letter-spacing:.16em}
+  .preview-badge[hidden]{display:none}
+  .pub-list{display:flex;flex-direction:column;gap:10px;margin:14px 0;max-height:55vh;overflow:auto}
+  .pub-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px dashed rgba(124,112,79,.4)}
+  .pub-meta{flex:1;min-width:0}.pub-title{font-family:var(--kai);font-size:16px}.pub-state{display:block;margin-top:3px;font-size:11px;color:#7c704f}
+  .pub-row button{flex:none;font-size:12px;padding:7px 10px}
+  .pub-err{min-height:1.5em;color:#9e3a2b;font-size:12px}
   .game-row{display:flex;gap:8px;align-items:stretch;justify-content:center;width:100%}
   .game-main{flex:1;min-width:0}
   #gameList .game-new{font-size:13px;padding:.55em 12px}
@@ -862,6 +870,7 @@
   <div id="hud">
     <div id="hudL">
       <div class="uni" id="worldLabel"></div>
+      <div class="preview-badge" id="previewBadge" hidden>未发布预览 · 仅 admin</div>
       <div class="dt" id="dateLabel"></div>
       <div class="ch" id="chapterLabel"></div>
     </div>
@@ -952,6 +961,18 @@
       </div>
       <button class="ap-switch" id="apSwitch" type="button">已有档案？直接登录</button>
     </form>
+  </dialog>
+
+  <dialog id="publicationPanel" aria-labelledby="pubTitle" tabindex="-1">
+    <div class="ap-paper">
+      <div class="ppgrain"></div>
+      <div class="ap-seal">发</div>
+      <div class="ap-kicker" id="pubTitle">作品管理 · 发布开关</div>
+        <div class="save-note">未发布作品仅 admin 可见；切换后公开目录与离线包立即更新。</div>
+        <div class="pub-list" id="pubList"></div>
+        <div class="pub-err" id="pubErr" role="alert" aria-live="polite"></div>
+        <div class="ap-btns"><button id="pubClose" type="button">完成</button></div>
+    </div>
   </dialog>
 
   <dialog id="fatalBar" aria-labelledby="fatalTitle" aria-describedby="fatalText" tabindex="-1" autofocus>

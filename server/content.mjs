@@ -16,7 +16,8 @@ function filesUnder(dir) {
 export function buildOfflineManifest({ games, webDir, engineDir }) {
   // 壳戳：只随壳/引擎文件字节变化，独立于内容 bundle——SW 注册 URL 与注入体定稿用它，
   // 破 bundle↔注入体的循环依赖；带戳 URL 唯一，CDN/HTTP 缓存层困不住旧壳换新版。
-  const shellFiles = [...filesUnder(webDir).filter(f => f !== join(webDir, 'sw.js')), ...filesUnder(engineDir).filter(f => f.endsWith('.mjs'))];
+  // 壳戳包含 sw.js 模板：缓存策略改变也必须激活新壳；模板中的 bundle 占位符不会造成循环依赖。
+  const shellFiles = [...filesUnder(webDir), ...filesUnder(engineDir).filter(f => f.endsWith('.mjs'))];
   const shellStamp = sha256(shellFiles.map(f => sha256(readFileSync(f))).join('')).slice(0, 16);
   const inject = html => html.replace('<head>',
     `<head><script id="nu-sw-url">window.__NU_SW_URL = "/sw.js?b=${shellStamp}"</script>`);

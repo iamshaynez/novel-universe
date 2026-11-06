@@ -14,7 +14,7 @@ import { syncFor, validDoc } from './sync.mjs';
 import {
   createSave, getSave, listSaves, updateSave, recordEnding, listEndingsByGame, recordCards, listCards,
   createUser, getUserByName, setUserCredentials, createSession, getSessionUser,
-  refreshSession, deleteSession, purgeExpiredSessions,
+  refreshSession, deleteSession, purgeExpiredSessions, getGamePublished, setGamePublished,
 } from './db.mjs';
 import {
   SESSION_COOKIE, SESSION_TTL_SECONDS, newSessionToken, hashPassword, verifyPassword,
@@ -80,8 +80,21 @@ async function readBody(req) {
 }
 
 export function createApp({ db, games, webDir, engineDir = fileURLToPath(new URL('../engine', import.meta.url)) }) {
-  const offline = buildOfflineManifest({ games, webDir, engineDir });
-  const bundle = offline.bundle;
+  const isAdmin = user => user?.username === 'admin';
+  const isPublished = gameId => db ? getGamePublished(db, gameId) : true;
+  const canReadGame = (user, gameId) => !!games[gameId] && (isAdmin(user) || isPublished(gameId));
+  const publishedGames = () => Object.fromEntries(Object.entries(games).filter(([id]) => isPublished(id)));
+  let offline = buildOfflineManifest({ games: publishedGames(), webDir, engineDir });
+  let bundle = offline.bundle;
+  function refreshPublication() {
+    offline = buildOfflineManifest({ games: publishedGames(), webDir, engineDir });
+    bundle = offline.bundle;
+  }
+  function requireGameVisible(req, gameId) {
+    const g = games[gameId];
+    if (!g || !canReadGame(currentUser(req), gameId)) throw httpError(404, `游戏不存在 ${gameId}`);
+    return g;
+  }
   const swTemplate = readFileSync(join(webDir, 'sw.js'), 'utf8');
   async function serveStatic(res, pathname, req, rootDir = webDir) {
     let file = null;
@@ -117,10 +130,10 @@ export function createApp({ db, games, webDir, engineDir = fileURLToPath(new URL
     res.end(data);
   }
 
-  function loadRunOf(saveId, userId) {
+  function loadRunOf(saveId, user) {
     const row = getSave(db, saveId);
-    // 归属不符一律 404：不向他人泄露存档 ID 的存在性
-    if (!row || row.user_id !== userId) throw httpError(404, `存档不存在 ${saveId}`);
+    // 归属与作品可见性不符一律 404：不泄露存档或未发布作品的存在性
+    if (!row || row.user_id !== user.id || !canReadGame(user, row.game_id)) throw httpError(404, `存档不存在 ${saveId}`);
     return { row, run: loadRun(row.run_json) };
   }
   function persist(row, run) {
@@ -130,7 +143,7 @@ export function createApp({ db, games, webDir, engineDir = fileURLToPath(new URL
   }
 
   // ---- 会话（游客优先：me 自动发游客；其余存档操作要求已持有会话）----
-  const publicUser = u => ({ id: u.id, username: u.username, guest: u.password_hash == null });
+  const publicUser = u => ({ id: u.id, username: u.username, guest: u.password_hash == null, admin: isAdmin(u) });
   function currentUser(req) {
     const token = parseCookies(req.headers.cookie)[SESSION_COOKIE];
     if (!token) return null;
@@ -149,6 +162,11 @@ export function createApp({ db, games, webDir, engineDir = fileURLToPath(new URL
   function requireUser(req) {
     const user = currentUser(req);
     if (!user) throw httpError(401, '没有会话，请先访问 /api/auth/me');
+    return user;
+  }
+  function requireAdmin(req) {
+    const user = requireUser(req);
+    if (!isAdmin(user)) throw httpError(403, '只有 admin 可以管理作品发布状态');
     return user;
   }
   function createGuestUser() {
@@ -176,7 +194,11 @@ export function createApp({ db, games, webDir, engineDir = fileURLToPath(new URL
       const body = await readBody(req);
       if (body.protocol !== 1 || typeof body.deviceId !== 'string' || body.deviceId.length > 100) throw httpError(400, '同步协议或设备标识无效');
       if (!Array.isArray(body.push) || body.push.length > 50 || body.push.some(doc => !validDoc(doc))) throw httpError(413, '同步文档过大或格式无效');
-      return json(res, 200, syncFor(db, user.id, body));
+      const requestedGames = new Set([...body.push.map(doc => doc.gameId), ...Object.keys(body.collect && typeof body.collect === 'object' ? body.collect : {})]);
+      for (const gameId of requestedGames) {
+        if (!canReadGame(user, gameId)) throw httpError(404, `游戏不存在 ${gameId}`);
+      }
+      return json(res, 200, syncFor(db, user.id, body, { canReadGame: gameId => canReadGame(user, gameId) }));
     }
 
     // ---- 认证 ----
@@ -195,6 +217,7 @@ export function createApp({ db, games, webDir, engineDir = fileURLToPath(new URL
       const err = credentialError(body);
       if (err) throw httpError(400, err);
       const username = body.username.trim();
+      if (username === 'admin') throw httpError(403, 'admin 由站点管理员受控创建');
       const passwordHash = await hashPassword(body.password);
       if (getUserByName(db, username)) throw httpError(409, '用户名已被占用');
       const cur = currentUser(req);
@@ -227,35 +250,41 @@ export function createApp({ db, games, webDir, engineDir = fileURLToPath(new URL
       return json(res, 200, { ok: true });
     }
 
+    if (req.method === 'PUT' && a === 'games' && b && c === 'published') {
+      requireAdmin(req);
+      if (!games[b]) throw httpError(404, `游戏不存在 ${b}`);
+      const body = await readBody(req);
+      if (typeof body.published !== 'boolean') throw httpError(400, 'published 必须是 boolean');
+      setGamePublished(db, b, body.published);
+      refreshPublication();
+      return json(res, 200, { id: b, published: body.published, bundle });
+    }
     if (req.method === 'GET' && a === 'games' && !b) {
-      return json(res, 200, Object.values(games).map(g => ({
+      const user = currentUser(req);
+      return json(res, 200, Object.values(games).filter(g => canReadGame(user, g.ir.id)).map(g => ({
         id: g.ir.id, code: g.ir.code, title: g.ir.title, subtitle: g.ir.subtitle, hook: g.ir.hook,
-        chapters: g.ir.chapters, endings: g.ir.endings,
+        chapters: g.ir.chapters, endings: g.ir.endings, published: isPublished(g.ir.id),
       })));
     }
     if (req.method === 'GET' && a === 'games' && b && !c) {
-      const g = games[b];
-      if (!g) throw httpError(404, `游戏不存在 ${b}`);
+      const g = requireGameVisible(req, b);
       return json(res, 200, { id: g.ir.id, code: g.ir.code, title: g.ir.title, subtitle: g.ir.subtitle, hook: g.ir.hook,
-        chapters: g.ir.chapters, endings: g.ir.endings, ir: g.ir });
+        chapters: g.ir.chapters, endings: g.ir.endings, published: isPublished(g.ir.id), ir: g.ir });
     }
     if (req.method === 'GET' && a === 'games' && b && c === 'cards') {
       // 图鉴：玩家级已入档键（跨存档），面板据此渲染收集态
-      const g = games[b];
-      if (!g) throw httpError(404, `游戏不存在 ${b}`);
+      const g = requireGameVisible(req, b);
       const user = requireUser(req);
       return json(res, 200, listCards(db, user.id, g.ir.id));
     }
     if (req.method === 'GET' && a === 'games' && b && c === 'endings') {
       // 结局档案：用户 × 游戏级收集（标题页/结局卡回读入口，无需挂靠某个存档）
-      const g = games[b];
-      if (!g) throw httpError(404, `游戏不存在 ${b}`);
+      const g = requireGameVisible(req, b);
       const user = requireUser(req);
       return json(res, 200, listEndingsByGame(db, g.ir.id, user.id));
     }
     if (req.method === 'POST' && a === 'games' && b && c === 'saves') {
-      const g = games[b];
-      if (!g) throw httpError(404, `游戏不存在 ${b}`);
+      const g = requireGameVisible(req, b);
       const user = requireUser(req);
       const body = await readBody(req);
       const run = createRun(g.ir, body.seed ?? Math.floor(Math.random() * 1e9));
@@ -265,18 +294,20 @@ export function createApp({ db, games, webDir, engineDir = fileURLToPath(new URL
     }
     if (req.method === 'GET' && a === 'saves' && !b && query.get('gameId')) {
       const user = requireUser(req);
-      return json(res, 200, listSaves(db, query.get('gameId'), user.id));
+      const gameId = query.get('gameId');
+      if (games[gameId] && !canReadGame(user, gameId)) throw httpError(404, `游戏不存在 ${gameId}`);
+      return json(res, 200, listSaves(db, gameId, user.id));
     }
     if (req.method === 'GET' && a === 'saves' && b && !c) {
       const user = requireUser(req);
-      const { row, run } = loadRunOf(Number(b), user.id);
+      const { row, run } = loadRunOf(Number(b), user);
       const g = games[row.game_id];
       return json(res, 200, { save: { id: row.id, gameId: row.game_id, player: row.player, ended: row.ended, updatedAt: row.updated_at }, run, state: stateOf(g.ir, run) });
     }
     if (req.method === 'POST' && a === 'saves' && b && c === 'advance') {
       const user = requireUser(req);
       const body = await readBody(req);
-      const { row, run } = loadRunOf(Number(b), user.id);
+      const { row, run } = loadRunOf(Number(b), user);
       const g = games[row.game_id];
       // 转写停点：advance 携带 {pick} 走 submitPick（玩家只做选择题）；无 pick 时不推进（幂等重取状态）
       if (stateOf(g.ir, run).kind === 'transcribe') {
@@ -298,7 +329,7 @@ export function createApp({ db, games, webDir, engineDir = fileURLToPath(new URL
       const user = requireUser(req);
       const body = await readBody(req);
       if (!Number.isInteger(body.index)) throw httpError(400, 'index 必须是整数');
-      const { row, run } = loadRunOf(Number(b), user.id);
+      const { row, run } = loadRunOf(Number(b), user);
       const g = games[row.game_id];
       let next;
       try {
@@ -311,7 +342,7 @@ export function createApp({ db, games, webDir, engineDir = fileURLToPath(new URL
     }
     if (req.method === 'GET' && a === 'saves' && b && c === 'endings') {
       const user = requireUser(req);
-      const { row } = loadRunOf(Number(b), user.id);
+      const { row } = loadRunOf(Number(b), user);
       return json(res, 200, listEndingsByGame(db, row.game_id, user.id));
     }
     throw httpError(404, `无此路由 ${req.method} ${pathname}`);

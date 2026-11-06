@@ -45,10 +45,24 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  if (!SHELL.has(pathname) && !pathname.startsWith('/content/') && !pathname.startsWith('/engine/')) return;
+  if (pathname === '/content/catalog.json') {
+    // 发布开关会变：目录在线时永远先回源，离线才退回缓存；旧公开包不得把下架作品送回封面。
+    event.respondWith(
+      fetch(request, { cache: 'no-store' }).then(response => {
+        if (response.ok && response.type === 'basic') {
+          const copy = response.clone();
+          event.waitUntil(caches.open(CACHE).then(cache => cache.put(request, copy)));
+        }
+        return response;
+      }).catch(() => caches.match(request)),
+    );
+    return;
+  }
+
+  if (!SHELL.has(pathname)) return;
   event.respondWith(
     caches.match(request).then(cached => cached || fetch(request).then(response => {
-      if (response.ok && response.type === 'basic') {
+      if (response.ok && response.type === 'basic' && SHELL.has(pathname)) {
         const copy = response.clone();
         event.waitUntil(caches.open(CACHE).then(cache => cache.put(request, copy)));
       }

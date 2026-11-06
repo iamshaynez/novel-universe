@@ -3,7 +3,7 @@ import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { openDb, migrate } from '../server/db.mjs';
+import { openDb, migrate, setGamePublished } from '../server/db.mjs';
 import { loadGames, createApp } from '../server/app.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -13,6 +13,7 @@ before(async () => {
   const db = openDb(':memory:');
   migrate(db, join(root, 'server/migrations'));
   const games = loadGames(join(root, 'test/fixtures/games'), join(root, 'test/fixtures/universe'));
+  setGamePublished(db, 'g00-demo', true);
   const server = createApp({ db, games, webDir: join(root, 'web') });
   await new Promise(r => server.listen(0, r));
   base.url = `http://127.0.0.1:${server.address().port}`;

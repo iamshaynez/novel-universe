@@ -1,0 +1,18 @@
+{
+  "code": "g02",
+  "id": "g02-chuxian",
+  "title": "出线之夜",
+  "subtitle": "锦江悬疑宇宙 · 第二号档案 · 二〇〇一",
+  "hook": "所有人都在看于根伟进球。没有人看见，谁成了凶手。",
+  "set_in": "2001",
+  "canon": ">=1.1 <2",
+  "assumes": [],
+  "player": { "name": "陈拾", "voice_hz": 194 },
+  "chapters": [
+    { "id": "ch1", "title": "开球", "file": "ch1.md" },
+    { "id": "ch2", "title": "一比零", "file": "ch2.md" },
+    { "id": "ch3", "title": "中场", "file": "ch3.md" },
+    { "id": "ch4", "title": "下半场", "file": "ch4.md" },
+    { "id": "ch5", "title": "终场", "file": "ch5.md" }
+  ]
+}

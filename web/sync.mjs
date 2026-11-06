@@ -65,11 +65,13 @@ export class SyncClient {
       try {
         dirty = await this.store.listDirty();
         const collect = {};
+        const visibleGames = new Set(this.games);
         for (const gameId of this.games) collect[gameId] = await this.store.getCollection(gameId);
-        const pushed = new Map(dirty.map(doc => [doc.id, doc.vv]));
+        const pushDocs = dirty.filter(doc => visibleGames.has(doc.gameId));
+        const pushed = new Map(pushDocs.map(doc => [doc.id, doc.vv]));
         const response = await this.post('/api/sync', {
           protocol: 1, deviceId: this.deviceId, cursor: this.cursor,
-          push: dirty.map(publicDoc), collect,
+          push: pushDocs.map(publicDoc), collect,
         });
         for (const result of response.results ?? []) {
           if (result.status === 'accepted') {

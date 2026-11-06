@@ -7,7 +7,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openDb, migrate, migrationStatus, createSave, getSave, updateSave, listSaves, recordEnding, listEndings,
   createUser, getUserByName, setUserCredentials, createSession, getSessionUser, deleteSession, listEndingsByGame,
-  recordCards, listCards } from '../server/db.mjs';
+  recordCards, listCards, getGamePublished, setGamePublished } from '../server/db.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const MIG = join(root, 'server/migrations');
@@ -23,9 +23,11 @@ describe('迁移', () => {
   it('全新库：应用全部迁移并建表', () => {
     db = openDb(dbPath);
     const r = migrate(db, MIG);
-    assert.equal(r.appliedCount, 4);
-    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('saves','endings_seen','users','sessions','cards_seen','sync_docs','sync_heads','collections','schema_migrations') ORDER BY name").all();
-    assert.deepEqual(tables.map(t => t.name), ['cards_seen', 'collections', 'endings_seen', 'saves', 'schema_migrations', 'sessions', 'sync_docs', 'sync_heads', 'users']);
+    assert.equal(r.appliedCount, 5);
+    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('saves','endings_seen','users','sessions','cards_seen','sync_docs','sync_heads','collections','game_publications','schema_migrations') ORDER BY name").all();
+    assert.deepEqual(tables.map(t => t.name), ['cards_seen', 'collections', 'endings_seen', 'game_publications', 'saves', 'schema_migrations', 'sessions', 'sync_docs', 'sync_heads', 'users']);
+    assert.equal(getGamePublished(db, 'g01-jiexianyuan'), true, '既有 g01 升级后必须保持公开');
+    assert.equal(getGamePublished(db, 'g02-future'), false, '没有记录的新作品默认未发布');
     // 002 给存量表加的归属列必须就位
     const cols = db.prepare("SELECT name FROM pragma_table_info('saves') WHERE name = 'user_id'").all();
     assert.equal(cols.length, 1);
@@ -47,6 +49,20 @@ describe('迁移', () => {
     assert.throws(() => migrate(db, badDir), /迁移失败 002-bad/);
     const has = db.prepare("SELECT COUNT(*) c FROM sqlite_master WHERE name='b'").get();
     assert.equal(has.c, 0, '失败迁移的表应被回滚');
+  });
+
+  it('发布状态可切换、持久化且只接受布尔值', () => {
+    db = openDb(dbPath);
+    migrate(db, MIG);
+    assert.equal(getGamePublished(db, 'g02-draft'), false);
+    setGamePublished(db, 'g02-draft', true);
+    assert.equal(getGamePublished(db, 'g02-draft'), true);
+    setGamePublished(db, 'g02-draft', false);
+    assert.equal(getGamePublished(db, 'g02-draft'), false);
+    assert.throws(() => db.prepare("INSERT INTO game_publications(game_id, published) VALUES ('bad', 2)").run(), /CHECK/);
+    db.close();
+    db = openDb(dbPath);
+    assert.equal(getGamePublished(db, 'g02-draft'), false, '重开后设置仍保留');
   });
 
   it('status 能区分 applied/pending', () => {

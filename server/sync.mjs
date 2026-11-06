@@ -31,7 +31,7 @@ function collectionsFor(db, userId, gameIds) {
   return out;
 }
 
-export function syncFor(db, userId, request) {
+export function syncFor(db, userId, request, { canReadGame = () => true } = {}) {
   const cursor = Number.isInteger(request.cursor) && request.cursor >= 0 ? request.cursor : 0;
   const push = Array.isArray(request.push) ? request.push : [];
   const collect = request.collect && typeof request.collect === 'object' ? request.collect : {};
@@ -72,7 +72,8 @@ export function syncFor(db, userId, request) {
         for (const key of keys) stmt.run(userId, gameId, kind, key);
       }
     }
-    const rows = db.prepare('SELECT * FROM sync_docs WHERE user_id = ? AND seq > ? ORDER BY seq LIMIT 201').all(userId, cursor);
+    const rows = db.prepare('SELECT * FROM sync_docs WHERE user_id = ? AND seq > ? ORDER BY seq').all(userId, cursor)
+      .filter(row => canReadGame(row.game_id));
     const more = rows.length > 200;
     const page = rows.slice(0, 200);
     const lastSeq = page.at(-1)?.seq ?? cursor;

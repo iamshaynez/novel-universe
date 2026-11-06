@@ -9,9 +9,13 @@ import { LocalRuntime } from '/runtime.mjs';
 import { openLocalStore } from '/store.mjs';
 import { SyncClient } from '/sync.mjs';
 import { compareSaveDocs, formatSaveTime, resumeSave, saveViewModel } from '/save-view.mjs';
+import { mergeGameCatalog, gameIrRequest } from '/publication.mjs';
+import { endingSceneNodes } from '/ending.mjs';
 
 const $ = s => document.querySelector(s);
-const AUTO = new URLSearchParams(location.search).has('auto');
+const PARAMS = new URLSearchParams(location.search);
+const AUTO = PARAMS.has('auto');
+const AUTO_GAME = PARAMS.get('game');
 const CN = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
 
 const audio = new StageAudio();
@@ -30,6 +34,9 @@ const api = {
   },
   post(path, data, options = {}) {
     return api.j(path, { ...options, method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data ?? {}) });
+  },
+  put(path, data) {
+    return api.j(path, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data ?? {}) });
   },
 };
 
@@ -337,14 +344,16 @@ async function showEnding(s) {
 }
 
 async function loadIr(gameId) {
-  if (app.irByGame.has(gameId)) return app.irByGame.get(gameId);
   const meta = app.catalog.find(g => g.id === gameId);
-  if (!meta) throw new Error(`本地目录没有这部作品 ${gameId}`);
+  const request = gameIrRequest(meta, app.user);
+  if (app.irByGame.has(gameId)) return app.irByGame.get(gameId);
   let ir;
   try {
-    ir = await api.j(meta.irUrl);
-    await app.store.setMeta(`ir:${gameId}`, { irHash: meta.irHash, ir });
+    const payload = await api.j(request.url);
+    ir = request.preview ? payload.ir : payload;
+    if (request.cache) await app.store.setMeta(`ir:${gameId}`, { irHash: meta.irHash, ir });
   } catch (error) {
+    if (request.preview) throw error;
     const cached = await app.store.getMeta(`ir:${gameId}`);
     if (!cached?.ir) throw error;
     ir = cached.ir;
@@ -353,11 +362,27 @@ async function loadIr(gameId) {
   return ir;
 }
 
+async function refreshCatalogForIdentity() {
+  const publicCatalog = await api.j('/content/catalog.json');
+  await app.store.setMeta('catalog', publicCatalog);
+  let next = publicCatalog;
+  if (app.user?.admin) {
+    const allGames = await api.j('/api/games');
+    next = mergeGameCatalog(publicCatalog, allGames, true);
+  }
+  app.catalog = next;
+  app.irByGame.clear();
+  if (app.sync) app.sync.games = app.catalog.map(g => g.id);
+  await renderGameList();
+}
+
 function useRuntime(ir) {
   const meta = app.catalog.find(g => g.id === ir.id);
   app.runtime = new LocalRuntime({ ir, irHash: meta?.irHash ?? null, store: app.store, deviceId: app.deviceId });
   app.ir = ir; app.gameId = ir.id;
   $('#btnRead').hidden = !app.ir.reading;
+  $('#btnSheet').hidden = !Object.values(app.ir.nodes).some(node => node.type === 'transcribe');
+  $('#previewBadge').hidden = !meta?.preview;
   stage.setLexicon(app.ir);
   indexIr();
 }
@@ -616,15 +641,11 @@ $('#btnSheet').onclick = () => {
 
 // ---- 结局档案：已归档回读全文（IR 静态提取，不重跑舞台）；未归档只给暗示 ----
 function endingBody(eid) {
-  let id = app.ir.scenes[eid], out = '', guard = 0;
-  while (id && ++guard < 500) {
-    const n = app.ir.nodes[id];
-    if (!n || n.type === 'ending') break;
-    if (n.type === 'line') out += `<p>${n.speaker ? `<i>${stage.mark(n.speaker)}：</i>` : ''}${stage.mark(n.text)}</p>`;
-    else if (n.type === 'transcribe') out += `<p class="end-tr">【转写】${stage.mark(n.caller ?? '呼入')}：${stage.mark(n.target)}</p>`;
-    id = n.next;
-  }
-  return out;
+  return endingSceneNodes(app.ir, eid).map(n => {
+    if (n.type === 'line') return `<p>${n.speaker ? `<i>${stage.mark(n.speaker)}：</i>` : ''}${stage.mark(n.text)}</p>`;
+    if (n.type === 'transcribe') return `<p class="end-tr">【转写】${stage.mark(n.caller ?? '呼入')}：${stage.mark(n.target)}</p>`;
+    return '';
+  }).join('');
 }
 async function openEnds() {
   if (!app.gameId) { stage.toast('先开始游戏'); return; }
@@ -750,8 +771,10 @@ function renderAuthBar() {
     return;
   }
   const reauth = app.sync?.paused ? '<button id="btnReauth" type="button">重新登录</button>' : '';
-  bar.innerHTML = `<span>档案 · ${escapeHtml(app.user.username)}${syncText}</span>${reauth}<button id="btnLogout" type="button">退出</button>`;
+  const publications = app.user.admin ? '<button id="btnPublications" type="button">作品管理</button>' : '';
+  bar.innerHTML = `<span>档案 · ${escapeHtml(app.user.username)}${syncText}</span>${reauth}${publications}<button id="btnLogout" type="button">退出</button>`;
   if ($('#btnReauth')) $('#btnReauth').onclick = () => openAuth('login');
+  if ($('#btnPublications')) $('#btnPublications').onclick = () => openPublicationPanel();
   $('#btnLogout').onclick = async () => {
     const synced = await app.sync?.flush();
     const dirty = await app.store.listDirty();
@@ -761,6 +784,54 @@ function renderAuthBar() {
     clearLastPlay(); sessionStorage.setItem('nu.reload.cause', 'btnLogout'); location.reload();
   };
 }
+let pubBusy = false;
+let pubReturnFocus = null;
+async function renderPublicationManager() {
+  const list = $('#pubList');
+  const games = await api.j('/api/games');
+  list.replaceChildren();
+  for (const game of games) {
+    const row = document.createElement('div'); row.className = 'pub-row';
+    const meta = document.createElement('div'); meta.className = 'pub-meta';
+    const title = document.createElement('div'); title.className = 'pub-title'; title.textContent = game.title;
+    const state = document.createElement('span'); state.className = 'pub-state';
+    state.textContent = `${game.id} · ${game.published ? '已公开' : '未发布 · 仅 admin 可见'}`;
+    meta.append(title, state);
+    const toggle = document.createElement('button'); toggle.type = 'button';
+    toggle.textContent = game.published ? '取消发布' : '发布作品';
+    toggle.disabled = pubBusy;
+    const change = async () => {
+      if (pubBusy) return;
+      pubBusy = true; $('#pubErr').textContent = '';
+      try {
+        await api.put(`/api/games/${game.id}/published`, { published: !game.published });
+        await refreshCatalogForIdentity();
+        await renderPublicationManager();
+      } catch (error) {
+        $('#pubErr').textContent = error.message;
+      } finally {
+        pubBusy = false;
+        for (const button of list.querySelectorAll('button')) button.disabled = false;
+      }
+    };
+    if (game.published) armConfirm(toggle, change);
+    else toggle.onclick = change;
+    row.append(meta, toggle); list.appendChild(row);
+  }
+}
+async function openPublicationPanel() {
+  if (!app.user?.admin || pubBusy) return;
+  pubReturnFocus = document.activeElement;
+  $('#pubErr').textContent = '';
+  if (!$('#publicationPanel').open) $('#publicationPanel').showModal();
+  try { await renderPublicationManager(); }
+  catch (error) { $('#pubErr').textContent = error.message; }
+}
+$('#pubClose').onclick = () => $('#publicationPanel').close();
+$('#publicationPanel').addEventListener('close', () => {
+  const target = pubReturnFocus; pubReturnFocus = null;
+  if (target?.isConnected) target.focus({ preventScroll: true });
+});
 function clearAuthError() {
   $('#apErr').textContent = '';
   for (const input of [$('#apUser'), $('#apPass')]) input.setAttribute('aria-invalid', 'false');
@@ -833,6 +904,7 @@ $('#authForm').addEventListener('submit', async event => {
     }, { signal: controller.signal });
     if (attempt !== authAttempt) return;
     app.user = r.user;
+    await refreshCatalogForIdentity().catch(error => { stage.toast(`身份已确认，但作品目录刷新失败：${error.message}`); });
     if (app.sync) { app.sync.paused = false; app.sync.init(); }
     notice = mode === 'register' ? `已立档：${r.user.username}，本机进度将同步到远端` : `档案调取：${r.user.username}，正在合并本机与远端进度`;
   } catch (error) {
@@ -953,6 +1025,7 @@ async function tryResume() {
   if (plan.act !== 'resume') return; // 标记保留：封面续读入口仍在，只是不再不问自进
   const doc = await app.store.getSave(marker.saveId);
   if (!doc || doc.deleted || doc.summary?.ended) { clearLastPlay(); return; }
+  if (!app.catalog.some(game => game.id === doc.gameId)) { clearLastPlay(); return; }
   try {
     await loadSave(marker.saveId);
     stage.toast('回到上次的本地停点——可继续离线游玩');
@@ -1005,6 +1078,7 @@ async function renderGameList() {
       const el = document.createElement('span'); el.className = className; el.textContent = text; return el;
     };
     b.append(document.createTextNode(g.title), span('g-sub', g.subtitle ?? ''));
+    if (g.preview) b.appendChild(span('g-draft', '未发布 · 仅管理员可见'));
     if (g.hook) b.appendChild(span('g-hook', g.hook));
     // 续读意图显式化：卡片直接告诉玩家「点这里是从哪续」，选择权在开卷那一刻
     if (last && !AUTO) b.appendChild(span('g-sub', `续读 · ${last.summary?.chapterTitle ?? '进行中'} · 存档 ${String(last.id).slice(0, 8)}`));
@@ -1074,8 +1148,14 @@ async function renderGameList() {
         stage.toast('检测到另一设备的同名进度——本机进度已另存为分支，当前进行继续');
       },
     });
+    const startAutoGame = async () => {
+      if (!AUTO) return;
+      const gameId = AUTO_GAME ?? app.catalog[0]?.id;
+      if (!gameId) { stage.toast('当前没有可公开游玩的作品'); return; }
+      await startGame(gameId).catch(failNote);
+    };
     await renderGameList();
-    if (AUTO) await startGame(app.catalog[0].id);
+    if (!AUTO_GAME) await startAutoGame();
     if (!AUTO) {
       try {
         const cause = sessionStorage.getItem('nu.reload.cause');
@@ -1089,8 +1169,10 @@ async function renderGameList() {
     // 账号查询不阻塞本地 boot；旧游客存档在后台导入本机后才注销旧会话。
     api.j('/api/auth/me').then(async me => {
       app.user = me.user; renderAuthBar();
+      await refreshCatalogForIdentity().catch(error => { stage.toast(`作品目录刷新失败：${error.message}`); });
       if (app.user?.guest) await importLegacyGuest();
       else if (app.user) app.sync.init();
+      if (AUTO_GAME) await startAutoGame();
     }).catch(() => { app.syncStatus = '离线 · 仅本机'; renderAuthBar(); });
   } catch (e) {
     const note = document.createElement('div');

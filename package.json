@@ -12,6 +12,7 @@
     "verify": "node tools/verify.mjs",
     "migrate": "node server/migrate.mjs",
     "migrate:status": "node server/migrate.mjs status",
+    "admin:create": "node server/admin-create.mjs",
     "start": "node server/index.mjs",
     "demo": "node server/index.mjs",
     "new-game": "node tools/new-game.mjs",

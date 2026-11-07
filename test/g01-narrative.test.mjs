@@ -132,13 +132,15 @@ describe('场景：每条结局路线都结清自己造成的证据状态', () =
     assert.ok(ok.flags['tr.t9'], '只有紧的那条能点亮入机');
   });
 
-  it('终章对稿钉死差值：原话、发出话、「哪个删的」与十点四十七同场', () => {
+  it('终章对稿钉死差值：原话、发出话、「哪个删的」与十点四十七同场，三物件仪式各成一拍', () => {
     const ch5 = chapter(5);
     assert.match(ch5, /来不来，你自己定/);
     assert.match(ch5, /哪个删的/);
     assert.match(ch5, /十点四十七/);
     assert.match(ch5, /她穿布鞋，走那种路/);
     assert.match(ch5, /我会水/);
+    assert.match(ch5, /\n.*手抄本.*捻起了毛。\n.*底单.*摊平。.*焐.*\n.*最后铺.*对照纸。\n/);
+    assert.doesNotMatch(chapter(3), /三千块/, '三千块学费借条只属于终章忏悔，不在 R3 提前泄出');
   });
 
   it('E1 上交有凭据；E2 真相交父亲；E3 廖亲述，纸证各自结清', () => {

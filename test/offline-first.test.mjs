@@ -459,6 +459,22 @@ describe('内容包与离线壳', () => {
     } finally { server.close(); }
   });
 
+  it('多站打点 snippet 内联在壳与断网页：DNT 守卫与静默失败必须原样保留', async () => {
+    const server = createApp({ db: null, games, webDir: join(root, 'web') });
+    await new Promise(resolveListen => server.listen(0, resolveListen));
+    const base = `http://127.0.0.1:${server.address().port}`;
+    try {
+      for (const path of ['/', '/offline.html']) {
+        const html = await (await fetch(`${base}${path}`)).text();
+        assert.match(html, /navigator\.doNotTrack === '1'/, `${path} 必须保留 DNT 判断（隐私规矩，禁删）`);
+        assert.match(html, /core\.xiaowenz\.com\/api\/pv/, `${path} 必须上报到 xiaowenz 统计服务`);
+        assert.match(html, /sendBeacon/, `${path} 必须优先 sendBeacon（页面秒关也能发出）`);
+        assert.match(html, /catch\s*\(e\)\s*\{\}/, `${path} 必须静默失败——统计服务挂了不得影响本站`);
+        assert.doesNotMatch(html, /<script[^>]+src="https:\/\/core\.xiaowenz\.com/, `${path} 禁止外链加载统计脚本——内联是刻意的，core 挂了不能卡本站渲染`);
+      }
+    } finally { server.close(); }
+  });
+
   it('版本指纹可自查：/api/version 报 shell 壳戳且 API 响应 no-store', async () => {
     const server = createApp({ db: null, games, webDir: join(root, 'web') });
     await new Promise(resolveListen => server.listen(0, resolveListen));

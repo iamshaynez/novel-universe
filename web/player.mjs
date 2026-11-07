@@ -1062,7 +1062,32 @@ addEventListener('online', () => { if (app.user && !app.user.guest) app.sync?.fl
 // 封面作品卡的展开状态跨重渲染保留：删档重建列表后，摊开的卷宗不弹回折叠。
 const expandedGames = new Set();
 
-/** 一部作品一张卡：身份在上，动作分开——继续上次（最新未完成档）、开新局、历史存档展开。 */
+/** 历史存档展开开关 + 托盘：追查架作品卡与总目行共用同一份实现。
+    「默认展示最新一档」之外的卷才需要展开；冒烟模式一律不渲染。 */
+function buildHistoryTray(g, saves) {
+  const others = AUTO ? 0 : saves.length - (resumeSave(saves) ? 1 : 0);
+  if (others <= 0) return null;
+  const label = open => `历史存档 · ${saves.length} 份 ${open ? '▴' : '▾'}`;
+  const more = document.createElement('button');
+  more.type = 'button'; more.className = 'g-more';
+  more.setAttribute('aria-expanded', 'false');
+  more.textContent = label(false); // 初始折叠态也要有可读文案，toggle 只负责翻转
+  const tray = document.createElement('div');
+  tray.className = 'g-saves'; tray.hidden = true;
+  for (const doc of saves) tray.appendChild(renderSaveRow({ doc, game: g }));
+  const toggle = open => {
+    tray.hidden = !open;
+    more.setAttribute('aria-expanded', String(open));
+    more.textContent = label(open);
+    if (open) expandedGames.add(g.id); else expandedGames.delete(g.id);
+  };
+  more.onclick = () => toggle(tray.hidden);
+  if (expandedGames.has(g.id)) toggle(true);
+  return { more, tray };
+}
+
+/** 追查架作品卡：身份在上，动作分开——继续上次（最新未完成档）、开新局、历史存档展开。
+    勾子不进这张卡：在追的卷不需要再被推销，卖点行留给总目。 */
 function renderGameCard(g, saves) {
   const card = document.createElement('div');
   card.className = 'game-card';
@@ -1074,7 +1099,6 @@ function renderGameCard(g, saves) {
   head.appendChild(span('g-title', g.title));
   if (g.preview) head.appendChild(span('g-draft', '未发布 · 仅管理员可见'));
   if (g.subtitle) head.appendChild(span('g-sub', g.subtitle));
-  if (g.hook) head.appendChild(span('g-hook', g.hook));
   card.appendChild(head);
 
   const actions = document.createElement('div');
@@ -1098,27 +1122,45 @@ function renderGameCard(g, saves) {
   actions.appendChild(c);
   card.appendChild(actions);
 
-  const others = AUTO ? 0 : saves.length - (last ? 1 : 0);
-  if (others > 0) {
-    const label = open => `历史存档 · ${saves.length} 份 ${open ? '▴' : '▾'}`;
-    const more = document.createElement('button');
-    more.type = 'button'; more.className = 'g-more';
-    more.setAttribute('aria-expanded', 'false');
-    more.textContent = label(false); // 初始折叠态也要有可读文案，toggle 只负责翻转
-    const tray = document.createElement('div');
-    tray.className = 'g-saves'; tray.hidden = true;
-    for (const doc of saves) tray.appendChild(renderSaveRow({ doc, game: g }));
-    const toggle = open => {
-      tray.hidden = !open;
-      more.setAttribute('aria-expanded', String(open));
-      more.textContent = label(open);
-      if (open) expandedGames.add(g.id); else expandedGames.delete(g.id);
-    };
-    more.onclick = () => toggle(tray.hidden);
-    if (expandedGames.has(g.id)) toggle(true);
-    card.append(more, tray);
-  }
+  const hist = buildHistoryTray(g, saves);
+  if (hist) card.append(hist.more, hist.tray);
   return card;
+}
+
+/** 总目行：一行一卷——卷名 + 一句勾子，动作收成右侧显式小钮。十部作品也是一份可扫的索引。 */
+function renderCatalogRow(g, saves) {
+  const wrap = document.createElement('div');
+  wrap.className = 'cat-item';
+  const row = document.createElement('div');
+  row.className = 'cat-row';
+  const span = (className, text) => {
+    const el = document.createElement('span'); el.className = className; el.textContent = text; return el;
+  };
+  const info = document.createElement('div');
+  info.className = 'cat-info';
+  info.appendChild(span('cat-title', g.title));
+  if (g.preview) info.appendChild(span('g-draft', '未发布 · 仅管理员可见'));
+  if (g.hook) info.appendChild(span('cat-hook', g.hook));
+  row.appendChild(info);
+
+  const actions = document.createElement('div');
+  actions.className = 'cat-actions';
+  // 总目只收没有未完成档的卷：有档即通关档——状态与历史展开都挂在这一行（开关与托盘同源，只建一次）
+  const hist = buildHistoryTray(g, saves);
+  if (hist) {
+    actions.appendChild(span('cat-state', saves.some(doc => doc.summary?.ended) ? '已通关' : `${saves.length} 份存档`));
+    actions.appendChild(hist.more);
+  }
+  const open = document.createElement('button');
+  open.type = 'button'; open.className = 'g-mini';
+  open.textContent = hist ? '开新局' : '开卷';
+  open.onclick = () => startGame(g.id).catch(failNote);
+  actions.appendChild(open);
+  row.appendChild(actions);
+  wrap.appendChild(row);
+
+  if (hist) wrap.appendChild(hist.tray);
+  return wrap;
 }
 
 let gameListEpoch = 0;
@@ -1128,10 +1170,31 @@ async function renderGameList() {
   if (epoch !== gameListEpoch || $('#title').style.display === 'none') return;
   const list = $('#gameList');
   list.replaceChildren();
+  // 两架分区：灯下（有未完成档，最近活动优先）与架上总目（其余，按目录编号）——
+  // 卷宗摊开在灯下就不在架上；作品再多，封面重量恒定。
   let total = 0;
+  const shelf = [];
+  const rest = [];
   for (const { game: g, saves } of rows) {
     total += saves.length;
-    list.appendChild(renderGameCard(g, saves));
+    if (!AUTO && resumeSave(saves)) shelf.push({ game: g, saves, last: resumeSave(saves) });
+    else rest.push({ game: g, saves });
+  }
+  shelf.sort((a, b) => compareSaveDocs(a.last, b.last));
+  const box = className => {
+    const el = document.createElement('div'); el.className = className; return el;
+  };
+  if (shelf.length) {
+    list.appendChild(box('shelf-h')).textContent = `正在追查 · ${shelf.length}`;
+    const cards = box('shelf');
+    for (const { game: g, saves } of shelf) cards.appendChild(renderGameCard(g, saves));
+    list.appendChild(cards);
+  }
+  if (rest.length) {
+    list.appendChild(box('shelf-h')).textContent = `案卷总目 · ${rest.length}`;
+    const cats = box('cat-list');
+    for (const { game: g, saves } of rest) cats.appendChild(renderCatalogRow(g, saves));
+    list.appendChild(cats);
   }
   $('#saveCount').textContent = total ? `共 ${total} 份 · 含已通关与分支` : '还没有存档 · 点作品开始';
   $('#btnAllSaves').disabled = false;

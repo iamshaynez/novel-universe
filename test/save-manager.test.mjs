@@ -83,7 +83,7 @@ describe('封面作品卡：新开与继续分开，历史可展开', () => {
     const src = await player();
     const start = src.indexOf('function renderGameCard');
     assert.ok(start >= 0, '封面必须有 renderGameCard 作品卡渲染');
-    return src.slice(start, src.indexOf('async function renderGameList', start));
+    return src.slice(start, src.indexOf('function renderCatalogRow', start));
   };
 
   it('每部作品卡都有两个互不吞并的动作：继续上次、开新局——不再靠一张大按钮猜语义', async () => {
@@ -103,17 +103,48 @@ describe('封面作品卡：新开与继续分开，历史可展开', () => {
     assert.match(card, /formatSaveTimeShort\(last\)/);
   });
 
-  it('历史存档默认折叠为展开开关，展开区复用与全部存档面板同一套存档行；删档后展开状态不弹回', async () => {
-    const card = await cardSrc();
-    assert.match(card, /'g-more'/);
-    assert.match(card, /aria-expanded/);
-    assert.match(card, /renderSaveRow\(\{ doc, game: g \}\)/, '展开区与存档面板共用同一行渲染，行为一致');
-    assert.match(card, /expandedGames/, '展开状态必须跨重渲染保留');
-  });
-
   it('冒烟模式封面保持干净：不渲染续读信息与历史展开，只留开新局', async () => {
     const card = await cardSrc();
     assert.match(card, /AUTO \? null : resumeSave\(saves\)/);
-    assert.match(card, /AUTO \? 0 : saves\.length - \(last \? 1 : 0\)/);
+  });
+});
+
+describe('封面两架分区：十部作品也不膨胀', () => {
+  const section = async (name, end) => {
+    const src = await player();
+    const start = src.indexOf(name);
+    assert.ok(start >= 0, `封面必须有 ${name}`);
+    return src.slice(start, src.indexOf(end, start));
+  };
+
+  it('有未完成档的作品上「正在追查」架并按最近活动排序，其余进「案卷总目」——灯下的卷不重复上架', async () => {
+    const list = await section('async function renderGameList', '// ---- 启动');
+    assert.match(list, /正在追查 · /);
+    assert.match(list, /案卷总目 · /);
+    assert.match(list, /resumeSave\(saves\)/, '分组口径必须与续读一致：有未完成档才上追查架');
+    assert.match(list, /compareSaveDocs/, '追查架按最近活动排序');
+    const before = list.slice(0, list.indexOf('案卷总目 · '));
+    assert.match(before, /renderGameCard/, '追查架用富作品卡');
+    assert.doesNotMatch(before, /renderCatalogRow/, '追查架不混总目行');
+  });
+
+  it('总目行：一行一卷（卷名 + 一句勾子），动作是右侧显式小钮，通关档可就地展开', async () => {
+    const row = await section('function renderCatalogRow', 'function buildHistoryTray');
+    assert.match(row, /'cat-title'/);
+    assert.match(row, /'cat-hook'/, '勾子是未开卷作品的唯一卖点行，保持一行');
+    assert.match(row, /'g-mini'/);
+    assert.match(row, /'开卷'/);
+    assert.match(row, /'已通关'/, '只剩通关档的卷标状态，历史档从行内展开');
+    assert.match(row, /buildHistoryTray\(g, saves\)/, '历史展开与作品卡共用同一实现');
+    assert.doesNotMatch(row, /'g-btn g-resume'/, '总目行没有续读——有未完成档的卷根本不进总目');
+  });
+
+  it('历史存档展开开关是作品卡与总目行共用的一份实现，展开状态跨重渲染保留', async () => {
+    const tray = await section('function buildHistoryTray', 'async function renderGameList');
+    assert.match(tray, /'g-more'/);
+    assert.match(tray, /aria-expanded/);
+    assert.match(tray, /renderSaveRow\(\{ doc, game: g \}\)/, '展开区与存档面板共用同一行渲染，行为一致');
+    assert.match(tray, /expandedGames/, '展开状态必须跨重渲染保留');
+    assert.match(tray, /AUTO \? 0 : saves\.length - \(resumeSave\(saves\) \? 1 : 0\)/, '冒烟模式不渲染历史展开');
   });
 });

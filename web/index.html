@@ -369,7 +369,6 @@
   .g-head{min-width:0}
   .g-title{font-family:var(--kai);font-size:clamp(17px,2.6vh,23px);font-weight:700;letter-spacing:.2em;color:#2e2818}
   .g-sub{display:block;font-family:var(--sans);font-size:12px;color:#7c704f;margin-top:.35em;letter-spacing:.18em}
-  .g-hook{display:block;font-family:var(--kai);font-size:13px;color:#5d543e;margin-top:.5em;letter-spacing:.1em;line-height:1.75}
   .g-draft{display:inline-block;font-family:var(--sans);font-size:11px;color:#f1d3a0;background:#6b2d24;border-radius:2px;padding:.2em .65em;margin-left:.7em;letter-spacing:.12em;vertical-align:3px}
   .g-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:stretch}
   #gameList .g-btn{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:.15em;min-width:0;
@@ -389,6 +388,27 @@
   #gameList .g-more[aria-expanded="true"]{border-style:solid;border-color:var(--blood);color:var(--blood)}
   .g-saves{display:flex;flex-direction:column;border-top:1px dashed rgba(124,112,79,.4);padding-top:2px}
   .g-saves[hidden]{display:none} /* display:flex 会盖掉 UA 的 [hidden]，必须显式收回 */
+  /* 两架分区：灯下（正在追查）与架上（案卷总目）——作品数量增长时封面重量恒定 */
+  .shelf-h{display:flex;align-items:center;gap:1em;font-family:var(--kai);font-size:12px;
+    color:#9e3a2b;letter-spacing:.38em;margin-top:2px}
+  .shelf-h::after{content:"";flex:1;height:1px;
+    background:linear-gradient(90deg,rgba(158,58,43,.32),transparent)}
+  .shelf{display:flex;flex-direction:column;gap:12px}
+  .cat-list{display:flex;flex-direction:column}
+  /* 总目行：一行一卷的档案索引线——卷名 + 一句勾子，动作收成右侧显式小钮 */
+  .cat-item{display:flex;flex-direction:column;gap:.45em}
+  .cat-row{display:flex;align-items:center;gap:10px;padding:.55em 2px;
+    border-bottom:1px dashed rgba(124,112,79,.35)}
+  .cat-info{flex:1;min-width:0}
+  .cat-title{font-family:var(--kai);font-size:clamp(15px,2.1vh,19px);font-weight:700;letter-spacing:.18em;color:#2e2818}
+  .cat-hook{display:block;font-family:var(--kai);font-size:12px;color:#8a7f60;letter-spacing:.08em;
+    margin-top:.3em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cat-actions{flex:none;display:flex;gap:6px;align-items:center}
+  .cat-state{font-family:var(--sans);font-size:10.5px;color:#7c704f;letter-spacing:.16em;white-space:nowrap}
+  #gameList .g-mini{background:#f2e8cc;border:1px solid #a8946a;border-radius:2px;color:#2e2818;
+    padding:.45em .95em;font-size:12.5px;font-family:var(--kai);letter-spacing:.18em;cursor:pointer;
+    transition:transform .2s,background .2s,box-shadow .2s}
+  #gameList .g-mini:hover{background:#fbf3dc;transform:translateY(-1px);box-shadow:0 4px 14px rgba(20,15,8,.22)}
   .preview-badge{display:inline-block;margin-top:4px;padding:2px 7px;border:1px solid #b48558;border-radius:2px;color:#f1d3a0;background:rgba(93,39,29,.82);font:10px/1.6 var(--sans);letter-spacing:.16em}
   .preview-badge[hidden]{display:none}
   .pub-list{display:flex;flex-direction:column;gap:10px;margin:14px 0;max-height:55vh;overflow:auto}
@@ -821,6 +841,7 @@
     .t-kicker{max-width:82%;text-align:center;line-height:1.8;letter-spacing:.3em}
     .g-actions{flex-direction:column;align-items:stretch}
     .game-card{gap:.6em}
+    .cat-hook{display:none} /* 窄屏总目只留卷名与动作，索引保持一行一卷 */
     .t-auth,.t-install{flex-direction:column;gap:5px;text-align:center}
     #stage .sidepanel{top:calc(8px + var(--safe-top));right:calc(8px + var(--safe-right));left:calc(8px + var(--safe-left));
       width:auto;max-height:calc(var(--visual-height,100dvh) - var(--safe-top) - var(--safe-bottom) - 16px)}

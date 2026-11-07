@@ -28,6 +28,14 @@ export function formatSaveTime(doc) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }
 
+// 作品卡上的紧凑时刻：与全量口径同源，只截去年份与秒——卡片空间里一眼读出「多久之前」。
+export function formatSaveTimeShort(doc) {
+  const timestamp = saveTimestamp(doc);
+  if (timestamp === null) return '时间未知';
+  const date = new Date(timestamp), pad = value => String(value).padStart(2, '0');
+  return `${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 export function resumeSave(saves) {
   return [...saves].sort(compareSaveDocs).find(doc => !doc.deleted && !doc.summary?.ended) ?? null;
 }

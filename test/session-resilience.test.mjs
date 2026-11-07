@@ -116,9 +116,10 @@ describe('播放器离线接线合同', () => {
     assert.doesNotMatch(src, /async function reconnect\(/);
   });
 
-  it('存档不膨胀：封面卡片优先续读未完成档，开新局必须是显式动作；冲突分叉重定向活动局', async () => {
+  it('存档不膨胀：封面续读与新开是两个显式动作，开新局不藏在续读后面；冲突分叉重定向活动局', async () => {
     const src = await player();
-    assert.match(src, /b\.onclick = \(\) => \(last && !AUTO\) \? loadSave\(last\.id\)/, '卡片点击优先续读未完成存档');
+    assert.match(src, /b\.onclick = \(\) => loadSave\(last\.id\)/, '继续上次直达最新未完成存档');
+    assert.match(src, /c\.onclick = \(\) => startGame\(g\.id\)/, '开新局是独立显式动作，绝不与续读混在同一张卡');
     assert.match(src, /开新局/, '存在未完成档时提供显式开新局入口');
     assert.match(src, /onFork/, '同步冲突分叉必须回调播放器');
     assert.match(src, /app\.saveId = fork\.id/, '活动局改走分叉谱系：不读到被顶替的主线');

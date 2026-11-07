@@ -8,7 +8,7 @@ import { codeOf, sentinelAction, updatePlan, resumePlan, manualUpdatePlan } from
 import { LocalRuntime } from '/runtime.mjs';
 import { openLocalStore } from '/store.mjs';
 import { SyncClient } from '/sync.mjs';
-import { compareSaveDocs, formatSaveTime, resumeSave, saveViewModel } from '/save-view.mjs';
+import { compareSaveDocs, formatSaveTime, formatSaveTimeShort, resumeSave, saveViewModel } from '/save-view.mjs';
 import { mergeGameCatalog, gameIrRequest } from '/publication.mjs';
 import { endingSceneNodes } from '/ending.mjs';
 
@@ -1059,6 +1059,68 @@ async function importLegacyGuest() {
 setInterval(() => { if (document.visibilityState === 'visible' && app.user && !app.user.guest) app.sync?.flush(); }, 60000);
 addEventListener('online', () => { if (app.user && !app.user.guest) app.sync?.flush(); });
 
+// 封面作品卡的展开状态跨重渲染保留：删档重建列表后，摊开的卷宗不弹回折叠。
+const expandedGames = new Set();
+
+/** 一部作品一张卡：身份在上，动作分开——继续上次（最新未完成档）、开新局、历史存档展开。 */
+function renderGameCard(g, saves) {
+  const card = document.createElement('div');
+  card.className = 'game-card';
+  const span = (className, text) => {
+    const el = document.createElement('span'); el.className = className; el.textContent = text; return el;
+  };
+  const head = document.createElement('div');
+  head.className = 'g-head';
+  head.appendChild(span('g-title', g.title));
+  if (g.preview) head.appendChild(span('g-draft', '未发布 · 仅管理员可见'));
+  if (g.subtitle) head.appendChild(span('g-sub', g.subtitle));
+  if (g.hook) head.appendChild(span('g-hook', g.hook));
+  card.appendChild(head);
+
+  const actions = document.createElement('div');
+  actions.className = 'g-actions';
+  const last = AUTO ? null : resumeSave(saves);
+  if (last) {
+    // 继续上次：默认接上最新一个未完成存档——续读不再藏在标题按钮的语义里
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'g-btn g-resume';
+    b.append(
+      span('b-main', '继续上次'),
+      span('b-sub', `${last.summary?.chapterTitle ?? '进行中'} · 最后保存 ${formatSaveTimeShort(last)}`),
+    );
+    b.onclick = () => loadSave(last.id).catch(failNote);
+    actions.appendChild(b);
+  }
+  const c = document.createElement('button');
+  c.type = 'button'; c.className = 'g-btn g-new';
+  c.append(span('b-main', '开新局'));
+  c.onclick = () => startGame(g.id).catch(failNote);
+  actions.appendChild(c);
+  card.appendChild(actions);
+
+  const others = AUTO ? 0 : saves.length - (last ? 1 : 0);
+  if (others > 0) {
+    const label = open => `历史存档 · ${saves.length} 份 ${open ? '▴' : '▾'}`;
+    const more = document.createElement('button');
+    more.type = 'button'; more.className = 'g-more';
+    more.setAttribute('aria-expanded', 'false');
+    more.textContent = label(false); // 初始折叠态也要有可读文案，toggle 只负责翻转
+    const tray = document.createElement('div');
+    tray.className = 'g-saves'; tray.hidden = true;
+    for (const doc of saves) tray.appendChild(renderSaveRow({ doc, game: g }));
+    const toggle = open => {
+      tray.hidden = !open;
+      more.setAttribute('aria-expanded', String(open));
+      more.textContent = label(open);
+      if (open) expandedGames.add(g.id); else expandedGames.delete(g.id);
+    };
+    more.onclick = () => toggle(tray.hidden);
+    if (expandedGames.has(g.id)) toggle(true);
+    card.append(more, tray);
+  }
+  return card;
+}
+
 let gameListEpoch = 0;
 async function renderGameList() {
   const epoch = ++gameListEpoch;
@@ -1069,32 +1131,7 @@ async function renderGameList() {
   let total = 0;
   for (const { game: g, saves } of rows) {
     total += saves.length;
-    const row = document.createElement('div');
-    row.className = 'game-row';
-    const b = document.createElement('button');
-    b.type = 'button'; b.className = 'game-main';
-    const last = resumeSave(saves);
-    const span = (className, text) => {
-      const el = document.createElement('span'); el.className = className; el.textContent = text; return el;
-    };
-    b.append(document.createTextNode(g.title), span('g-sub', g.subtitle ?? ''));
-    if (g.preview) b.appendChild(span('g-draft', '未发布 · 仅管理员可见'));
-    if (g.hook) b.appendChild(span('g-hook', g.hook));
-    // 续读意图显式化：卡片直接告诉玩家「点这里是从哪续」，选择权在开卷那一刻
-    if (last && !AUTO) b.appendChild(span('g-sub', `续读 · ${last.summary?.chapterTitle ?? '进行中'} · 存档 ${String(last.id).slice(0, 8)}`));
-    else if (saves.length) b.appendChild(span('g-sub', `已有 ${saves.length} 份存档 · 可从全部存档选择`));
-    const timeSource = last ?? saves[0];
-    if (timeSource && !AUTO) b.appendChild(span('g-time', `最后保存 ${formatSaveTime(timeSource)}`));
-    b.onclick = () => (last && !AUTO) ? loadSave(last.id).catch(failNote) : startGame(g.id).catch(failNote);
-    row.appendChild(b);
-    if (last && !AUTO) {
-      // 存档不膨胀：卡片点击优先续读未完成档；开新局必须是显式动作。
-      const c = document.createElement('button');
-      c.type = 'button'; c.className = 'game-new'; c.textContent = '开新局';
-      c.onclick = () => startGame(g.id).catch(failNote);
-      row.appendChild(c);
-    }
-    list.appendChild(row);
+    list.appendChild(renderGameCard(g, saves));
   }
   $('#saveCount').textContent = total ? `共 ${total} 份 · 含已通关与分支` : '还没有存档 · 点作品开始';
   $('#btnAllSaves').disabled = false;
@@ -1179,7 +1216,7 @@ async function renderGameList() {
     note.style.cssText = 'text-align:center;color:var(--ink-dim);font-size:13px;line-height:2.4';
     note.textContent = `本地开卷失败：${e.message}——请使用支持本地存档的浏览器`;
     const retry = document.createElement('button');
-    retry.textContent = '重新开卷'; retry.onclick = () => location.reload();
+    retry.textContent = '重新开卷'; retry.className = 'g-retry'; retry.onclick = () => location.reload();
     note.appendChild(retry); $('#gameList').appendChild(note);
   }
 })();

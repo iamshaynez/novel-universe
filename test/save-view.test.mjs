@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { MemoryStore } from '../web/store.mjs';
 import { LocalRuntime } from '../web/runtime.mjs';
 import { SyncClient } from '../web/sync.mjs';
-import { parseSaveTime, saveTimestamp, compareSaveDocs, formatSaveTime, resumeSave, saveViewModel } from '../web/save-view.mjs';
+import { parseSaveTime, saveTimestamp, compareSaveDocs, formatSaveTime, formatSaveTimeShort, resumeSave, saveViewModel } from '../web/save-view.mjs';
 
 describe('存档时间戳：不同年代的数据都用同一口径', () => {
   it('标准 ISO 与旧 SQLite UTC 文本都按真实时刻解析', () => {
@@ -28,6 +28,14 @@ describe('存档时间戳：不同年代的数据都用同一口径', () => {
     const unknown = { id: 'unknown' };
     assert.deepEqual([iso, unknown, sqlite].sort(compareSaveDocs).map(d => d.id), ['sqlite', 'iso', 'unknown']);
     assert.deepEqual([{ id: 'b' }, { id: 'a' }].sort(compareSaveDocs).map(d => d.id), ['a', 'b']);
+  });
+
+  it('作品卡用紧凑时刻（月-日 时:分），坏数据同样退回「时间未知」', () => {
+    const doc = { updatedAt: '2026-11-04T08:30:00.000Z' };
+    assert.equal(formatSaveTimeShort(doc), formatSaveTime(doc).slice(5, 16), '与全量时间同口径，只截去年份与秒');
+    assert.match(formatSaveTimeShort(doc), /^\d{2}-\d{2} \d{2}:\d{2}$/);
+    assert.equal(formatSaveTimeShort({ updatedAt: '坏数据' }), '时间未知');
+    assert.equal(formatSaveTimeShort(null), '时间未知');
   });
 
   it('MemoryStore 同样按归一化时刻排序并排除墓碑', async () => {

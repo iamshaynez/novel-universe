@@ -65,9 +65,9 @@ describe('全部存档入口与游戏内选档共用一份真实数据', () => {
 
   it('封面存档字段不经过 innerHTML，离线删除不读 IR，取数失败会撤销遮罩', async () => {
     const src = await player();
-    const renderStart = src.indexOf('async function renderGameList');
+    const renderStart = src.indexOf('function renderGameCard');
     const render = src.slice(renderStart, src.indexOf('// ---- 启动', renderStart));
-    assert.doesNotMatch(render, /b\.innerHTML/);
+    assert.doesNotMatch(render, /\.innerHTML/);
     const removeStart = src.indexOf('async function removeSaveDocument');
     const remove = src.slice(removeStart, src.indexOf('function renderSaveRow', removeStart));
     assert.doesNotMatch(remove, /loadIr/);
@@ -75,5 +75,45 @@ describe('全部存档入口与游戏内选档共用一份真实数据', () => {
     const openStart = src.indexOf('async function openSaves');
     const open = src.slice(openStart, src.indexOf('let readReturnFocus', openStart));
     assert.match(open, /catch \(error\) \{\s*if \(epoch === saveListEpoch\) \{\s*closePanels\(\);/);
+  });
+});
+
+describe('封面作品卡：新开与继续分开，历史可展开', () => {
+  const cardSrc = async () => {
+    const src = await player();
+    const start = src.indexOf('function renderGameCard');
+    assert.ok(start >= 0, '封面必须有 renderGameCard 作品卡渲染');
+    return src.slice(start, src.indexOf('async function renderGameList', start));
+  };
+
+  it('每部作品卡都有两个互不吞并的动作：继续上次、开新局——不再靠一张大按钮猜语义', async () => {
+    const card = await cardSrc();
+    assert.match(card, /className = 'g-btn g-resume'/);
+    assert.match(card, /className = 'g-btn g-new'/);
+    assert.match(card, /'继续上次'/);
+    assert.match(card, /'开新局'/);
+    assert.match(card, /b\.onclick = \(\) => loadSave\(last\.id\)/, '继续上次直达最新未完成存档');
+    assert.match(card, /c\.onclick = \(\) => startGame\(g\.id\)/, '开新局是永远独立的显式动作');
+  });
+
+  it('继续上次默认展示最新一个未完成存档：章节与最后保存时间，一眼知道接上的是哪段', async () => {
+    const card = await cardSrc();
+    assert.match(card, /resumeSave\(saves\)/, '续读目标必须走统一口径：最新未完成档');
+    assert.match(card, /last\.summary\?\.chapterTitle/);
+    assert.match(card, /formatSaveTimeShort\(last\)/);
+  });
+
+  it('历史存档默认折叠为展开开关，展开区复用与全部存档面板同一套存档行；删档后展开状态不弹回', async () => {
+    const card = await cardSrc();
+    assert.match(card, /'g-more'/);
+    assert.match(card, /aria-expanded/);
+    assert.match(card, /renderSaveRow\(\{ doc, game: g \}\)/, '展开区与存档面板共用同一行渲染，行为一致');
+    assert.match(card, /expandedGames/, '展开状态必须跨重渲染保留');
+  });
+
+  it('冒烟模式封面保持干净：不渲染续读信息与历史展开，只留开新局', async () => {
+    const card = await cardSrc();
+    assert.match(card, /AUTO \? null : resumeSave\(saves\)/);
+    assert.match(card, /AUTO \? 0 : saves\.length - \(last \? 1 : 0\)/);
   });
 });

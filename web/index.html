@@ -354,15 +354,41 @@
   .t-rule span{display:flex;align-items:center;justify-content:center;
     width:24px;height:24px;border:1px solid var(--blood);border-radius:2px;
     font-family:var(--kai);font-size:15px;transform:rotate(-4deg)}
-  #gameList{display:flex;flex-direction:column;gap:12px;margin-top:1vh;width:100%}
-  #gameList button{background:rgba(255,252,242,.4);border:1px solid #b3a179;border-left:3px solid var(--blood);
+  #gameList{display:flex;flex-direction:column;gap:14px;margin-top:1vh;width:100%}
+  /* 兜底按钮样式只给开卷失败的「重新开卷」；作品卡动作按钮用 .g-btn 系列，
+     历史存档托盘复用 .save 行——不得让兜底大按钮样式漏进托盘 */
+  #gameList .g-retry{background:rgba(255,252,242,.4);border:1px solid #b3a179;border-left:3px solid var(--blood);
     border-radius:2px;color:#2e2818;padding:.8em clamp(12px,3em,48px);font-size:clamp(14px,2.2vh,21px);cursor:pointer;
     letter-spacing:.14em;font-family:var(--kai);
     transition:transform .2s,background .2s,box-shadow .2s}
-  #gameList button:hover{background:#f2e8cc;transform:translateY(-2px);box-shadow:0 6px 18px rgba(20,15,8,.25);color:#2e2818}
-  #gameList .g-sub{display:block;font-family:var(--sans);font-size:.55em;color:#7c704f;margin-top:.4em;letter-spacing:.2em}
-  #gameList .g-hook{display:block;font-family:var(--kai);font-size:.58em;color:#5d543e;margin-top:.55em;letter-spacing:.12em}
-  #gameList .g-draft{display:inline-block;font-family:var(--sans);font-size:.5em;color:#f1d3a0;background:#6b2d24;border-radius:2px;padding:.25em .7em;margin-top:.6em;letter-spacing:.12em}
+  #gameList .g-retry:hover{background:#f2e8cc;transform:translateY(-2px);box-shadow:0 6px 18px rgba(20,15,8,.25);color:#2e2818}
+  /* 作品卡：一部作品一张卡——卷宗抬头在上，动作分成明确的几枚按钮，不再靠一张大按钮猜语义 */
+  .game-card{display:flex;flex-direction:column;gap:.75em;width:100%;
+    background:rgba(255,252,242,.4);border:1px solid #b3a179;border-left:3px solid var(--blood);
+    border-radius:2px;padding:.85em clamp(12px,2.6em,30px)}
+  .g-head{min-width:0}
+  .g-title{font-family:var(--kai);font-size:clamp(17px,2.6vh,23px);font-weight:700;letter-spacing:.2em;color:#2e2818}
+  .g-sub{display:block;font-family:var(--sans);font-size:12px;color:#7c704f;margin-top:.35em;letter-spacing:.18em}
+  .g-hook{display:block;font-family:var(--kai);font-size:13px;color:#5d543e;margin-top:.5em;letter-spacing:.1em;line-height:1.75}
+  .g-draft{display:inline-block;font-family:var(--sans);font-size:11px;color:#f1d3a0;background:#6b2d24;border-radius:2px;padding:.2em .65em;margin-left:.7em;letter-spacing:.12em;vertical-align:3px}
+  .g-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:stretch}
+  #gameList .g-btn{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:.15em;min-width:0;
+    background:#f2e8cc;border:1px solid #a8946a;border-radius:2px;color:#2e2818;
+    padding:.5em 1.1em;font-family:var(--kai);font-size:clamp(13px,1.9vh,17px);letter-spacing:.14em;
+    transition:transform .2s,background .2s,box-shadow .2s}
+  #gameList .g-btn:hover{background:#fbf3dc;transform:translateY(-1px);box-shadow:0 4px 14px rgba(20,15,8,.22)}
+  .g-btn .b-main{display:block}
+  .g-btn .b-sub{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    font-family:var(--sans);font-size:10.5px;color:#7c704f;letter-spacing:.08em;font-variant-numeric:tabular-nums}
+  .g-resume{flex:1.7 1 0;border-left:3px solid var(--blood)}
+  .g-new{flex:1 1 0}
+  /* 历史存档开关：安静的虚线纸签；展开后实线朱色，摊开的卷宗复用全部存档面板同一套行 */
+  #gameList .g-more{align-self:center;background:transparent;border:1px dashed #9b8a65;border-radius:2px;color:#655c48;
+    padding:.45em 1em;font-size:12px;letter-spacing:.14em}
+  #gameList .g-more:hover{background:transparent;border-color:var(--blood);color:var(--blood);transform:none;box-shadow:none}
+  #gameList .g-more[aria-expanded="true"]{border-style:solid;border-color:var(--blood);color:var(--blood)}
+  .g-saves{display:flex;flex-direction:column;border-top:1px dashed rgba(124,112,79,.4);padding-top:2px}
+  .g-saves[hidden]{display:none} /* display:flex 会盖掉 UA 的 [hidden]，必须显式收回 */
   .preview-badge{display:inline-block;margin-top:4px;padding:2px 7px;border:1px solid #b48558;border-radius:2px;color:#f1d3a0;background:rgba(93,39,29,.82);font:10px/1.6 var(--sans);letter-spacing:.16em}
   .preview-badge[hidden]{display:none}
   .pub-list{display:flex;flex-direction:column;gap:10px;margin:14px 0;max-height:55vh;overflow:auto}
@@ -370,10 +396,6 @@
   .pub-meta{flex:1;min-width:0}.pub-title{font-family:var(--kai);font-size:16px}.pub-state{display:block;margin-top:3px;font-size:11px;color:#7c704f}
   .pub-row button{flex:none;font-size:12px;padding:7px 10px}
   .pub-err{min-height:1.5em;color:#9e3a2b;font-size:12px}
-  .game-row{display:flex;gap:8px;align-items:stretch;justify-content:center;width:100%}
-  .game-main{flex:1;min-width:0}
-  #gameList .game-new{font-size:13px;padding:.55em 12px}
-  .game-new{flex:none;align-self:center}
   .t-foot{font-family:var(--sans);color:#857a5b;font-size:11px;letter-spacing:.3em;text-align:center;line-height:1.8}
 
   /* 侧面板统一交互（关闭钮/互斥/点外关闭见 player.mjs）：标题行 flex 让出关闭钮 */
@@ -511,7 +533,6 @@
   #title .t-saves button{background:transparent;border-color:#9b8a65;color:#655c48;padding:.4em 1.2em;box-shadow:none}
   #title .t-saves button:hover{border-color:var(--blood);color:var(--blood);transform:none}
   #title .t-saves button:disabled{opacity:.6;cursor:default}
-  .g-time{display:block;font-family:var(--sans);font-size:.52em;color:#7c704f;margin-top:.45em;letter-spacing:.08em;font-variant-numeric:tabular-nums}
 
   /* 账籍:封面下缘的身份批注（游客可玩，注册留存进度） */
   .t-auth{display:flex;align-items:center;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:1vh;
@@ -798,9 +819,8 @@
     .tl-era{font-size:10px;letter-spacing:.08em;white-space:nowrap}
     .t-seal{top:14px;right:14px;width:38px;height:52px;font-size:24px}
     .t-kicker{max-width:82%;text-align:center;line-height:1.8;letter-spacing:.3em}
-    .game-row{flex-wrap:wrap}
-    .game-main{flex-basis:100%}
-    .game-new{margin:0 auto}
+    .g-actions{flex-direction:column;align-items:stretch}
+    .game-card{gap:.6em}
     .t-auth,.t-install{flex-direction:column;gap:5px;text-align:center}
     #stage .sidepanel{top:calc(8px + var(--safe-top));right:calc(8px + var(--safe-right));left:calc(8px + var(--safe-left));
       width:auto;max-height:calc(var(--visual-height,100dvh) - var(--safe-top) - var(--safe-bottom) - 16px)}

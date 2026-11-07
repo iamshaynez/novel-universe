@@ -35,7 +35,7 @@ async function post(path, data) {
 }
 
 describe('g02《出线之夜》真实 HTTP 结局', () => {
-  for (const ending of ['E_FULL', 'E_LEAVE']) {
+  for (const ending of ['E_FULL', 'E_LEAVE', 'E_WRONG', 'E_RUN']) {
     it(`发布后可完整走到 ${ending}`, async () => {
       const route = routes.find(r => r.ending === ending);
       assert.ok(route, `缺少 ${ending} 路线`);

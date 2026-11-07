@@ -31,5 +31,20 @@
   <button type="button" onclick="location.reload()">重新连接</button>
   <small>本页仅用于断网提示；账号、游戏进度与存档 API 不做离线缓存。</small>
 </main>
+<script>
+(function(){
+  if (navigator.doNotTrack === '1') return;           // 尊重 DNT，必须保留
+  var send = function(){
+    try {
+      var b = JSON.stringify({path: location.pathname, referrer: document.referrer});
+      if (navigator.sendBeacon('https://core.xiaowenz.com/api/pv', b)) return;
+      fetch('https://core.xiaowenz.com/api/pv', {method:'POST', body:b, keepalive:true, mode:'no-cors'});
+    } catch(e) {}                                      // 静默失败，必须保留
+  };
+  if (document.visibilityState === 'prerender')
+    addEventListener('visibilitychange', function(){ if(document.visibilityState==='visible') send(); }, {once:true});
+  else send();
+})();
+</script>
 </body>
 </html>

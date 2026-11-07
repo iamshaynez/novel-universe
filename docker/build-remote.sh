@@ -7,6 +7,7 @@
 # → docker push（服务器→ACR 国内路径，实测秒级；GitHub 美国 runner 推此端点
 # 会 blob 上传停滞，已四连 30 分钟超时复现，故构建推送整体移到服务器侧）
 # → exec deploy.sh（pull 幂等 + up + 冒烟）。
+# --provenance/sbom 关闭：Docker 29(buildx) 默认附加 vnd.oci.empty 附件清单，ACR 个人版拒收(2026-11-06 hk-dev 首跑复现，与 the-41-days 同因同解)。
 set -uo pipefail
 cd /opt/apps/novel-universe || { echo "部署目录不存在"; exit 1; }
 
@@ -24,11 +25,15 @@ curl -fsSL "https://codeload.github.com/iamshaynez/novel-universe/tar.gz/${SHA}"
 tar xzf src/src.tar.gz -C src --strip-components=1
 
 echo "== 构建 $IMG:$SHA / :main =="
-( cd src && docker build --build-arg NU_SHA="$SHA" -t "$IMG:$SHA" -t "$IMG:main" . ) || { echo "构建失败"; exit 1; }
+( cd src && docker build --provenance=false --sbom=false --build-arg NU_SHA="$SHA" -t "$IMG:$SHA" -t "$IMG:main" . ) || { echo "构建失败"; exit 1; }
 
 echo "== 推送 ACR（服务器侧，国内路径） =="
-docker push "$IMG:$SHA" || { echo "推送 :$SHA 失败"; exit 1; }
-docker push "$IMG:main" || { echo "推送 :main 失败"; exit 1; }
+ok=0
+for i in 1 2 3; do docker push "$IMG:$SHA" && ok=1 && break; echo "push :$SHA 失败,第 $i 次重试(HK→ACR auth 偶发跨境重置)"; sleep 8; done
+[ "$ok" = 1 ] || { echo "推送 :$SHA 三连败"; exit 1; }
+ok=0
+for i in 1 2 3; do docker push "$IMG:main" && ok=1 && break; echo "push :main 失败,第 $i 次重试"; sleep 8; done
+[ "$ok" = 1 ] || { echo "推送 :main 三连败"; exit 1; }
 
 echo "== 部署并冒烟 =="
 exec /opt/apps/novel-universe/deploy.sh

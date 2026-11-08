@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { historyKeyDelta, historyTopInset, historyNeedsSnap, shouldHandleStageKey, stageContentBounds, flowOffset, clampHistoryPan } from '../web/stage.mjs';
+import { historyKeyDelta, historyTopInset, historyNeedsSnap, shouldHandleStageKey, stageContentBounds, flowOffset, clampHistoryPan, trackBannerMarkup, ambientMoodPlan } from '../web/stage.mjs';
 
 describe('停点回看：键盘浏览已展示历史', () => {
   it('向上方向键往回翻，向下方向键回到较新文字', () => {
@@ -65,5 +65,29 @@ describe('舞台快捷键让位于输入与响应式可用区域', () => {
     assert.equal(clampHistoryPan(-40, 180), 0);
     assert.equal(clampHistoryPan(240, 180), 180);
     assert.equal(clampHistoryPan(72, 180), 72);
+  });
+});
+
+describe('双轨视界与昼夜氛围：文字舞台对齐合同', () => {
+  it('trackBannerMarkup 生成包含轨道徽标、标题与日期的切分卡', () => {
+    const recordCard = trackBannerMarkup({ id: 'record', symbol: '耳', label: '记录轨', sub: '夜班座席' }, '九月二十八日');
+    assert.match(recordCard, /class="tb-sym">耳<\/span>/);
+    assert.match(recordCard, /记录轨 · 夜班座席/);
+    assert.match(recordCard, /九月二十八日/);
+
+    const visitCard = trackBannerMarkup({ id: 'visit', symbol: '街', label: '走访轨', sub: '案发后协查' }, '十一月三日');
+    assert.match(visitCard, /class="tb-sym">街<\/span>/);
+    assert.match(visitCard, /走访轨 · 案发后协查/);
+    assert.match(visitCard, /十一月三日/);
+  });
+
+  it('ambientMoodPlan 在白天关闭霓虹并在白天过滤夜字水印', () => {
+    const dayPlan = ambientMoodPlan({ sign: '呼叫成都', bigchar: '夜' }, { time: 'day' });
+    assert.equal(dayPlan.showNeon, false);
+    assert.equal(dayPlan.bigchar, '');
+
+    const nightPlan = ambientMoodPlan({ sign: '呼叫成都', bigchar: '夜' }, { time: 'night' });
+    assert.equal(nightPlan.showNeon, true);
+    assert.equal(nightPlan.bigchar, '夜');
   });
 });

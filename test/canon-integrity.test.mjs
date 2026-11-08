@@ -174,11 +174,56 @@ describe('正典完整性：发行作结局政策（conventions.or_endings）', 
     }
   });
 
-  it('正典约定齐备：first_appearance 语义 / 声纹亲缘 / 无档呼入者', () => {
+  it('正典约定齐备：first_appearance 语义 / 轮值主角四重奏 / 双层宏大暗线 / 漂流物 / 共时性与流言 / 声纹亲缘 / 无档呼入者', () => {
     const conv = canon.conventions ?? {};
-    for (const k of ['first_appearance', 'voice_kinship', 'uncredited_voices']) {
+    for (const k of ['first_appearance', 'protagonist_quartet', 'shadow_conspiracy', 'drifting_props', 'synchronicity_and_rumors', 'voice_kinship', 'uncredited_voices']) {
       assert.ok(typeof conv[k] === 'string' && conv[k].length >= 20, `conventions 缺 ${k}`);
     }
+  });
+
+  it('轮值主角四重奏与九号桌暗线核心实体已建档且具备跨时代 stages', () => {
+    const allCharIds = new Set(chars.map(c => c.id));
+    for (const id of ['shenche', 'xuzhiwei', 'suwan', 'laopeng', 'hezheng', 'wangxiansheng']) {
+      assert.ok(allCharIds.has(id), `缺核心人物 ${id}`);
+      const c = read(join(uni, 'characters', `${id}.json`));
+      assert.equal(c.class, 'cast', `${id} 须为 cast（不得占用 6 位真实朋友原型的 universe 槽位）`);
+      assert.ok(Array.isArray(c.stages) && c.stages.length >= 3, `${id} 须具备跨时代 stages（>=3）`);
+    }
+    for (const locId of ['shunxing-teahouse', 'erdao-shop']) {
+      assert.ok(locationIds.has(locId), `缺核心私有地点 ${locId}`);
+    }
+  });
+
+  it('三部现有作品（g01/g02/g03）正文已织入九号桌暗线、轮值主角四重奏、漂流物与薛定谔茶馆流言', () => {
+    const g01Text = ['ch2.md', 'ch3.md', 'ch5.md']
+      .map(f => readFileSync(join(root, 'games/g01-jiexianyuan/chapters', f), 'utf8')).join('\n');
+    const g02Text = ['ch1.md', 'ch3.md', 'ch5.md']
+      .map(f => readFileSync(join(root, 'games/g02-chuxian/chapters', f), 'utf8')).join('\n');
+    const g03Text = ['ch1.md', 'ch2.md', 'ch3.md', 'ch5.md']
+      .map(f => readFileSync(join(root, 'games/g03-jiedao/chapters', f), 'utf8')).join('\n');
+
+    // g01：顺兴茶铺九号桌、王先生、二道旧物铺沈师傅、市民热线
+    assert.match(g01Text, /顺兴茶铺/);
+    assert.match(g01Text, /九号桌/);
+    assert.match(g01Text, /二道旧物铺/);
+    assert.match(g01Text, /市民热线/);
+
+    // g02：许知微（市民热线）、锦声传呼台回声、明成五金防滑槽与师兄沈彻、顺兴老茶铺九号桌球盘旧债、老彭
+    assert.match(g02Text, /许知微/);
+    assert.match(g02Text, /锦声传呼台/);
+    assert.match(g02Text, /防滑槽/);
+    assert.match(g02Text, /沈彻/);
+    assert.match(g02Text, /九号桌/);
+    assert.match(g02Text, /老彭/);
+
+    // g03：半夜面薛定谔双版本流言（g01+g02）、明成五金双防滑槽、九号桌借壳退场图纸、北站许知微抓拍、沈彻与老彭收尾
+    assert.match(g03Text, /防滑槽/);
+    assert.match(g03Text, /沈彻/);
+    assert.match(g03Text, /许知微/);
+    assert.match(g03Text, /九号桌/);
+    assert.match(g03Text, /借壳/);
+    assert.match(g03Text, /老彭/);
+    assert.match(g03Text, /版本多得很/);
   });
 });
 

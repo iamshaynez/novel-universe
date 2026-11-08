@@ -359,6 +359,22 @@
       "phase": "wto"
     },
     {
+      "id": "ev-g03-ponzi",
+      "date": "2003-10",
+      "title": "融泰投资集资链断裂",
+      "summary": "韩荣操盘的民间集资暴雷，上千万元去向不明；经侦立案前夕，韩荣启动假死脱身计划。",
+      "disclosed_in": "g03",
+      "depends_on": []
+    },
+    {
+      "id": "ev-g03-murder",
+      "date": "2003-11-12",
+      "title": "东郊废弃泵站命案",
+      "summary": "深夜暴雨中刘亮中伏身亡，面部受创；现场遗留老韩身份证与家门钥匙，借刀完成假死脱身第一步。",
+      "disclosed_in": "g03",
+      "depends_on": ["ev-g03-ponzi"]
+    },
+    {
       "id": "pub-2005-supergirl",
       "date": "2005-08",
       "title": "超级女声与短信投票",

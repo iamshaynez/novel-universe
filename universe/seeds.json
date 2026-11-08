@@ -7,14 +7,14 @@
       "planted_in": "g01",
       "where": "ch2 R2 罗老三留言「最近风声紧，盘口都改到茶馆后头去了」；ch5 E1 结局「盘口那条线，扯到茶馆后头，又断了」",
       "shown": "一九九九年秋，盘口从街面挪进了某家茶馆后头；案子重启后，追查到茶馆就断了线。",
-      "truth": "那家茶馆就是向启下午收摊后坐的那家——他固定座位的斜对面就是坐盘的桌子。他看得出谁是坐盘的、谁是递话的，也看得出贺国栋那笔账归哪一桌；他从不说，盘面上的事他只看不碰。茶馆尚未在 universe/locations 建档，坐盘人尚未命名。",
+      "truth": "那家茶馆即顺城大街旁的「顺兴老茶铺（茶馆后头）」（shunxing-teahouse），也就是向启下午收摊后常去坐的那家——他固定座位的斜对面就是后院九号竹桌。坐盘人王守正（wangxiansheng，人称王先生，88 Hz）常年坐九号桌统筹烂账、球盘与「借壳」底单；向启看得出谁是坐盘的、谁是递话的，也看得出贺国栋那笔账归九号桌；他从不说，盘面上的事他只看不碰。",
       "points_to": {
-        "characters": ["xiangqi", "liaozhikun", "heguodong"],
-        "locations": [],
-        "events": []
+        "characters": ["xiangqi", "wangxiansheng", "liaozhikun", "heguodong"],
+        "locations": ["shunxing-teahouse"],
+        "events": ["ev-g01-pankou-shift"]
       },
       "status": "open",
-      "constraints": "兑付时须新建私有地点（茶馆）并以兑付作为 first_appearance；向启只能以旁观者/旁白者露面，不得坐盘、不得主角（永不主角）。坐盘人是自由位，但其声线不得与廖志坤、蔡峰同频。"
+      "constraints": "顺兴老茶铺（shunxing-teahouse）与坐盘人王守正（wangxiansheng）已建档；向启只能以旁观者/旁白者露面，不得坐盘、不得主角（永不主角）。王守正声线为 88 Hz（与 g02 冯世昌构成账本低频亲缘），不得与廖志坤、蔡峰（96 Hz）同频。"
     },
     {
       "id": "seed-g01-other-road",
@@ -37,24 +37,24 @@
       "planted_in": "g01",
       "where": "ch1 R1 末尾呼机留言「王」字、她只认得不解释（中性铺垫）；ch2 R2 私活首次示名「姓王的说过，紧一紧」；ch5 chF 她坦白茶馆招募、三千块借条与回呼「晓得」",
       "shown": "苏晚的学费借条在坐盘人手里，她因此替盘口把某些留言删紧；青禾死后三支结局里，这张借条都没有赎回来。",
-      "truth": "坐盘人（未命名，自由位）用这张条子养着台里这只「紧一紧」的手，防的是廖志坤这类有私心的递话人。三支结局之后条子都还在他手上：E1 苏晚辞职也赎不走，E2/E3 她更没提。她删字的手艺是坐盘人看中的东西，也是他下次还可以用的东西。",
+      "truth": "坐盘人王守正（wangxiansheng，九号桌王先生）用这张三千块借条养着台里这只「紧一紧」的手，防的是廖志坤这类有私心的递话人。三支结局之后条子都还在九号桌茶船底下：E1 苏晚辞职也赎不走，E2/E3 她更没提。2000年后苏晚拿到电大会计文凭转型为独立查账员，顺着这张借条的外围流水反向锁定了顺兴老茶铺九号桌。",
       "points_to": {
-        "characters": ["suwan", "liaozhikun"],
-        "locations": ["chuantai"],
-        "events": []
+        "characters": ["suwan", "wangxiansheng", "liaozhikun"],
+        "locations": ["chuantai", "shunxing-teahouse"],
+        "events": ["ev-g01-pankou-shift"]
       },
       "status": "open",
-      "constraints": "坐盘人是自由位，但其声线不得与廖志坤、蔡峰同频（见「同一把嗓子」）。后续作品若让苏晚再被这张借条召回，须先钉死 g01 结局；三支里她都没有正式入行，不得把她写成已在链条上的老手。"
+      "constraints": "坐盘人王守正（88 Hz）不与廖志坤、蔡峰同频（见「同一把嗓子」）。后续作品若让苏晚再因这张借条与九号桌交锋，须先钉死或兼容 g01 结局；三支里她都没有正式入行，不得把她写成已在黑产链条上的老手。"
     },
     {
       "id": "seed-g01-voice-kinship",
       "name": "同一把嗓子",
       "planted_in": "g01",
-      "where": "正典字段：廖志坤与蔡峰 voice_hz 均 96、stage.theme 均 #e0523f；苏晚↔向启、贺青禾↔潇文、杜鹃↔崔涛、秦姐↔王磊 主题色成对；老金↔向启同为 128 Hz",
+      "where": "正典字段：廖志坤与蔡峰 voice_hz 均 96、stage.theme 均 #e0523f；王守正与冯世昌 voice_hz 均 88；苏晚↔向启、贺青禾↔潇文、杜鹃↔崔涛、秦姐↔王磊 主题色成对；老金↔向启同为 128 Hz",
       "shown": "玩家在 g01 听不出两人同频（蔡峰未出声）；舞台主题色与声纹卡会在未来作品里让有心人察觉「这两个人像」。",
-      "truth": "这一行挑人就挑这种嗓子——稳得发冷，像把刀包在帕子里。廖志坤是处理人网络伸到台前的那只手，两人同频同色是设计约定，不是撞车。五对色系亲缘是「每位剧集人物各有一位原型人物的影子」的谱系：苏晚/向启＝听声的人，贺青禾/潇文＝留字的人，杜鹃/崔涛＝记规矩的人，秦姐/王磊＝守铺子的人，廖志坤/蔡峰＝递与处理。",
+      "truth": "这一行挑人就挑这种嗓子——96 Hz 稳得发冷，像把刀包在帕子里（廖志坤是处理人蔡峰网络伸到台前的那只手）；88 Hz 则是沉在水底的账本低频（九号桌坐盘人王守正与被球盘死账压垮的冯世昌同频）。五对色系亲缘是「每位剧集人物各有一位原型人物的影子」的谱系：苏晚/向启＝听声的人，贺青禾/潇文＝留字的人，杜鹃/崔涛＝记规矩的人，秦姐/王磊＝守铺子的人，廖志坤/蔡峰＝递与处理。",
       "points_to": {
-        "characters": ["liaozhikun", "caifeng", "suwan", "xiangqi", "heqinghe", "xiaowen", "dujuan", "cuitao", "qinjie", "wanglei", "laojin"],
+        "characters": ["liaozhikun", "caifeng", "wangxiansheng", "fengshichang", "suwan", "xiangqi", "heqinghe", "xiaowen", "dujuan", "cuitao", "qinjie", "wanglei", "laojin"],
         "locations": [],
         "events": []
       },
@@ -120,6 +120,36 @@
       },
       "status": "open",
       "constraints": "向启只能以「被问到才说」的旁观者兑付，永不主角；他对 g01 真相的知情范围到此为止，不得扩大为目击者或知情共谋。"
+    },
+    {
+      "id": "seed-g01-farewell-tape",
+      "name": "漂流的《告别》与清屋人",
+      "planted_in": "g01",
+      "where": "ch3 A2 秦姐谈及青禾生前常荐的《告别》磁带与字条；ch5 E1 河音将柜上那盘《告别》标为非卖品",
+      "shown": "《告别》是贺青禾生前在河音音像店荐得最多的一盒磁带，歌词折页里常夹着她一笔一画写的荐碟字条。",
+      "truth": "青禾经手写过字条的《告别》打口带与磁带不止一盒：店面玻璃柜下那盘在 E1 被秦姐标为非卖品，而青禾私人物品箱与老熟客流转出去的另一盒带字条《告别》，在太升南路与玉林拆迁清屋时被文庙后街「二道旧物铺」的沈彻（shenche）收存，成为跨作品漂流的核心信物。",
+      "points_to": {
+        "characters": ["heqinghe", "qinjie", "shenche"],
+        "locations": ["heyin", "erdao-shop"],
+        "events": ["ev-g01-heqinghe"]
+      },
+      "status": "open",
+      "constraints": "作为跨作漂流物出现时，只可作为时代氛围与人物共情锚点，不得推翻 g01 贺青禾落水定性与三结局或然规则。"
+    },
+    {
+      "id": "seed-g01-borrowed-shell",
+      "name": "九号桌的借壳账",
+      "planted_in": "g01",
+      "where": "ch2 R2 顺兴茶铺后院盘口暗线；ch5 坐盘人王守正手里的借条与「别的路子」",
+      "shown": "茶馆后头的坐盘人不仅放高息贷、收烂账，还握有比递话催债更彻底的「别的路子」。",
+      "truth": "顺兴老茶铺后堂九号桌（王守正）底层最大的暴利生意，是将 1995 年牙科技工所失踪「老师」的换壳技术与 1998 年东郊厂流出的封存空白调动档案结合，向暴雷老板与死债缠身者兜售《借壳退场图纸》（g03 韩荣即买走此方案）。沈彻、许知微、苏晚与老彭/何峥将在各自的故事线中从不同切面摸到这张网。",
+      "points_to": {
+        "characters": ["wangxiansheng", "caifeng", "cuitao", "shenche", "xuzhiwei", "suwan", "laopeng", "hezheng"],
+        "locations": ["shunxing-teahouse", "erdao-shop"],
+        "events": ["ev-g01-pankou-shift", "ev-g03-exit-blueprint"]
+      },
+      "status": "open",
+      "constraints": "六位宇宙级原型人物（向启、崔涛、蔡峰、王磊、王波、潇文）在此暗线中只守各自固定工位与秘密切面，永不主角；揭网与破局的行动必须由轮值主角团（沈彻、许知微、苏晚、老彭/何峥）或单作主角完成。"
     }
   ]
 }

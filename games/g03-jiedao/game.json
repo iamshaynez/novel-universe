@@ -1,0 +1,49 @@
+{
+  "code": "g03",
+  "id": "g03-jiedao",
+  "title": "借刀",
+  "subtitle": "锦江悬疑宇宙 · 第三号档案 · 二〇〇三",
+  "hook": "你亲手杀了他。第二天，他去派出所报了案。",
+  "set_in": "2003",
+  "canon": ">=1.2 <2",
+  "assumes": [
+    "g01",
+    "g02"
+  ],
+  "player": {
+    "name": "宋明",
+    "voice_hz": 185
+  },
+  "chapters": [
+    {
+      "id": "ch0",
+      "title": "序章 · 惊雷",
+      "file": "ch0.md"
+    },
+    {
+      "id": "ch1",
+      "title": "第一章 · 破晓",
+      "file": "ch1.md"
+    },
+    {
+      "id": "ch2",
+      "title": "第二章 · 来电",
+      "file": "ch2.md"
+    },
+    {
+      "id": "ch3",
+      "title": "第三章 · 铁证",
+      "file": "ch3.md"
+    },
+    {
+      "id": "ch4",
+      "title": "第四章 · 回旋",
+      "file": "ch4.md"
+    },
+    {
+      "id": "ch5",
+      "title": "终章 · 归名",
+      "file": "ch5.md"
+    }
+  ]
+}

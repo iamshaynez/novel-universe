@@ -1,7 +1,7 @@
 {
   "name": "锦江悬疑宇宙",
   "world": "成都",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "epoch": "g01",
   "released_games": [
     "g01"
@@ -15,11 +15,11 @@
     "background_reserve": "2024–"
   },
   "layers": {
-    "timeline": "universe/timeline.json · 59 公共锚点 × 6 阶段 + 2 条 g01 私有事件 + 2 条 g02 预览私有事件",
+    "timeline": "universe/timeline.json · 59 公共锚点 × 6 阶段 + 2 条 g01 私有事件 + 2 条 g02 预览私有事件 + 2 条 g03 私有事件",
     "atlas": "universe/atlas.json · 水系/片区/走廊与变迁（含 geo 坐标）",
-    "locations": "universe/locations/*.json · 18 个（14 公共 + 4 私有：传呼台/河音/半夜面/后子门台球厅）",
+    "locations": "universe/locations/*.json · 19 个（14 公共 + 5 私有：传呼台/河音/半夜面/后子门台球厅/东郊废弃泵站）",
     "orgs": "universe/orgs/*.json · 9 个真实机构企业（信息层，暂无 DSL 引用通道）",
-    "characters": "universe/characters/*.json · 21 位（6 位宇宙级原型人物[class:universe] + 8 位 g01 剧集人物 + 7 位 g02 预览人物[class:cast]）；全员带扩展档案 profile{background,motive,temperament,speech,arc}（背景/动机/性格/语气/故事线），cast 同样带 persona_anchors",
+    "characters": "universe/characters/*.json · 25 位（6 位宇宙级原型人物[class:universe] + 8 位 g01 剧集人物 + 7 位 g02 预览人物 + 4 位 g03 人物[class:cast]）；全员带扩展档案 profile{background,motive,temperament,speech,arc}（背景/动机/性格/语气/故事线），cast 同样带 persona_anchors",
     "map": "universe/map.json · 年代地图册：定位层(中轴/环线/POI) + 六阶段城市快照（WGS-84 街区级精度）",
     "hearts": "universe/hearts.json · 3 颗心脏事件（六千点[主]/非典之春/足球纪元[储备]）——或然结局载体，历史不可改写、人心分支",
     "seeds": "universe/seeds.json · 引子登记簿：已发行作品正文里埋下、尚未兑付的叙事线头（planted_in/shown/truth/points_to/status/constraints）。后续作品引用前先查此簿；兑付后标 paid"
@@ -38,5 +38,5 @@
       }
     }
   },
-  "notes": "宇宙名为暂名，终名待定（见 docs/宇宙-成都-v0.md 待决清单）。真实城市+真实年代；无超自然为当前创作约束。公共层（真实历史/真实地点）免剧透纪元；私有层（虚构事件/虚构地点/人物秘密）须 disclosed_in/first_appearance ∈ assumes ∪ {本作}。1.0.0（canon major）：g01 真相层重写——致命留言系廖志坤原话（等你到十二点、来不来你自己定）经苏晚删改后发出（十点、删去选择权）；苏晚是坐盘人安在台里的「紧一紧」之手（学费借条被拿住）；青禾二十二点三十五分曾本人来电未留言、出门时把呼机留在窗台；她赴约途中失足落水（无人推她，非他杀），廖志坤在岸边会水而未施救、事后以「她没来」掩盖在场。三结局由「处置证据」改为「真相的归属」：E1 交公家 / E2 交父亲 / E3 令廖亲述。原 E2 烧掉、E3 交易（苏晚入行、6688-31 新号）两支作废，相关引子同步改写。1.1.0（canon minor）：新增 g02《出线之夜》预览用人物、后子门台球厅与本案私有事件，以及五里河/十强赛/雄起公共时代词条；g02 尚未公开发行，不进入 released_games，不视为已兑付任何前作引子。"
+  "notes": "宇宙名为暂名，终名待定（见 docs/宇宙-成都-v0.md 待决清单）。真实城市+真实年代；无超自然为当前创作约束。公共层（真实历史/真实地点）免剧透纪元；私有层（虚构事件/虚构地点/人物秘密）须 disclosed_in/first_appearance ∈ assumes ∪ {本作}。1.0.0（canon major）：g01 真相层重写——致命留言系廖志坤原话（等你到十二点、来不来你自己定）经苏晚删改后发出（十点、删去选择权）；苏晚是坐盘人安在台里的「紧一紧」之手（学费借条被拿住）；青禾二十二点三十五分曾本人来电未留言、出门时把呼机留在窗台；她赴约途中失足落水（无人推她，非他杀），廖志坤在岸边会水而未施救、事后以「她没来」掩盖在场。三结局由「处置证据」改为「真相的归属」：E1 交公家 / E2 交父亲 / E3 令廖亲述。原 E2 烧掉、E3 交易（苏晚入行、6688-31 新号）两支作废，相关引子同步改写。1.1.0（canon minor）：新增 g02《出线之夜》预览用人物、后子门台球厅与本案私有事件，以及五里河/十强赛/雄起公共时代词条；g02 尚未公开发行，不进入 released_games，不视为已兑付任何前作引子。1.2.0（canon minor）：新增 g03《借刀》人物（宋明、韩荣、刘亮、周翠兰）、东郊废弃泵站与本案私有事件（融泰投资暴雷、泵站命案）。"
 }

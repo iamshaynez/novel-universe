@@ -1,6 +1,26 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { historyKeyDelta, historyTopInset, historyNeedsSnap, shouldHandleStageKey, stageContentBounds, flowOffset, clampHistoryPan, trackBannerMarkup, ambientMoodPlan } from '../web/stage.mjs';
+import { Stage, historyKeyDelta, historyTopInset, historyNeedsSnap, shouldHandleStageKey, stageContentBounds, flowOffset, clampHistoryPan, trackBannerMarkup, ambientMoodPlan } from '../web/stage.mjs';
+
+describe('舞台节奏与停顿：符合人类自然阅读与呼吸习惯', () => {
+  it('标点停顿满足阶梯呼吸律：句末深长停顿、逗号自然换气、破折号悬停、并具备字数动态补偿', () => {
+    // 句末标点（。！？…）：读者需要消化完整语义，短句也需要 >= 1100ms
+    assert.ok(Stage.pauseOf('深秋的暴雨把整个东郊抽打得一片迷蒙。', false) >= 1100);
+    assert.ok(Stage.pauseOf('「你在里头到底看见了啥子？！」', true) >= 1200);
+
+    // 句中逗顿（，、,;）：行内呼吸停顿，约 650-800ms
+    assert.ok(Stage.pauseOf('宋明伏在二层检修天车的最深处，', false) >= 650);
+    assert.ok(Stage.pauseOf('「七点五十二分，', true) >= 700);
+
+    // 破折号（——）：戏剧化悬念悬气，约 950-1100ms
+    assert.ok(Stage.pauseOf('呼入原话——', false) >= 950);
+
+    // 字数动态补偿：长分句需给予眼睛更多扫视时间
+    const shortPause = Stage.pauseOf('坐下，', false);
+    const longPause = Stage.pauseOf('在全城最较真的测温登记薄与居委会大姐的注视下，', false);
+    assert.ok(longPause > shortPause, '长分句停顿时间应长于短分句');
+  });
+});
 
 describe('停点回看：键盘浏览已展示历史', () => {
   it('向上方向键往回翻，向下方向键回到较新文字', () => {

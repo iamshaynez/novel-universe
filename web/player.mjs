@@ -4,6 +4,7 @@
 import { StageAudio } from '/audio.mjs';
 import { Stage, callerHz } from '/stage.mjs';
 import { renderReadingPanel } from '/reading-view.mjs';
+import { currentTrackInfo } from '/reading-aids.mjs';
 import { codeOf, sentinelAction, updatePlan, resumePlan, manualUpdatePlan } from '/resilience.mjs';
 import { LocalRuntime } from '/runtime.mjs';
 import { openLocalStore } from '/store.mjs';
@@ -43,7 +44,7 @@ const api = {
 const app = {
   ir: null, saveId: null, gameId: null, user: null,
   store: null, runtime: null, sync: null, deviceId: null, catalog: [], irByGame: new Map(), syncStatus: '', pendingRemote: null,
-  prev: { chapter: null, bgKey: null, date: null },
+  prev: { chapter: null, bgKey: null, date: null, trackId: null },
   met: new Set(), facts: new Set(), timelineBuilt: false, running: false,
   cards: new Set(), // 本局已见的 card.* flag（读档种子先灌满，避免补播入档提示）
   sheet: new Map(), // 转写底单：tid -> {caller, target}（本局回看）
@@ -98,11 +99,12 @@ function resetRun() {
   app.gen++;
   app.current = null; app.readTab = 'tracks'; readReturnFocus = null;
   app.resume = false;
-  app.prev = { chapter: null, bgKey: null, date: null };
+  app.prev = { chapter: null, bgKey: null, date: null, trackId: null };
   app.met = new Set(); app.facts = new Set(); app.timelineBuilt = false; app.sheet.clear(); app.cards.clear();
   stage.reset(); stage.clearClues(); stage.clearAnchors(); stage.clearDateLabel();
   $('#timeline').classList.remove('on');
   $('#chapterLabel').classList.remove('on');
+  $('#trackBadge')?.classList.remove('on');
   $('#sheetPanel').classList.remove('on');
   $('#readPanel').classList.remove('on');
 }
@@ -136,6 +138,16 @@ async function renderBeat(s) {
       if (dead()) return null;
     }
     app.prev.date = s.date;
+  }
+  // 双轨状态与换轨切分：为不同故事线打出鲜明时空锚点与纸面微反差
+  const trackInfo = currentTrackInfo(app.ir, s);
+  if (trackInfo) {
+    stage.setTrack(trackInfo);
+    if (!resuming && app.prev.trackId && trackInfo.id !== app.prev.trackId) {
+      await stage.trackBanner(trackInfo, s.date);
+      if (dead()) return null;
+    }
+    app.prev.trackId = trackInfo.id;
   }
   // 地点或昼夜切换 → 氛围层 + 印章；读档只落氛围，不再次等待印章停点
   const bgId = s.view?.bg?.id ?? null;
@@ -615,6 +627,11 @@ $('#btnSaves').onclick = () => openSaves(); // 箭头包裹：不得把事件对
 $('#btnAllSaves').onclick = () => openSaves();
 $('#btnRead').onclick = () => openRead();
 $('#btnReadEnd').onclick = () => { closeDialog('#endcard'); openRead('recap'); };
+const openTrackRead = () => openRead('tracks');
+const handleTrackKey = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openTrackRead(); } };
+const trackBadge = $('#trackBadge'), sheetTab = $('#sheetTab');
+if (trackBadge) { trackBadge.onclick = openTrackRead; trackBadge.onkeydown = handleTrackKey; }
+if (sheetTab) { sheetTab.onclick = openTrackRead; sheetTab.onkeydown = handleTrackKey; }
 // 底单回看：本局转写记录（悬疑玩家要翻回去对时间戳与号码）
 // 同频聚簇：同形声纹相邻并列——形状即线索，不标数字（播种层公平证据的回看强化）
 $('#btnSheet').onclick = () => {

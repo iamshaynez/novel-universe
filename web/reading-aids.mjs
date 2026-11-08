@@ -36,6 +36,34 @@ export function trackModel(ir, state) {
   return { converged, current, tracks, convergence: converged ? { ...reading.convergence, current: true } : reading.convergence };
 }
 
+export function currentTrackInfo(ir, state) {
+  const model = trackModel(ir, state);
+  if (!model || (!model.tracks.length && !model.converged)) return null;
+  if (model.converged) {
+    return {
+      id: 'convergence',
+      label: model.convergence?.label ?? '档案室 · 汇流',
+      name: '汇流',
+      symbol: '合',
+      sub: '对稿、在场与三份纸证的归宿',
+      converged: true,
+    };
+  }
+  const track = model.tracks.find(t => t.id === model.current);
+  if (!track) return null;
+  const sub = track.id === 'record'
+    ? '夜班座席 · 一座城市把秘密排进你的耳机'
+    : '案发后走访 · 手持蓝皮证件的白日协查';
+  return {
+    id: track.id,
+    label: `${track.label}轨`,
+    name: track.label,
+    symbol: track.symbol,
+    sub,
+    converged: false,
+  };
+}
+
 export function messageModel(ir, state) {
   const reading = ir.reading;
   if (!reading) return { rows: [] };

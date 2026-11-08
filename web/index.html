@@ -86,13 +86,29 @@
   #sheet{position:absolute;top:0;bottom:0;left:50%;transform:translateX(-50%);touch-action:none;
     width:min(880px,88vw);z-index:1;
     background:linear-gradient(90deg,#d6c7a0 0%,#e7dabd 9%,#e4d7b6 50%,#e0d1ac 91%,#d2c29a 100%);
-    box-shadow:0 0 0 1px #b3a179,0 0 60px rgba(0,0,0,.6),inset 0 0 110px rgba(112,92,54,.25)}
+    box-shadow:0 0 0 1px #b3a179,0 0 60px rgba(0,0,0,.6),inset 0 0 110px rgba(112,92,54,.25);
+    transition:background .8s ease,box-shadow .8s ease}
   #sheet::after{content:"";position:absolute;inset:0;pointer-events:none;
     background:radial-gradient(ellipse 90% 55% at 50% -6%,rgba(255,240,205,.20),transparent 60%)}
+  /* 双轨纸面色调微反差：记录轨（机房冷夜青灰）/ 走访轨（老式档案牛皮纸）/ 汇流（红黑对位） */
+  #sheet.track-record{
+    background:linear-gradient(90deg,#c6d1c6 0%,#d9e2d8 9%,#d4ded3 50%,#cfe9ce 91%,#bfccbe 100%);
+    box-shadow:0 0 0 1px #8da399,0 0 60px rgba(10,25,28,.65),inset 0 0 110px rgba(50,80,72,.22)}
+  #sheet.track-visit{
+    background:linear-gradient(90deg,#d6c7a0 0%,#e7dabd 9%,#e4d7b6 50%,#e0d1ac 91%,#d2c29a 100%);
+    box-shadow:0 0 0 1px #b3a179,0 0 60px rgba(0,0,0,.6),inset 0 0 110px rgba(112,92,54,.25)}
+  #sheet.track-convergence{
+    background:linear-gradient(90deg,#cfc3a5 0%,#e0d5b9 9%,#dcd0b1 50%,#d8cca8 91%,#cbc09f 100%);
+    box-shadow:0 0 0 1px #8f6556,0 0 70px rgba(35,12,10,.7),inset 0 0 120px rgba(90,40,30,.2)}
+
   .sh-tab{position:absolute;left:-31px;top:12vh;writing-mode:vertical-rl;
     background:#2a2317;color:#c9b98c;border:1px solid #6d5d3b;border-left:none;
     padding:16px 7px;font-family:var(--kai);font-size:12px;letter-spacing:.42em;border-radius:0 3px 3px 0;
-    box-shadow:2px 4px 10px rgba(0,0,0,.4)}
+    box-shadow:2px 4px 10px rgba(0,0,0,.4);cursor:pointer;pointer-events:auto;transition:all .4s ease}
+  .sh-tab:hover{filter:brightness(1.15)}
+  #sheet.track-record .sh-tab{background:#14221f;color:#8ec3b0;border-color:#35584e}
+  #sheet.track-visit .sh-tab{background:#2a2317;color:#c9b98c;border-color:#6d5d3b}
+  #sheet.track-convergence .sh-tab{background:#301b18;color:#e8aca0;border-color:#743c33}
   /* 环境大字:纸面水印 */
   .bigchar{position:absolute;font-family:var(--kai);font-weight:900;pointer-events:none;
     opacity:0;transition:opacity 4s ease}
@@ -294,6 +310,57 @@
   #hudL .dt.on{opacity:.92}
   #hudL .ch{font-size:13px;letter-spacing:.22em;color:var(--ink-dim);margin-top:.4em;opacity:0;transition:opacity 1.2s}
   #hudL .ch.on{opacity:1}
+
+  /* 轨道徽标：双轨身份的常驻罗盘 */
+  .track-badge{display:none;align-items:center;gap:6px;padding:3px 8px;border-radius:2px;
+    font-size:11px;letter-spacing:.18em;cursor:pointer;pointer-events:auto;user-select:none;
+    margin-top:.45em;opacity:0;transition:opacity .6s ease,transform .2s ease;
+    border:1px solid rgba(168,148,106,.4);background:rgba(30,24,18,.75);color:#d9cbb0}
+  .track-badge.on{display:inline-flex;opacity:1}
+  .track-badge:hover{transform:translateY(-1px);border-color:var(--accent)}
+  .track-badge .tb-sym{display:inline-flex;align-items:center;justify-content:center;
+    width:16px;height:16px;border-radius:2px;font-family:var(--kai);font-size:11px;font-weight:bold;line-height:1}
+  /* 记录轨（耳）：机房冷夜青绿 */
+  .track-badge.trk-record{border-color:rgba(110,165,150,.5);background:rgba(18,29,27,.82);color:#9fd3c4}
+  .track-badge.trk-record .tb-sym{background:rgba(70,130,115,.35);color:#8ef0d2}
+  /* 走访轨（街）：外勤调查暖金牛皮纸 */
+  .track-badge.trk-visit{border-color:rgba(180,140,85,.5);background:rgba(38,28,18,.82);color:#e2bf86}
+  .track-badge.trk-visit .tb-sym{background:rgba(160,115,55,.35);color:#ffdb99}
+  /* 汇流（合）：档案室红印 */
+  .track-badge.trk-convergence{border-color:rgba(180,60,45,.5);background:rgba(42,20,18,.85);color:#f0aba0}
+  .track-badge.trk-convergence .tb-sym{background:rgba(180,50,35,.4);color:#ff9e90}
+
+  /* 换轨切分卡:跨时空/跨轨道切换的视觉锚点 */
+  .track-banner{margin:28px 0 24px;padding:12px 16px;border-radius:2px;
+    position:relative;animation:tbFadeIn .65s cubic-bezier(.2,0,.2,1) forwards;
+    border-top:1px dashed rgba(120,105,75,.45);border-bottom:1px dashed rgba(120,105,75,.45);
+    background:rgba(40,32,22,.06)}
+  @keyframes tbFadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  .track-banner .tb-head{display:flex;align-items:center;gap:12px}
+  .track-banner .tb-sym{flex:none;width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;
+    border-radius:2px;font-family:var(--kai);font-size:17px;font-weight:bold}
+  .track-banner .tb-meta{flex:1;min-width:0}
+  .track-banner .tb-title{font-family:var(--kai);font-size:14px;letter-spacing:.2em;font-weight:bold;line-height:1.4}
+  .track-banner .tb-date{display:inline-block;margin-left:8px;font-size:12px;font-weight:normal;opacity:.82;letter-spacing:.14em}
+  .track-banner .tb-sub{font-size:11.5px;letter-spacing:.12em;margin-top:2px;opacity:.78;line-height:1.45}
+  
+  /* 记录轨切分卡:机房冷墨 */
+  .track-banner.trk-record{border-color:rgba(70,120,105,.55);background:rgba(25,45,40,.07)}
+  .track-banner.trk-record .tb-sym{background:rgba(20,40,35,.85);color:#7fe3c5;border:1px solid #3d6e61}
+  .track-banner.trk-record .tb-title{color:#1a3d34}
+  .track-banner.trk-record .tb-sub{color:#2a5046}
+  
+  /* 走访轨切分卡:外勤印章暖黄 */
+  .track-banner.trk-visit{border-color:rgba(150,110,60,.55);background:rgba(60,40,20,.07)}
+  .track-banner.trk-visit .tb-sym{background:rgba(50,35,20,.85);color:#f0c078;border:1px solid #8c6838}
+  .track-banner.trk-visit .tb-title{color:#4a3215}
+  .track-banner.trk-visit .tb-sub{color:#61431f}
+
+  /* 汇流切分卡:档案室深朱 */
+  .track-banner.trk-convergence{border-color:rgba(160,50,35,.55);background:rgba(60,20,18,.07)}
+  .track-banner.trk-convergence .tb-sym{background:rgba(55,20,18,.85);color:#ff9885;border:1px solid #943b2e}
+  .track-banner.trk-convergence .tb-title{color:#541c15}
+  .track-banner.trk-convergence .tb-sub{color:#6c2820}
   #hudR{display:flex;flex-direction:column;align-items:flex-end;gap:.55em}
   .bag{display:flex;align-items:center;gap:.6em;font-size:11px;color:#8f8567;letter-spacing:.22em;min-height:22px}
   .chips{display:flex;gap:.5em;flex-wrap:wrap;justify-content:flex-end;max-width:38vw}
@@ -814,7 +881,7 @@
   @media (min-width:701px) and (max-width:900px){
     #hud{flex-direction:column;gap:8px;padding:calc(12px + var(--safe-top)) calc(16px + var(--safe-right)) 12px calc(16px + var(--safe-left))}
     #hudL{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;width:100%}
-    #hudL .dt,#hudL .ch{margin-top:0}
+    #hudL .dt,#hudL .ch,#hudL .track-badge{margin-top:0}
     #hudR{width:100%;align-items:stretch;gap:6px}
     .bag{align-items:flex-start}
     .chips{max-width:none;justify-content:flex-start}
@@ -828,7 +895,8 @@
     #hud{flex-direction:column;gap:7px;padding:calc(10px + var(--safe-top)) calc(12px + var(--safe-right)) 10px calc(12px + var(--safe-left))}
     #hudL{display:flex;flex-wrap:wrap;align-items:baseline;gap:3px 10px;width:100%;min-width:0}
     #hudL .uni{flex-basis:100%}
-    #hudL .dt,#hudL .ch{margin-top:0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    #hudL .dt,#hudL .ch,#hudL .track-badge{margin-top:0;min-width:0}
+    #hudL .dt,#hudL .ch{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     #hudR{width:100%;align-items:stretch;gap:6px}
     .bag{align-items:flex-start;gap:8px;min-height:18px}
     .chips{max-width:none;justify-content:flex-start}
@@ -899,7 +967,7 @@
   <div id="neon"></div>
 
   <div id="sheet">
-    <div class="sh-tab">案卷</div>
+    <div class="sh-tab" id="sheetTab" role="button" tabindex="0" title="点击查看双轨轨迹">案卷</div>
     <div class="ppgrain"></div>
     <div class="bigchar c1" id="bc1"></div>
   </div>
@@ -912,6 +980,7 @@
     <div id="hudL">
       <div class="uni" id="worldLabel"></div>
       <div class="preview-badge" id="previewBadge" hidden>未发布预览 · 仅 admin</div>
+      <div class="track-badge" id="trackBadge" role="button" tabindex="0" title="点击查看双轨轨迹"><span class="tb-sym">耳</span><span class="tb-name">记录轨</span></div>
       <div class="dt" id="dateLabel"></div>
       <div class="ch" id="chapterLabel"></div>
     </div>

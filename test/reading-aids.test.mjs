@@ -5,7 +5,7 @@ import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { compileGame, validateReadingConfig } from '../tools/compile-scenario.mjs';
 import { createRun, stateOf } from '../engine/state.mjs';
-import { trackModel, messageModel, evidenceModel, relationsModel, mapModel, recapModel } from '../web/reading-aids.mjs';
+import { trackModel, currentTrackInfo, messageModel, evidenceModel, relationsModel, mapModel, recapModel } from '../web/reading-aids.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const { ir } = compileGame(join(root, 'games/g01-jiexianyuan'), join(root, 'universe'));
@@ -54,6 +54,30 @@ describe('轨迹与留言：只展开已经读到的信息', () => {
     assert.ok(r2.tracks.find(t => t.id === 'visit').stops.some(s => s.scene === 'chA1'));
     const final = trackModel(ir, state({}, { node: 'chF', chapter: 'ch5' }));
     assert.equal(final.converged, true);
+  });
+
+  it('currentTrackInfo 精确解析场景对应的双轨与汇流元数据', () => {
+    const s0 = currentTrackInfo(ir, state({}, { node: 'ch0-open', chapter: 'ch1' }));
+    assert.equal(s0.id, 'record');
+    assert.equal(s0.symbol, '耳');
+    assert.equal(s0.name, '记录');
+
+    const sa1 = currentTrackInfo(ir, state({}, { node: 'chA1', chapter: 'ch2' }));
+    assert.equal(sa1.id, 'visit');
+    assert.equal(sa1.symbol, '街');
+    assert.equal(sa1.name, '走访');
+
+    const sa1Sub = currentTrackInfo(ir, state({}, { node: 'chA1-archive', chapter: 'ch2' }));
+    assert.equal(sa1Sub.id, 'visit');
+
+    const sr2 = currentTrackInfo(ir, state({}, { node: 'chR2', chapter: 'ch2' }));
+    assert.equal(sr2.id, 'record');
+    assert.equal(sr2.symbol, '耳');
+
+    const sf = currentTrackInfo(ir, state({}, { node: 'chF', chapter: 'ch5' }));
+    assert.equal(sf.id, 'convergence');
+    assert.equal(sf.symbol, '合');
+    assert.equal(sf.converged, true);
   });
 
   it('未转写不出现；t9 同时显示约定十点与真实 22:47', () => {

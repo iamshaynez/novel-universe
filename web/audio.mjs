@@ -51,4 +51,18 @@ export class StageAudio {
   stamp() { this.thud(); this.tone(1250, .04, 'square', .12); }
   /** 呼机双短音：BP 机收到留言的「滴、滴」——戏中音（diegetic），留言落机的瞬间。 */
   page() { this.tone(1400, .09, 'square', .16); this.tone(1400, .09, 'square', .16, .17); }
+  /** 轨道切换：记录轨（耳机电流与腔体气压）/ 走访轨（档案扣合与纸页）/ 汇流（双音合声） */
+  trackShift(trackId) {
+    if (!this.ctx || this.muted) return;
+    if (trackId === 'record') {
+      this.tone(115, .28, 'triangle', .26);
+      this.tone(3100, .05, 'sawtooth', .04, .015);
+    } else if (trackId === 'visit') {
+      this.thud();
+      this.tone(780, .09, 'sine', .14, .06);
+    } else if (trackId === 'convergence') {
+      this.tone(180, .35, 'triangle', .3);
+      this.tone(540, .24, 'triangle', .22, .08);
+    }
+  }
 }

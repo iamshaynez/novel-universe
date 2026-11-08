@@ -114,4 +114,19 @@ describe('路线：四个结局与最终选择都兑现', () => {
     const all = [1, 2, 3, 4, 5].map(chapter).join('\n');
     assert.doesNotMatch(all, /^你：/m);
   });
+
+  it('盲测修复：球赛时间轴算术严密（20:18中场、20:33下半场、21:20终场），不再出现88分钟上半场', () => {
+    const ch2 = chapter(2), ch3 = chapter(3), ch4 = chapter(4), ch5 = chapter(5);
+    assert.doesNotMatch(ch2 + ch3, /晚上八点五十八分/, '上半场不得踢到 20:58');
+    assert.match(ch3, /晚上八点三十三分/, '下半场开球须在 20:33 以对齐 45 分钟后 21:20 终场');
+    assert.doesNotMatch(ch4 + ch5, /晚上九点三十|晚上九点四十/, '下半场不得拖到 21:30–21:49');
+  });
+
+  it('盲测修复：ch1 不提前泄底 7:52 精确钟点与三分钟公式，三号柜物理位置自洽，温荟动机无矛盾，钥匙旗标兑现', () => {
+    const ch1 = chapter(1), ch2 = chapter(2), ch3 = chapter(3), ch5 = chapter(5);
+    assert.doesNotMatch(ch1, /七点五十二分|三分钟之内他必定/, 'ch1 不得提前喂饭泄底两只钟公式');
+    assert.doesNotMatch(ch2, /围裙正上方，端端正正压着/, '现金箱先入柜、围裙后塞入，箱子不得压在围裙正上方');
+    assert.match(ch3, /钥坯/, 'ch1 的明成五金黄铜钥坯须在 ch3 抄字动机中兑现，不作虚假切赫夫之枪');
+    assert.match(ch5, /\bif told_keys\b|\bif hid_keys\b/, 'ch2 的钥匙诚实度旗标须在终章兑现');
+  });
 });

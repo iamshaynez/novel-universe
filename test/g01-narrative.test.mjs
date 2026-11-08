@@ -79,6 +79,28 @@ describe('场景：时间和关键记忆在首次发生时就已成立', () => {
     assert.doesNotMatch(ch5, /修行情机/);
     assert.match(ch5, /修传呼机的向师傅/);
   });
+
+  it('盲测修复：ch2 开篇即交代溺亡前提，ch1/ch2 正文显式报出 333-1188 与 901-7544', () => {
+    const ch1 = chapter(1);
+    const ch2 = chapter(2);
+    assert.match(ch1, /333-1188/, 'ch1 正文须出现第一次催债回电号 333-1188');
+    assert.match(ch2.split('# chA1-archive')[0], /府南河|打捞|落水/, 'ch2 开篇须交代贺青禾溺亡背景');
+    const beforeT4 = after(ch2, '# chR2').split('@transcribe t4')[0];
+    assert.match(beforeT4, /901-7544/, 'ch2 R2 转写前须显式报出新回电号 901-7544');
+  });
+
+  it('盲测修复：呼机不瞬移、茶铺修机匠不撞梗微咳、布鞋有路灯照明前提、E1 不向死者父亲瞒报', () => {
+    const ch3 = chapter(3);
+    const ch4 = chapter(4);
+    const ch5 = chapter(5);
+    assert.doesNotMatch(ch3, /微咳的修机匠/, '茶铺路人不得撞梗核心咳嗽声纹线索');
+    assert.doesNotMatch(ch3, /竟然还有点余电/, '泡水十天的呼机不应在出租屋窗台亮屏瞬移');
+    assert.match(ch3, /皮套/, '出租屋窗台只留空呼机皮套，实物在贺国栋手中');
+    assert.doesNotMatch(ch4.split('# chA3-bridge')[0], /它这会儿就贴在你自己身上/, 'ch4 A3 不得吞没 original_locker 分支');
+    assert.match(ch5, /桥头路灯|路灯底下/, '廖志坤看清布鞋须有桥头路灯物理照明前提');
+    const e1 = after(ch5, '# E1').split('# E2')[0];
+    assert.doesNotMatch(e1, /我张了张嘴，答不上来/, 'E1 苏晚面对贺国栋不再隐瞒出门钟点');
+  });
 });
 
 describe('场景：正典只记录已经建立的人物事实', () => {

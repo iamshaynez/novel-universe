@@ -1,0 +1,48 @@
+g01《接线员》双轨交互体验与视觉舞台重构证据
+日期：2026-11-08 · 主题：解决双故事线切轨感知不明显、强化双身份叙诡张力
+
+一、审计痛点与核心根因
+
+1. 叙诡前置假象失效：
+   - g01 核心叙诡为「夜班接线员」与「案发后市局协查员」双视角交替推进，终章反转揭晓白天的假协查也是苏晚。
+   - 原版由于缺乏轨道时空切分与视觉反差，读者快读时误以为是同一角色在线性流水账中行动，既导致九月与十一月反复横跳的时空错乱感，又导致终章揭晓反转哑火。
+2. 四大交互与视觉遮蔽缺陷：
+   - 案卷纸（#sheet）统治视口，窄屏下占据 94vw~100%，底层昼夜背景被大面积遮盖；
+   - 轨道切换无转场停点，仅靠小行 @date 顺滑滚动，读者视线焦点无法感知时空倒拨；
+   - 导读中极其考究的「耳 · 记录」与「街 · 走访」双轨元数据被深埋在二级菜单中，主界面无常驻感知；
+   - 传呼台白天模式下因未过滤 mood.bigchar 与 mood.sign，白天进档案室仍闪烁夜间霓虹与“夜”字水印，形成严重的昼夜倒错。
+
+二、重构落地实施（三位一体改造）
+
+1. 纯函数推导与数据合同：
+   - web/reading-aids.mjs 导出 currentTrackInfo(ir, state)：零剧本侵入，纯从 IR 与场景节点状态推导当前归属（record / visit / convergence），提供符号、主标、副标与时间线索；
+   - web/stage.mjs 导出 trackBannerMarkup(info, dateText) 与 ambientMoodPlan(mood, params)；
+2. HUD 与案卷签头即时认知锚定：
+   - #hudL 常驻 .track-badge（轨道徽标）：
+     * 记录轨：冷夜青绿徽标 ［耳］ 记录轨，带呼吸感微光；
+     * 走访轨：外勤暖金徽标 ［街］ 走访轨；
+     * 汇流：深朱印章 ［合］ 档案室 · 汇流；
+     * 支持点击与键盘直接唤起导读并聚焦到「轨迹」Tab；
+   - 案卷左侧签头（.sh-tab）从固定“案卷”升级为随轨切分（耳 · 记录 / 街 · 走访 / 档案 · 汇流）；
+3. 舞台纸面色温与昼夜微反差：
+   - #sheet.track-record：冷夜青灰纸面调，边沿带有微弱荧光墨晕与暗角，营造深夜机房一人戴耳机的密闭感；
+   - #sheet.track-visit：厚重牛皮纸/档案黄，粗粝纸质，营造外勤协查的严肃与寒秋白日感；
+   - ambientMoodPlan 修复昼夜倒错：params.time === 'day' 时，关闭夜间霓虹灯箱闪烁，并自动移除“夜”字水印；
+4. 流内换轨切分卡（Track Banner）与代码合成换轨音效：
+   - 跨轨道切换时（record ↔ visit ↔ convergence），流内追加居中换轨切分卡：
+     双虚线装订撕边、双轨徽标、专属主标题与意境副标题，配合 850ms 优雅停顿（读档首拍静默不打断）；
+   - web/audio.mjs 纯代码合成 trackShift(trackId)：
+     * record：耳机插头插入、微弱低频气压沉降与高频电流涌动；
+     * visit：金属扣盒咬合脆响与纸张翻动声；
+     * convergence：深沉双音合鸣。
+
+三、验证与门禁结果
+
+- 单测断言覆盖：
+  * test/reading-aids.test.mjs：currentTrackInfo 场景归属精准推导；
+  * test/stage-interaction.test.mjs：trackBannerMarkup 模板结构与 ambientMoodPlan 昼夜过滤合同；
+  * test/g01-narrative.test.mjs：全图代表路线双轨流转与终局汇流断言；
+- 自动化测试与校验：
+  * npm test：373/373 PASS，全量测试全绿；
+  * npm run verify：[PASS] g01-jiexianyuan 结局 E1/E2/E3 1080条路径，g02-chuxian 168条路径全可达；
+  * npm run migrate:status：最新无 pending。

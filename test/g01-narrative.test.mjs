@@ -116,6 +116,25 @@ describe('场景：每条结局路线都结清自己造成的证据状态', () =
     assert.ok(!t9.target.includes('你自己定'), '发出的话不得保留被删掉的选择权');
   });
 
+  it('全图路线中的双轨流转：记录轨、走访轨与汇流精确交错且终局汇流', async () => {
+    const { currentTrackInfo } = await import('../web/reading-aids.mjs');
+    const run = createRun(ir, 7);
+    let st = stateOf(ir, run);
+    const initialTrack = currentTrackInfo(ir, st);
+    assert.equal(initialTrack.id, 'record');
+    assert.equal(initialTrack.symbol, '耳');
+
+    // 验证 chA1 归属走访轨
+    const a1State = { ...st, node: 'chA1', chapter: 'ch2' };
+    assert.equal(currentTrackInfo(ir, a1State).id, 'visit');
+    assert.equal(currentTrackInfo(ir, a1State).symbol, '街');
+
+    // 验证 chF 归属汇流
+    const fState = { ...st, node: 'chF', chapter: 'ch5' };
+    assert.equal(currentTrackInfo(ir, fState).id, 'convergence');
+    assert.equal(currentTrackInfo(ir, fState).converged, true);
+  });
+
   it('t9 强制选择：廖的原话作为选项在场，点了被注记驳回，只有紧的入机', () => {
     const t9 = Object.values(ir.nodes).find(n => n.type === 'transcribe' && n.transId === 't9');
     assert.equal(t9.full, '老地方，河对岸，等你到十二点。来不来，你自己定。就这样。', '原话必须在选项里');

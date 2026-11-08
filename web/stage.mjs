@@ -142,7 +142,10 @@ export class Stage {
     // 停点交互控件不参与舞台手势（选项/面板/按钮各有各的点击语义）
     const act = () => {
       if (historyNeedsSnap(this._back, this.panY)) return this.snapBack();
-      if (this.revealing) this.fast = true;
+      if (this.revealing) {
+        if (this.stepResolver) this.stepResolver();
+        else this.fast = true;
+      }
       else if (this.pendingGate) { const r = this.pendingGate; this.pendingGate = null; this.hint(false); r(); }
     };
     // 拖拽回看：位移超过阈值才算拖（拖过不推进）；松开未拖 = 轻点
@@ -210,9 +213,29 @@ export class Stage {
     if (this.auto) return sleep(380);
     return new Promise(r => { this.pendingGate = r; this.hint(true); });
   }
-  pause(ms) { return sleep(this.fast ? Math.min(ms, 50) : ms); }
+  pause(ms) {
+    return new Promise(res => {
+      let done = false;
+      let timer = null;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        this.stepResolver = null;
+        if (timer) clearTimeout(timer);
+        res();
+      };
+      this.stepResolver = finish;
+      const duration = this.fast ? Math.min(ms, 50) : ms;
+      timer = setTimeout(finish, duration);
+    });
+  }
   idle() { return !this.revealing && !this.pendingGate; }
-  rush() { if (this.revealing) this.fast = true; }
+  rush() {
+    if (this.revealing) {
+      if (this.stepResolver) this.stepResolver();
+      else this.fast = true;
+    }
+  }
 
   // ---------- 回看（往回自由滑动）：panY 叠加在自动排版 off 之上 ----------
   _contentBounds() {

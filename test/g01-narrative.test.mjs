@@ -14,6 +14,54 @@ const chapter = n => readFileSync(join(root, `games/g01-jiexianyuan/chapters/ch$
 const character = id => JSON.parse(readFileSync(join(root, `universe/characters/${id}.json`), 'utf8'));
 const after = (text, marker) => text.slice(text.indexOf(marker));
 
+describe('场景：协查员叙诡——走访轨不得提前焊死「协查员=接线员」', () => {
+  const visitTrack = n => {
+    const md = chapter(n);
+    const start = md.search(/# chA/);
+    assert.ok(start >= 0, `ch${n} 缺走访段`);
+    const rest = md.slice(start);
+    const rIdx = rest.search(/# chR/);
+    return rIdx < 0 ? rest : rest.slice(0, rIdx);
+  };
+
+  it('A1/A2/A3 走访段无值班身份自述、罪行供认或台内私物记忆', () => {
+    const forbidden = /上了三年夜班|夜班接线员的本来身份|被你私下抽走|你早抽走|上回下班前|头一回那件深棕色皮夹克，也是你|在电话里讲给你听的|敲下回车键发出去的|叠在更衣柜最底层|跟只坐白班办公室的老金/;
+    for (const n of [2, 3, 4]) {
+      assert.doesNotMatch(visitTrack(n), forbidden, `ch${n} 走访段提前暴露双线同一人`);
+    }
+  });
+
+  it('chF 坍缩前不得出现「耳机里听到的」声纹绑定', () => {
+    const pre = chapter(5).split('@set card.lzk.oneman')[0];
+    assert.doesNotMatch(pre, /耳机里听到的/);
+  });
+
+  it('两栏对照纸只在记录轨（R4）制作，走访段（A3d）不出现廖的原话', () => {
+    const ch4 = chapter(4);
+    const a3d = ch4.slice(ch4.indexOf('# chA3d'), ch4.indexOf('# chR4'));
+    assert.doesNotMatch(a3d, /等你到十二点|来不来，你自己定|画了一条竖线/);
+    const r4 = ch4.slice(ch4.indexOf('# chR4'), ch4.indexOf('# chR4-back'));
+    assert.match(r4, /等你到十二点/);
+    assert.match(r4, /来不来，你自己定/);
+  });
+
+  it('男老师的辨认特征保持中性，不提前贴上廖的「客气」指纹', () => {
+    const a2b = after(chapter(3), '# chA2b').split('# chA2c')[0];
+    assert.doesNotMatch(a2b, /客气得很|帮我把门带上/);
+  });
+
+  it('R4 不替读者推理影子的作者身份，同人结论只留推断语气', () => {
+    const ch4 = chapter(4);
+    assert.doesNotMatch(ch4, /跟自己当晚讲的原话一不一致/);
+    assert.doesNotMatch(ch4, /从头到尾就是同一个人/);
+  });
+
+  it('司龄口径统一为 canon 的三年多，不再出现「三个多月」', () => {
+    assert.doesNotMatch(chapter(1), /三个多月/);
+    assert.match(chapter(1), /三年多/);
+  });
+});
+
 describe('场景：苏晚只能调用自己经历过的事实', () => {
   it('E3 不回忆廖线路的雨靴与三根火柴，终章也不凭空知道青禾工资', () => {
     const ch5 = chapter(5);
@@ -61,7 +109,7 @@ describe('场景：时间和关键记忆在首次发生时就已成立', () => {
     const a2b = after(chapter(3), '# chA2b').split('# chA2c')[0];
     assert.match(a2b, /四十来岁/, '廖的辨认特征在 11.5 给出');
     assert.doesNotMatch(a2b, /也是遗物登记/, '他翻的内容不得在 11.5 提前泄出');
-    assert.match(chapter(4), /上回跟你提过的那个男老师/, 'R4 递进追问同一人的内容');
+    assert.match(chapter(4), /前几天接连来过两位协查的老师/, 'R4 递进追问同一人的内容');
     assert.match(chapter(5), /台里我白天一回都没去过/, '空间分工：台里白天=苏晚，派出所与夜档=廖');
     assert.match(chapter(5), /你前脚走，我后脚到/, '廖如何得知她追问须有来源');
   });

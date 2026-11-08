@@ -85,6 +85,34 @@ export function clampHistoryPan(value, maxPan) {
   return Math.max(0, Math.min(pan, Math.max(0, maxPan)));
 }
 
+/** 换轨切分卡渲染模板：把双轨/双时空的转换清晰地打在案卷纸面上。 */
+export function trackBannerMarkup(info, dateText = '') {
+  const sym = info?.symbol ?? '轨';
+  const title = info?.id === 'record'
+    ? '记录轨 · 夜班座席'
+    : (info?.id === 'visit' ? '走访轨 · 案发后协查' : '汇流 · 档案室对稿');
+  const sub = info?.sub ?? '';
+  const dateStr = dateText ? `<span class="tb-date">${dateText}</span>` : '';
+  return `
+    <div class="tb-head">
+      <span class="tb-sym">${sym}</span>
+      <div class="tb-meta">
+        <div class="tb-title">${title} ${dateStr}</div>
+        <div class="tb-sub">${sub}</div>
+      </div>
+    </div>
+  `;
+}
+
+/** 昼夜与氛围计划：白天不亮夜间霓虹，且避免白天打上“夜”字水印。 */
+export function ambientMoodPlan(mood = {}, params = {}) {
+  const isDay = params?.time === 'day';
+  const showNeon = Boolean(mood.sign && !isDay);
+  let bigchar = mood.bigchar ?? '';
+  if (isDay && bigchar === '夜') bigchar = mood.dayBigchar ?? '';
+  return { showNeon, bigchar };
+}
+
 export class Stage {
   constructor(audio, { auto = false } = {}) {
     this.audio = audio;
@@ -499,6 +527,7 @@ export class Stage {
     this.pendingGate = null; this.revealing = false; this.fast = false;
     this._setBack(false);
     this.hint(false);
+    this.setTrack(null);
   }
 
   // ---------- 角色锚点(分侧)与声纹卡 ----------
@@ -584,14 +613,15 @@ export class Stage {
       a.innerHTML = AMBIENT[locId] ? AMBIENT[locId](mood, params) : ambientFallback(mood);
       a.classList.add('on');
     }, 200);
-    // 雨幕 / 环境大字 / 霓虹戏中字 —— 全部由地点 mood 驱动
+    // 雨幕 / 环境大字 / 霓虹戏中字 —— 全部由地点 mood 结合昼夜状态驱动
     $('#rainfx').classList.toggle('on', !!mood.rain);
     if (mood.rain) this.rainOn();
+    const plan = ambientMoodPlan(mood, params);
     const bc = $('#bc1');
-    if (mood.bigchar) { bc.textContent = mood.bigchar; bc.classList.add('on'); }
+    if (plan.bigchar) { bc.textContent = plan.bigchar; bc.classList.add('on'); }
     else bc.classList.remove('on');
     const neon = $('#neon');
-    if (mood.sign) { neon.textContent = mood.sign; neon.classList.add('on'); }
+    if (plan.showNeon) { neon.textContent = mood.sign; neon.classList.add('on'); }
     else neon.classList.remove('on');
     this.clearAnchors();
   }
@@ -685,6 +715,41 @@ export class Stage {
     el.textContent = text; el.classList.add('on');
   }
   clearDateLabel() { $('#dateLabel')?.classList.remove('on'); }
+
+  /** 舞台轨道微调：记录轨（冷夜机房青灰冷墨）/ 走访轨（老式档案牛皮纸）/ 汇流（红黑案卷对位） */
+  setTrack(info) {
+    const sheet = $('#sheet');
+    const tab = $('#sheetTab');
+    const badge = $('#trackBadge');
+    sheet?.classList.remove('track-record', 'track-visit', 'track-convergence');
+    if (!info) {
+      if (tab) tab.textContent = '案卷';
+      badge?.classList.remove('on');
+      return;
+    }
+    sheet?.classList.add(`track-${info.id}`);
+    if (tab) {
+      tab.textContent = `${info.symbol} · ${info.name}`;
+      tab.title = `${info.label}（点击查看阅读轨迹）`;
+    }
+    if (badge) {
+      badge.className = `track-badge trk-${info.id} on`;
+      const sym = badge.querySelector('.tb-sym');
+      const name = badge.querySelector('.tb-name');
+      if (sym) sym.textContent = info.symbol;
+      if (name) name.textContent = info.label;
+      badge.title = `${info.label}：${info.sub}（点击查看阅读轨迹）`;
+    }
+  }
+
+  /** 流内换轨切分卡：跨轨道切换时的时空切断卡——把双轨/双时空鲜明地钉在案卷纸上。 */
+  async trackBanner(info, dateText) {
+    const html = trackBannerMarkup(info, dateText);
+    this._append(`track-banner trk-${info.id}`, html);
+    this.audio.trackShift(info.id);
+    await this.pause(this.auto ? 40 : 850);
+  }
+
   /** 流内日期章：章内时间跳变（回拨/前跳）时的卷宗批注——把「时间换了」钉在纸上。 */
   async dateLine(text) {
     this._append('dline', `<i></i><span>${text}</span><i></i>`);

@@ -286,13 +286,25 @@ export class Stage {
     return el;
   }
   static phrases(t) { return segment(t).map(p => p.text); }
-  /** 呼吸停顿档：句末长歇，逗顿短歇，破折号悬一口气。闭引号先剥掉再判尾标点。 */
+  /** 呼吸停顿档：符合人类自然阅读与呼吸节奏。
+   *  - 句末长歇（。！？…）：读者消化完整语义，给予 1150-1250ms 充分停顿；
+   *  - 逗顿换气（，、,;）：行内呼吸停顿，给予 680-750ms；
+   *  - 破折号（——）：戏剧化悬念悬气，给予 980ms；
+   *  - 普通续读：给予 720-780ms；
+   *  - 字数动态补偿：每字增量约 16ms（上限 280ms），保证长分句有充足视线扫读时间。 */
   static pauseOf(p, dlg) {
-    const tail = p.replace(/[」』）)]+$/, '').slice(-1);
-    if (/[。！？…]/.test(tail)) return dlg ? 860 : 820;
-    if (/[，、,;]/.test(tail)) return dlg ? 470 : 440;
-    if (p.endsWith('——')) return 680;
-    return dlg ? 560 : 520;
+    const raw = String(p ?? '');
+    const tail = raw.replace(/[」』）)]+$/, '').slice(-1);
+    const charLen = raw.replace(/[^\p{L}\p{N}]/gu, '').length;
+    const lenComp = Math.min(280, Math.max(0, charLen - 4) * 16);
+
+    let base = 720;
+    if (/[。！？…]/.test(tail)) base = dlg ? 1220 : 1150;
+    else if (/[，、,;]/.test(tail)) base = dlg ? 740 : 680;
+    else if (raw.endsWith('——')) base = 980;
+    else base = dlg ? 780 : 720;
+
+    return base + lenComp;
   }
 
   async tell(text) {

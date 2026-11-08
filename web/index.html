@@ -131,13 +131,13 @@
     clip-path:inset(var(--content-top,0px) 0 var(--content-bottom-clip,0px) 0)}
   #flow{position:absolute;left:50%;width:min(760px,78vw);
     transform:translate(-50%,0);
-    transition:transform .95s cubic-bezier(.22,.8,.24,1),opacity .85s ease}
+    transition:transform 1.15s cubic-bezier(.22,.8,.24,1),opacity .9s ease}
   /* 正文字号单源：流内所有拍型共享（导语/引语块按倍率放大），改一处全流生效 */
   #flow{--ln-size:clamp(20px,1.2vw + 1.5vh,32px)}
   .ln{font-size:var(--ln-size);line-height:2.05;letter-spacing:.06em;
     color:var(--paper-ink);
     opacity:0;transform:translateY(14px) translateX(var(--dx,0));filter:blur(3px);
-    transition:opacity .7s ease,transform .7s ease,filter .7s ease}
+    transition:opacity .85s cubic-bezier(.2,.65,.3,1),transform .85s cubic-bezier(.2,.65,.3,1),filter .85s ease}
   .ln.in{opacity:1;transform:none;filter:none}
   .ln.old1{opacity:.55}.ln.old2{opacity:.3}.ln.old3{opacity:.14}
   /* 回看模式（往回滑动后）：淡化是运镜，回看要可读——历史行恢复浓墨 */

@@ -276,3 +276,62 @@ describe('场景：每条结局路线都结清自己造成的证据状态', () =
     }
   });
 });
+
+describe('场景：动机内生动力链——交割死线、投案认腔、当面讲与留灯', () => {
+  it('交割死线三处闭环：R2 风声清账种子、t9 白天递话带期限、廖钉死月底与最后夜班', () => {
+    assert.match(chapter(2), /风头上山之前清一轮/, 'R2 须给盘口月底清账的世界观种子');
+    const beforeT9 = chapter(3).split('@transcribe t9')[0];
+    assert.match(beforeT9, /顺兴月底清账/, '白天递话须带交割语境');
+    const ch5 = chapter(5);
+    assert.match(ch5, /九号桌给的日子是月底/, '廖须在终章钉死期限');
+    assert.match(ch5, /最后一个夜班/);
+  });
+
+  it('老地方有来历、「你爸签了字的」有指涉：围挡避耳目、躲纸不躲人、十月初章程手印', () => {
+    const ch5 = chapter(5);
+    assert.match(ch5, /围挡里头没得耳目/, '老地方=避开盘口耳目的私账地界');
+    assert.match(ch5, /她躲的不是我，是那张纸/);
+    assert.match(ch5, /按了手印，没拦/);
+  });
+
+  it('桥头戏由头落地：留号有来处、投案式托付先行、从「就这样」认出章程腔', () => {
+    assert.match(chapter(3), /写下一串呼机号/, 'chA2 须有留号动作');
+    const bridge = after(chapter(4), '# chA3-bridge');
+    assert.match(bridge, /就你还在问/, '开场须是「满城只有你还在问」的托付');
+    assert.match(bridge, /跟我念过一回章程/);
+    assert.match(bridge, /这三个字，是从他嘴里长出来的/, '认腔归因——不是跳步是确认');
+  });
+
+  it('青禾赴约有物证：结工钱、留碟、「去把一件事说清楚」与终章「当面讲」', () => {
+    const ch3 = chapter(3);
+    assert.match(ch3, /把当月的工钱结了/);
+    assert.match(ch3, /去把一件事说清楚/);
+    assert.match(chapter(5), /要讲，当面讲/);
+  });
+
+  it('苏晚欲望轴被文本承认：头七期限、怕先查到、蹲点之怕、A3d 不敢并账', () => {
+    const ch2 = chapter(2);
+    assert.match(ch2, /过了头七，风头散了/);
+    assert.match(ch2, /先一步查到你/);
+    const a2c = after(chapter(3), '# chA2c').split('# chA2d')[0];
+    assert.match(a2c, /不是怕等不到，是怕等到了/);
+    const a3d = chapter(4).slice(chapter(4).indexOf('# chA3d'), chapter(4).indexOf('# chR4'));
+    assert.match(a3d, /不敢往一起并/);
+  });
+
+  it('廖的留灯机制与 E3 威胁支点：威胁不依赖不会受理的老彭', () => {
+    const ch5 = chapter(5);
+    assert.match(ch5, /灯，是我给你留的/);
+    const e3 = after(ch5, '# E3');
+    assert.doesNotMatch(e3, /去找老彭/, 'E3 威胁不得押在被两度拒收的老彭身上');
+    assert.match(e3, /只在你自己嘴里/);
+    assert.match(after(ch5, '# E1'), /相约至危险地带/, 'E1 追逃须有落罪方向');
+  });
+
+  it('canon 对齐：呼机随身甩在碎石坡、汉显机是九号桌所赠', () => {
+    const qh = JSON.stringify(character('heqinghe'));
+    assert.doesNotMatch(qh, /呼机留在窗台/, '窗台版呼机与正文/时间线冲突，必须清除');
+    assert.match(qh, /碎石坡/);
+    assert.match(JSON.stringify(character('suwan')), /九号桌送来/);
+  });
+});

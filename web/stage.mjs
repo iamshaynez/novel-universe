@@ -411,14 +411,28 @@ export class Stage {
         } else {
           els[i]?.classList.add('wrong'); // 听岔了：朱线划掉，底单上留着错痕
           if (els[i]) els[i].disabled = true;
+          if (dead) {
+            const amb = document.getElementById('ambient');
+            if (amb) {
+              amb.classList.add('glitch');
+              setTimeout(() => amb.classList.remove('glitch'), 350);
+            }
+            this.audio.blip(60);
+          }
         }
         res(i);
       };
+      const targetLen = target ? target.length : 0;
       options.forEach((text, i) => {
         const d = document.createElement('button');
         d.type = 'button';
         d.className = 'opt';
-        d.innerHTML = `<span class="branch"></span><span class="txt">${this.mark(text)}</span>`;
+        const len = text.length;
+        let bCls = 'budget-ok';
+        if (targetLen && len > targetLen + 3) bCls = 'budget-over';
+        else if (targetLen && len < targetLen - 3) bCls = 'budget-short';
+        const lenBadge = `<span class="tr-len ${bCls}">${len}字</span>`;
+        d.innerHTML = `<span class="branch"></span><span class="txt">${this.mark(text)}</span>${lenBadge}`;
         d.addEventListener('click', ev => { ev.stopPropagation(); pick(i); });
         c.appendChild(d); els.push(d);
         setTimeout(() => d.classList.add('in'), 400 + i * 400);
@@ -508,6 +522,7 @@ export class Stage {
     if (ep !== this.epoch) return w.remove();
     w.classList.add('merged');
     this.audio.blip(hz);
+    this.toast('【声纹并轨 · 四声归一】');
     await sleep(this.auto ? 60 : 1700);
     if (ep !== this.epoch) return w.remove();
     w.style.opacity = '0';

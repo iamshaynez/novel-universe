@@ -518,6 +518,9 @@
   .tr-sep{border:none;border-top:2px dashed rgba(158,58,43,.4);margin:4px 0}
   .tr-note{font-size:11px;color:#8f8567;letter-spacing:.18em;margin:6px 0 2px;font-family:var(--kai)}
   .tr-rule{font-size:11px;color:rgba(110,101,73,.9);letter-spacing:.1em}
+  .tr-match-badge{font-size:11px;color:var(--blood,#9e3a2b);background:rgba(158,58,43,.08);
+    border:1px dashed var(--blood,#9e3a2b);padding:3px 8px;margin:6px 0;letter-spacing:.12em;
+    font-family:var(--kai);text-align:center;border-radius:2px}
 
   /* 存档:档案室抽屉里的纸片；封面与局内共用全部作品视图 */
   #savesPanel{position:absolute;right:2%;top:10%;width:min(560px,92vw);max-height:70%;overflow:auto;display:none;
@@ -715,10 +718,22 @@
   .tr-row .tr-wave{width:56px;height:14px;vertical-align:-3px}
 .tr-rule{font-size:13px;color:rgba(110,101,73,.9);letter-spacing:.1em}
 .tr-done{font-size:16px;color:rgba(46,40,24,.9);padding:10px 4px;letter-spacing:1px}
+.tr-len{margin-left:auto;flex:none;font-size:11px;padding:1px 6px;border-radius:2px;font-variant-numeric:tabular-nums;letter-spacing:.05em}
+.tr-len.budget-ok{color:#4a6b47;border:1px solid rgba(74,107,71,.35);background:rgba(74,107,71,.08)}
+.tr-len.budget-over{color:#9e3a2b;border:1px solid rgba(158,58,43,.35);background:rgba(158,58,43,.08)}
+.tr-len.budget-short{color:#8f8567;border:1px solid rgba(143,133,103,.35);background:rgba(143,133,103,.08)}
 
   /* —— 峰值拍（@peak，舞台合同 v1 首片）——回报拍专用，播种拍保持安静 —— */
   /* 死单拍：氛围压暗（#ambient 已有 filter 过渡）+ 回执朱砂化 + 戏中时间戳 */
   #ambient.dim{filter:brightness(.55) saturate(.72)}
+  #ambient.glitch{animation:crtGlitch .35s steps(2) forwards}
+  @keyframes crtGlitch{
+    0%{transform:translate(0,0);filter:invert(.1) contrast(1.5)}
+    25%{transform:translate(-3px,2px);filter:brightness(.6) hue-rotate(90deg)}
+    50%{transform:translate(3px,-2px);filter:contrast(2) saturate(1.8)}
+    75%{transform:translate(-2px,-1px);filter:invert(.2)}
+    100%{transform:translate(0,0);filter:none}
+  }
   .tr-done.dead{color:var(--blood)}
   .tr-stamp{display:inline-block;margin-left:.9em;padding:.06em .4em;border:1px solid var(--blood);
     border-radius:2px;color:var(--blood);font-size:.82em;letter-spacing:.14em;transform:rotate(-3deg)}

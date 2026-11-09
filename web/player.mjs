@@ -646,6 +646,14 @@ $('#btnSheet').onclick = () => {
   }
   groups.forEach((grp, gi) => {
     if (gi > 0) { const sep = document.createElement('hr'); sep.className = 'tr-sep'; list.appendChild(sep); }
+    const callers = new Set(grp.map(x => x.caller).filter(Boolean));
+    if (callers.size > 1) {
+      const matchBadge = document.createElement('div');
+      matchBadge.className = 'tr-match-badge';
+      const hzStr = grp[0]?.hz ? ` ${grp[0].hz} Hz` : '';
+      matchBadge.innerHTML = `【声纹同频${hzStr} · 疑似同人两号】`;
+      list.appendChild(matchBadge);
+    }
     for (const it of grp) {
       const div = document.createElement('div');
       div.className = 'tr-row';

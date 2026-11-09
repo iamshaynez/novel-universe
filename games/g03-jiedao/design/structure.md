@@ -1,32 +1,88 @@
 # g03《借刀》游戏结构与拓扑设计（Structure）
 
-## 1. 章节拓扑与场景列表
+> v1.1（血肉重构）：照 g02 版式重写为逐场景节拍表；三结局扩为四结局；修复 ch4 死门（`has_scar_archive` 变为真实可选）；新增殡仪馆制度之墙、华西镜像场、笔谈本二次暴击三条主链场景。
 
-```mermaid
-flowchart TD
-  S0["ch0-rain (雨夜伏击)"] --> S0_hit["ch0-strike (滑轮砸落)"]
-  S0_hit --> S1_morning["ch1-dawn (晨间开铺)"]
-  S1_morning --> S1_police["ch1-inquiry (何峥上门查访)"]
-  S1_police --> S1_card["ch1-shock (查看血染献血证)"]
-  S1_card --> S2_call["ch2-ring (午夜电话响起)"]
-  S2_call --> S2_choice{"ch2-react (接听对峙)"}
-  S2_choice -->|沉默听完| S3_forensic["ch3-investigate (查访法医线索)"]
-  S2_choice -->|愤怒质问| S3_forensic
-  S3_forensic --> S3_wife["ch3-confront-wife (周翠兰试探)"]
-  S3_wife --> S4_slum["ch4-shack (搜查刘亮地下室)"]
-  S4_slum --> S4_archive["ch4-archive (翻查1997年旧档与工伤卡)"]
-  S4_archive --> S5_station["ch5-north-station (火车北站大雾)"]
-  S5_station --> S5_gate{"终章大决择"}
-  S5_gate -->|刺魔自首揭穿疤痕| END_TRUTH["END_TRUTH · 归名"]
-  S5_gate -->|交付钱箱远走他乡| END_MISS["END_MISS · 幽魂"]
-  S5_gate -->|空口无凭揭发被捕| END_WRONG["END_WRONG · 疯汉"]
-```
+## 1. 章节曲线与行动坡度
 
-## 2. 门禁规则（Gates）
-* 进入 `END_TRUTH` 必须同时拥有 flags：
-  * `fact.ev-g03-murder`（泵站命案事实）
-  * `has_blood_card`（持有刘亮献血证）
-  * `has_scar_archive`（持有电弧焊烫伤档案）
-  * 做出抉择：`choice_confess_stab`（当众刺魔自首）
-* 若未持 `has_scar_archive` 却试图指控，落入 `END_WRONG`；
-* 若选择妥协交包，落入 `END_MISS`。
+- **让读者先赢一局小的，再输一局大的，最后亲手翻盘**：
+  - ch1 读者拿到「22:15 时间钉」自以为安全（小胜），章末何峥的算术当场戳破其局限（小败预告）；
+  - ch3 读者与宋明一同看穿逆向指纹与骗保合谋（中胜），随即在殡仪馆被制度之墙顶回（大败——合法渠道全灭）；
+  - ch4 名册+笔谈本双重暴击（灵魂塌方）；
+  - ch5 华西镜像场把代价称到克重，四选终局由玩家亲手定价：刘亮的名字、宋雨的命、宋明自己的余生，三样只能保两样。
+
+## 2. 逐场景节拍表
+
+### ch0 序章 · 惊雷（11-12 夜，泵站）
+1. `ch0-rain`（21:00 前伏击）：三段闪回拆块——借据与期限（女儿宋雨缴费单细节首次具象）/ 五百万诱饵 / 留言韩荣。
+2. `ch0-arrival`（21:31）：受害者活体拍三动作（拢袖口、大衣下摆抹净长椅积水、第三下火苗拢手取暖）——宋明误读为「韩老板今晚倒讲究」；火机三响。
+3. `ch0-strike`（21:32，`@peak dead`）：滑轮落、搜身改序——大衣内袋空 → 底单必在贴身处 → 摸到后缝夹层 → 封套；拖尸入涵洞。
+
+### ch1 第一章 · 破晓（11-13）
+1. `ch1-dawn`（22:15 半夜面，`@fact pub-2003-sars`）：潇文龙门阵拆两轮短对话——留 g02 十强赛流言彩蛋与融泰债主风声，删防滑槽预埋。
+2. `ch1-morning`（11-13 晨，`@set alibi_confirmed`）：开箱见五百万、箱底无底单；取封套验出《献血证》。
+3. `ch1-shock`（`@set has_blood_card`，`@peak inner`）：刘亮 22 岁 B 型；何峥叩门。
+4. 选择点 1（应对盘问，风味+信息微差）：`ch1-hide-calm` / `ch1-probe-body`（探得格栅浮尸细节）→ 合流 `ch1-police-end`。
+5. `ch1-police-end`：何峥确认死者认定韩荣 **并加压**——死亡时间泡在雨水里定不死、大路骑车四十分钟的算术、「我查的不是你在哪儿吃的面，是九点半你在哪儿」、不准离蓉、「我还会来」。
+
+### ch2 第二章 · 来电（11-13 深夜）
+1. `ch2-ring` → `ch2-pickup`（`@peak collapse`）：死者来电。
+2. `ch2-choice`：压住追问（`ch2-listen`）/ 厉声质问（`ch2-rage`）——都 `@set phone_answered`，合流 `ch2-ultimatum`。
+3. 韩荣台词合同（自曝砍半）：保留残酷事实（哑巴/两千块/替母挣医药费）、缝袋来历一句（「他老娘缝的贴身口袋」）、对冲线（「你不咬钩，我无非多花一笔善后费」）、九号桌一句、磁带、双选择 ultimatum；删「这叫借刀」自命名与洗身份流程；「递刀」论只在 rage 支出现一次；诱饵机制移交 ch3 宋明自行重建。
+
+### ch3 第三章 · 铁证（11-14 白天）
+1. `ch3-investigate`（09:30 茶铺，`@fact ev-g03-ponzi`）：何峥只给物证与质问——家门钥匙来历（触发宋明 11-2 配钥匙记忆闪回：门槛上的沉默后生、那杯热水）；勘验快报桌面一瞥 + 老彭两句（无前科只能取日常遗留样 / 血型都是 B）。
+2. 选择点 2（推理分流）：顺紫砂杯往下想（`ch3-fingerprint-puzzle`）/ 怀疑掉包胶片（`ch3-fingerprint-wrong`→何峥技术科封存细节挡回→归流）。
+3. `ch3-fingerprint-puzzle`：宋明自行重建诱饵链（修锁→露箱→期限）+ 指纹污染推理。
+4. `ch3-wife-residence`（11:30，`@set has_deduced_trick`，@bg 水碾河旧公房）：周翠兰灵堂。
+5. 选择点 3（风味）：上香看保单（`ch3-check-policy`，`@set has_policy`）/ 点破疤痕试探（`ch3-test-wife`→其拇指顿半秒、以身挡橱）→ 合流 `ch3-check-policy`。
+6. **`ch3-cremation`（13:00 东郊殡仪馆，`@set tried_stop`，新场景）**：制度之墙——无利害关系人无权异议、「你拿证据出来我马上停」；掏献血证即自证杀人；何峥到场压场并自此安排盯梢（终章在场的唯一动机来源）。
+
+### ch4 第四章 · 回旋（11-14 午后）
+1. `ch4-slum`（15:00 防空洞棚户区，`@fact pub-1997-soe`）：收费单、刘建国遗照、床底油毛毡；笔谈本压在搪瓷缸下，先不读。
+2. `ch4-basement`（`@set has_downsize_list`，`@peak inner`）：1997 名册，审核工会干事：宋明。
+3. `ch4-karma`：塌方与立起（独白砍半，不复述递刀论）；交代火化 16:00 与北站 21:00 双时钟。
+4. **`ch4-notebook`（`@set has_notebook`，`@peak desk`，新场景）**：读完名册再读笔谈本——三则日记收束于 11-12（两千块/替老板收账/莫说话对三下火机/给娘交透析费）+ 11-2 配钥匙「宋师傅给我倒了热水」；16:00 火化在此刻进行（绝对同时性）。
+5. **选择点 4（三分支，门禁修复）**：
+   - `* 去内燃机厂留守处档案楼，调 1983 年《因公负伤治疗鉴定表》` → `ch4-archive`（`@set has_scar_archive`）
+   - `* 去财务科旧库房翻笔迹底册` → `ch4-archive-wrong`（笔迹排队数日，当众三秒验伤才行——推理保留，归流 `ch4-archive`）
+   - `* 来不及了——把献血证贴身收好，直接赶今晚九点的火车北站` → `ch5-north-station`（**无守卫直达终章，无 `has_scar_archive`**）
+6. `ch4-archive`（17:00 内燃机厂留守处，@bg 档案楼）：大前门开路；大澡堂记忆锚（记忆知道，纸才能证明）；鉴定表到手。
+
+### ch5 终章 · 归名（11-14 夜）
+1. **`ch5-hospital`（18:30 华西，新场景）**：宋雨床头与缴费单 → 缴费大厅认出张桂芳数毛票、缺口恰是没交上的两千块——宋明不上前、不付钱（代价上称，克制）。
+2. `ch5-north-station`（21:00）：皮箱、割皮刀、两证贴身（或无证）；白纱布口罩老汉三响火机。
+3. `ch5-rendezvous`：韩荣台词随 ch2 同步削减；膏药一角；「没人会在乎前天夜里死在排污沟里的哑巴叫什么名字」。
+4. **选择点 5（四选终局）**：
+   - `* 借交接骤然发难：皮箱砸进警务亭、划开右臂膏药当众投案自首` → `ch5-truth if has_scar_archive`
+   - `* 放下皮箱：加五十万——我明天自己去分局，就说是我失手打死了你` → `ch5-deal`（END_DEAL 卖名）
+   - `* 松开提手交出皮箱，接过底单与存单转身退入浓雾` → `ch5-miss`（END_MISS 幽魂）
+   - `* 不动刀，丢下皮箱抱住韩荣向巡警高喊「韩荣没死」` → `ch5-wrong`（END_WRONG 疯汉）
+5. `ch5-truth`（`@peak split`）：高潮保留；何峥到场改为盯梢交代（「从殡仪馆起他就没离开过我们的视线」）；许知微闪光灯；沈彻收锉/九号桌钩子一笔带过前移。
+6. **`ch5-truth-coda`（新场景，数月后）**：还原设计稿 6.1 落幕——「刘亮之墓 · 一九八一—二〇〇三」立碑、张桂芳抚碑（叙述层）、宋明狱中判决书、探视室玻璃后的宋雨；归名双关收束。
+7. `ch5-deal`：交易成立 → 按教好的口供投案 → 判决书被害人栏「韩荣」→ 宋雨手术成 → 狱中只听雨声、再无火机声（与 END_MISS 的咔嗒幻听成镜像）。
+8. `ch5-wrong` 状态矛盾修复：证件随身且当面出示但无法指认活人（献血证只证明刘亮存在、不证明尸体是刘亮，骨灰无以对质）；次日搜查物证从其人身与铺子分别搜出，出处自洽。
+
+## 3. 门禁规则（Gates，四结局）
+
+| 结局 | 判定条件 |
+|---|---|
+| `END_TRUTH` 归名 | `fact.ev-g03-murder` + `has_blood_card` + `has_deduced_trick` + **`has_scar_archive`（仅 archive 主线路径可置）** + 抉择刺魔自首 |
+| `END_DEAL` 卖名 | 抉择认罪交易（无需铁证——韩荣求之不得） |
+| `END_MISS` 幽魂 | 抉择交箱沉默 |
+| `END_WRONG` 疯汉 | 抉择空口指认；**「未持 `has_scar_archive` 却试图指控」的状态经 ch4 skip 分支真实可达**（v1.0 的死门已修复） |
+
+无档案路径只能落入 幽魂/卖名/疯汉 三支——刺魔选项被守卫隐藏，与 `test/g03-narrative.test.mjs` 的路由断言互为合同。
+
+## 4. flag 沉淀表
+
+| flag | 置位场景 | 消费处 |
+|---|---|---|
+| `alibi_confirmed` | ch1-morning | 叙事态：时间钉在手 |
+| `has_blood_card` | ch1-shock | END_TRUTH 门禁 / 证物面板 |
+| `phone_answered` | ch2-listen / ch2-rage | 证物面板（磁带威胁在场） |
+| `has_deduced_trick` | ch3-wife-residence | END_TRUTH 门禁 |
+| `has_policy` | ch3-check-policy | 证物面板（保单） |
+| `tried_stop` | ch3-cremation | 证物面板（确认书/制度之墙）；ch5 叙事回响 |
+| `has_downsize_list` | ch4-basement | 证物面板（名册） |
+| `has_notebook` | ch4-notebook | 证物面板（笔谈本）；归名动因具象化 |
+| `has_scar_archive` | ch4-archive（**可选**） | ch5-truth 守卫 / END_TRUTH 门禁 / 证物面板 |

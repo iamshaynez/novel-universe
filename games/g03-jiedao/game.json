@@ -3,7 +3,7 @@
   "id": "g03-jiedao",
   "title": "借刀",
   "subtitle": "锦江悬疑宇宙 · 第三号档案 · 二〇〇三",
-  "hook": "你亲手杀了他。第二天，他去派出所报了案。",
+  "hook": "你亲手杀了他。第二天，警察说死者就是他。第三天，他给你打来电话。",
   "set_in": "2003",
   "canon": ">=1.2 <2",
   "assumes": [
@@ -13,6 +13,183 @@
   "player": {
     "name": "宋明",
     "voice_hz": 185
+  },
+  "reading": {
+    "tracks": [
+      {
+        "id": "hunt",
+        "label": "追索",
+        "symbol": "刀",
+        "stops": [
+          { "scene": "ch0-rain", "label": "十一月十二日 · 泵站" },
+          { "scene": "ch1-dawn", "label": "十一月十二日 · 半夜面" },
+          { "scene": "ch2-ring", "label": "十一月十三日 · 来电" },
+          { "scene": "ch3-investigate", "label": "十一月十四日 · 茶铺" },
+          { "scene": "ch4-slum", "label": "十一月十四日 · 防空洞" },
+          { "scene": "ch5-hospital", "label": "十一月十四日 · 华西与北站" }
+        ]
+      }
+    ],
+    "convergence": { "scene": "ch5-choice", "label": "北站 · 四选" },
+    "evidence": [
+      {
+        "id": "blood-card", "label": "刘亮的无偿献血证", "kind": "original", "unlock": "has_blood_card",
+        "holders": {
+          "default": "宋明 · 贴身",
+          "END_TRUTH": "当众呈堂 · 归名的起点",
+          "END_DEAL": "随卷封存 · 从未被叫出名字",
+          "END_MISS": "宋明 · 贴身 · 无人知晓",
+          "END_WRONG": "被认定为脱罪狡辩道具"
+        }
+      },
+      {
+        "id": "alibi-slip", "label": "防疫测温登记簿存根", "kind": "copy", "unlock": "alibi_confirmed",
+        "holders": {
+          "default": "玉林北巷居委会",
+          "END_TRUTH": "投案时亲手作废"
+        }
+      },
+      {
+        "id": "suitcase", "label": "五百万国库券皮箱", "kind": "original", "unlock": "fact.ev-g03-murder",
+        "holders": {
+          "default": "宋明 · 拎在手里",
+          "END_TRUTH": "砸进站前警务亭",
+          "END_DEAL": "成交 · 韩荣提走",
+          "END_MISS": "交予韩荣",
+          "END_WRONG": "丢在北站广场"
+        }
+      },
+      {
+        "id": "tape", "label": "车库监控磁带（韩荣声称）", "kind": "copy", "unlock": "phone_answered",
+        "holders": {
+          "default": "韩荣手中 · 只闻其声",
+          "END_WRONG": "匿名寄达成华区分局"
+        }
+      },
+      {
+        "id": "fingerprint-report", "label": "刑侦勘验快报（八个特征点）", "kind": "summary", "unlock": "has_deduced_trick",
+        "holders": { "default": "分局技术科 · 对照样本自始污染" }
+      },
+      {
+        "id": "insurance-policy", "label": "三百万意外险保单", "kind": "hand", "unlock": "has_policy",
+        "holders": {
+          "default": "周翠兰 · 五斗橱半开抽屉",
+          "END_TRUTH": "骗保未遂 · 入卷"
+        }
+      },
+      {
+        "id": "cremation-paper", "label": "家属确认书与火化通知", "kind": "summary", "unlock": "tried_stop",
+        "holders": { "default": "东郊火葬场 · 业务窗口玻璃之后" }
+      },
+      {
+        "id": "downsize-list", "label": "1997 下岗终审审批名册", "kind": "hand", "unlock": "has_downsize_list",
+        "holders": {
+          "default": "宋明 · 放回刘亮床底",
+          "END_TRUTH": "随案上交"
+        }
+      },
+      {
+        "id": "notebook", "label": "刘亮的笔谈本", "kind": "draft", "unlock": "has_notebook",
+        "holders": {
+          "default": "宋明 · 贴身",
+          "END_TRUTH": "北站广场 · 举过头顶",
+          "END_DEAL": "塞进右边内袋 · 再没打开",
+          "END_WRONG": "翻烂了也没人信"
+        }
+      },
+      {
+        "id": "scar-archive", "label": "1983 因公负伤鉴定表", "kind": "original", "unlock": "has_scar_archive",
+        "holders": {
+          "default": "宋明 · 左胸内袋",
+          "END_TRUTH": "与臂上菱形瘢痕分毫不差",
+          "END_MISS": "宋明 · 左胸内袋 · 没用上",
+          "END_WRONG": "宋明 · 左胸内袋 · 没来得及"
+        }
+      }
+    ],
+    "relations": {
+      "note": "只画正文已经落地的事实，不抢答。",
+      "nodes": [
+        { "id": "songming", "label": "宋明", "unlock": "card.char.songming", "x": 300, "y": 90 },
+        { "id": "hanrong", "label": "韩荣", "unlock": "card.char.hanrong", "x": 540, "y": 120 },
+        { "id": "liuliang", "label": "刘亮", "alias": "哑巴洗车工", "unlock": "has_blood_card", "x": 300, "y": 230 },
+        { "id": "zhouchuilan", "label": "周翠兰", "unlock": "has_deduced_trick", "x": 540, "y": 260 },
+        { "id": "guiFang", "label": "张桂芳", "alias": "刘亮之母", "unlock": "has_downsize_list", "x": 140, "y": 300 },
+        { "id": "liujianguo", "label": "刘建国", "alias": "四级翻砂工", "unlock": "has_downsize_list", "x": 140, "y": 170 },
+        { "id": "hezheng", "label": "何峥", "unlock": "card.char.hezheng", "x": 540, "y": 30 },
+        { "id": "wangxiansheng", "label": "九号桌 · 王先生", "kind": "place", "unlock": "phone_answered", "x": 620, "y": 190 },
+        { "id": "blood", "label": "献血证 · 刘亮 22 岁 B 型", "kind": "paper", "unlock": "has_blood_card", "x": 300, "y": 340 },
+        { "id": "policy", "label": "保单 · 参佰万双倍他杀", "kind": "paper", "unlock": "has_policy", "x": 640, "y": 300 },
+        { "id": "notebookNode", "label": "笔谈本 · 给娘攒透析费", "kind": "paper", "unlock": "has_notebook", "x": 160, "y": 380 },
+        { "id": "scar", "label": "工伤卡 · 菱形焊疤", "kind": "paper", "unlock": "has_scar_archive", "x": 660, "y": 70 },
+        { "id": "namelist", "label": "1997 名册 · 审核人宋明", "kind": "paper", "unlock": "has_downsize_list", "x": 60, "y": 240 }
+      ],
+      "edges": [
+        { "from": "songming", "label": "1997 划掉留厂名额", "to": "namelist", "unlock": "has_downsize_list", "key": true },
+        { "from": "namelist", "label": "首批下岗", "to": "liujianguo", "unlock": "has_downsize_list" },
+        { "from": "liujianguo", "label": "父子", "to": "liuliang", "unlock": "has_downsize_list" },
+        { "from": "liuliang", "label": "随身贴身", "to": "blood", "unlock": "has_blood_card" },
+        { "from": "songming", "label": "泵站搜出", "to": "blood", "unlock": "has_blood_card", "key": true },
+        { "from": "hanrong", "label": "两千块 · 借去当替身", "to": "liuliang", "unlock": "phone_answered", "key": true },
+        { "from": "hanrong", "label": "夫妻 · 认尸合谋", "to": "zhouchuilan", "unlock": "has_deduced_trick" },
+        { "from": "zhouchuilan", "label": "受益人", "to": "policy", "unlock": "has_policy" },
+        { "from": "hanrong", "label": "高价买《借壳退场图纸》", "to": "wangxiansheng", "unlock": "phone_answered" },
+        { "from": "hanrong", "label": "1983 电弧灼伤", "to": "scar", "unlock": "has_scar_archive" },
+        { "from": "liuliang", "label": "铅笔字 · 替老板收账", "to": "notebookNode", "unlock": "has_notebook" },
+        { "from": "liuliang", "label": "母子 · 透析收费单", "to": "guiFang", "unlock": "has_downsize_list" },
+        { "from": "hezheng", "label": "办案 · 钉不住九点半", "to": "songming", "unlock": "card.char.hezheng" }
+      ],
+      "truth": [
+        { "from": "songming", "label": "六米天车 · 滑轮砸断脖颈", "to": "liuliang", "truth": true },
+        { "from": "hanrong", "label": "借的正是宋明那口恶气", "to": "songming", "truth": true },
+        { "from": "zhouchuilan", "label": "认的不是丈夫，是三百万", "to": "liuliang", "truth": true }
+      ]
+    },
+    "recap": [
+      {
+        "id": "END_TRUTH", "title": "归名",
+        "evidence": "献血证、笔谈本、工伤卡当众呈堂；皮箱砸进警务亭",
+        "people": "韩荣被按在北站水泥地上；周翠兰骗保未遂；刘亮墓碑换回真名；宋明死缓，隔玻璃对齐女儿的掌心",
+        "point": "以自身死罪，换无名少年归名"
+      },
+      {
+        "id": "END_DEAL", "title": "卖名",
+        "evidence": "五十万存折与 coached 口供交换；献血证随卷封存",
+        "people": "韩荣提箱南下；宋雨配型成功；宋明在判决书上亲手确认被害人叫「韩荣」",
+        "point": "用谎言买女儿的命，雨声里再无火机声"
+      },
+      {
+        "id": "END_MISS", "title": "幽魂",
+        "evidence": "皮箱交予韩荣，换回房产证与五万存单",
+        "people": "宋明照常开铺修车，再不锉双防滑槽；刘亮之名渗进沙河泥底",
+        "point": "在死人姓名的阴影下苟活，雨夜幻听三声咔嗒"
+      },
+      {
+        "id": "END_WRONG", "title": "疯汉",
+        "evidence": "献血证与笔谈本被当作狡辩道具；铜销与手套自台虎钳底座搜出",
+        "people": "韩荣金蝉脱壳混入人潮；监控磁带寄达分局；宋明以杀害「韩荣」罪伏法",
+        "point": "无铁证的真相，比谎言更疯"
+      }
+    ],
+    "map": {
+      "note": "示意 · 不按比例",
+      "lines": [
+        { "id": "shahe", "label": "沙河", "kind": "river", "points": "640,40 640,380" },
+        { "id": "erhuan", "label": "二环路", "kind": "road", "points": "40,60 660,60" }
+      ],
+      "nodes": [
+        { "id": "dongjiao-pumping-station", "label": "东郊废弃泵站", "x": 580, "y": 110, "since": "ch0-rain" },
+        { "id": "banye-noodles", "label": "半夜面", "x": 200, "y": 330, "since": "ch1-dawn" },
+        { "id": "factory-yard", "label": "明成五金铺", "x": 280, "y": 200, "since": "ch1-morning" },
+        { "id": "shunxing-teahouse", "label": "顺兴老茶铺", "x": 460, "y": 170, "since": "ch3-investigate" },
+        { "id": "shuijianhe-flat", "label": "水碾河旧公房", "x": 480, "y": 240, "since": "ch3-wife-residence" },
+        { "id": "dongjiao-crematorium", "label": "东郊火葬场", "x": 590, "y": 300, "since": "ch3-cremation" },
+        { "id": "fangkongdong-slum", "label": "防空洞棚户区", "x": 540, "y": 210, "since": "ch4-slum" },
+        { "id": "neiranji-archive", "label": "内燃机厂留守处", "x": 500, "y": 120, "since": "ch4-archive" },
+        { "id": "huaxi-hospital", "label": "华西医院", "x": 240, "y": 380, "since": "ch5-hospital" },
+        { "id": "north-station", "label": "火车北站", "x": 380, "y": 60, "since": "ch5-north-station" }
+      ]
+    }
   },
   "chapters": [
     {

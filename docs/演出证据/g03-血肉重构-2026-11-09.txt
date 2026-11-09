@@ -1,0 +1,17 @@
+g03《借刀》血肉重构 · 演出与确定性证据
+日期：2026-11-09 · 分支 feat/g03-flesh-restructure
+
+一、真实渲染截图（npm run demo · 127.0.0.1:3000 · g03 本地发布态）
+1. g03-血肉重构-序章泵站舞台-2026-11-09.png
+   序章·惊雷开场：东郊泵站夜雨氛围（palette #0d1416/#1f363d/#5c929e）、印章「泵」、
+   「刀·追索」轨徽与六章停点、HUD 时间轴四枚线索 chip（含新增私有事件 ev-g03-scar-1983·1983.07）。
+2. g03-血肉重构-半夜面与四十分钟算术-2026-11-09.png
+   第一章·破晓：半夜面夜场景观，重写后的「大路四十分钟/涵洞捷径」文本逐拍渲染（一拍一句、空行分块）。
+备注：浏览器自动化推进至深层节拍时遇主线程饱和（逐拍自动存档 + 流式重排累积），
+   华西镜像场/笔谈本 desk 峰值拍的截图由后续人工游玩补充；机器侧证据见下。
+
+二、确定性校验产物
+- g03 离线包校验和（PUT /api/games/g03-jiedao/published 返回 bundle）：ca59aca20f884b9a
+- npm run verify：g03-jiedao 结局 END_TRUTH/END_DEAL/END_MISS/END_WRONG 全可达，交互路径 352 条，无死链孤儿
+- npm test：397/397 全绿（含 g03 四结局路由守卫、END_TRUTH 全路径三旗标断言、无档案路径不可能到达 END_TRUTH 的门禁断言）
+- docs/canon.html：md5 eb09e281a01efb2b6aae4882b2d6d44e（canon 1.4.0，见 canon-page-md5.txt 链）

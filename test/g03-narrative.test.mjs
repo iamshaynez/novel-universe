@@ -1,4 +1,4 @@
-// g03《借刀》叙事合同：时代事实、借刀杀人倒叙诡计、法医逆向指纹、因果回旋与三结局全路线引擎回放。
+// g03《借刀》叙事合同：时代事实、借刀杀人倒叙诡计、法医逆向指纹、因果回旋与四结局全路线引擎回放。
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -58,16 +58,19 @@ describe('叙事契约与诡计释放阶梯', () => {
     assert.doesNotMatch(ch1, /假死脱身|周翠兰合谋/);
   });
 
-  it('ch2 死者午夜来电：韩荣现形致谢，出示录像并逼迫自首或交易', () => {
+  it('ch2 死者午夜来电：韩荣现形致谢，出示录像并逼迫自首或交易；自曝砍半，不再自我命名诡计', () => {
     const ch2 = chapter(2);
     assert.match(ch2, /韩荣/);
     assert.match(ch2, /枕骨大孔/);
     assert.match(ch2, /谢谢你/);
     assert.match(ch2, /两个选择/);
     assert.match(ch2, /phone_answered/);
+    // 血肉重构合同：全能赌注须有对冲（免费期权），主题点题唯一化（删「这叫借刀」自命名）
+    assert.match(ch2, /善后费/);
+    assert.doesNotMatch(ch2, /这叫借刀/);
   });
 
-  it('ch3 识破法医逆向指纹陷阱与周翠兰三百万意外险骗保合谋', () => {
+  it('ch3 识破法医逆向指纹陷阱与周翠兰三百万意外险骗保合谋，血型同为 B 的定案锁补进正文', () => {
     const ch3 = chapter(3);
     assert.match(ch3, /紫砂茶杯/);
     assert.match(ch3, /八个特征点/);
@@ -75,26 +78,42 @@ describe('叙事契约与诡计释放阶梯', () => {
     assert.match(ch3, /参佰万元/);
     assert.match(ch3, /双倍赔付/);
     assert.match(ch3, /has_deduced_trick/);
+    assert.match(ch3, /has_policy/);
+    assert.match(ch3, /血型/);
   });
 
-  it('ch4 道德与因果回旋：宋明揭开六年前亲手排挤刘父的旧账，并在档案室拿到韩荣烫伤铁证', () => {
+  it('ch4 道德与因果回旋：下岗名册与刘亮笔谈本双重暴击，档案室拿到韩荣烫伤铁证', () => {
     const ch4 = chapter(4);
     assert.match(ch4, /改制分流下岗人员终审审批名册/);
     assert.match(ch4, /审核工会干事：宋明/);
+    assert.match(ch4, /has_downsize_list/);
+    assert.match(ch4, /笔谈本/);
+    assert.match(ch4, /透析费/);
+    assert.match(ch4, /热水/);
+    assert.match(ch4, /has_notebook/);
     assert.match(ch4, /因公负伤治疗鉴定表/);
     assert.match(ch4, /菱形永久性增生瘢痕/);
     assert.match(ch4, /has_scar_archive/);
   });
+
+  it('ch5 抉择前称出代价：华西镜像场让女儿与张桂芳同框，四结局含卖名交易', () => {
+    const ch5 = chapter(5);
+    assert.match(ch5, /华西/);
+    assert.match(ch5, /宋雨/);
+    assert.match(ch5, /张桂芳/);
+    assert.match(ch5, /卖名/);
+    assert.match(ch5, /END_DEAL/);
+  });
 });
 
 describe('全结局可达性与引擎真机回放', () => {
-  it('多章交互推理全通（>=24条路径），END_TRUTH / END_MISS / END_WRONG 三结局均可达且无死链', () => {
+  it('多章交互推理全通（>=24条路径），END_TRUTH / END_DEAL / END_MISS / END_WRONG 四结局均可达且无死链', () => {
     assert.ok(routes.length >= 24, `期望至少 24 条交互路径，当前 ${routes.length}`);
     for (const route of routes) {
       assert.ok(!['__DEAD__', '__GAP__'].includes(route.ending));
     }
     const endings = new Set(routes.map(r => r.ending));
-    assert.deepEqual(endings, new Set(['END_TRUTH', 'END_MISS', 'END_WRONG']));
+    assert.deepEqual(endings, new Set(['END_TRUTH', 'END_DEAL', 'END_MISS', 'END_WRONG']));
 
     for (const route of routes) {
       if (route.ending === 'END_TRUTH') {
@@ -103,6 +122,17 @@ describe('全结局可达性与引擎真机回放', () => {
         assert.ok(route.flags.has_scar_archive);
       }
     }
+  });
+
+  it('门禁重构：ch4 直赶北站分支使 has_scar_archive 变为真实可选——无档案路径只能落入 幽魂/疯汉/卖名', () => {
+    const withoutArchive = routes.filter(r => !r.flags.has_scar_archive);
+    assert.ok(withoutArchive.length > 0, '应存在未取工伤档案的路径（ch4 skip 分支）');
+    for (const route of withoutArchive) {
+      assert.ok(['END_DEAL', 'END_MISS', 'END_WRONG'].includes(route.ending),
+        `无档案路径不应到达 ${route.ending}`);
+    }
+    assert.ok(routes.some(r => r.ending === 'END_WRONG' && !r.flags.has_scar_archive),
+      'END_WRONG 应可由「未取铁证贸然指认」到达（还原 structure.md 设计意图）');
   });
 
   it('盲测修复：ch2 不提前剧透指纹与认尸诡计，五百万国库券箱与诱杀前提在 ch0 埋设，日期统一为十一月十四日，剔除网文套话与滑轮瞬移 bug', () => {
@@ -121,6 +151,8 @@ describe('全结局可达性与引擎真机回放', () => {
 
     // 2. ch2 午夜来电不提前剧透 ch3 的「替身指纹污染办公室」与「家属解剖台认尸」
     assert.doesNotMatch(ch2, /指纹|解剖台/);
+    // 张桂芳与笔谈本不早于 ch4 现身（死者之声的阅读顺序受合同保护）
+    assert.doesNotMatch(ch0 + '\n' + ch1 + '\n' + ch2 + '\n' + ch3, /张桂芳|笔谈本/);
 
     // 3. ch3/ch4/ch5 均包含玩家主动推理/调查分支，且时间轴严丝合缝落在十一月十四日（回应13日夜「明晚九点」）
     assert.match(ch1, /^\*\s+/m);
@@ -131,9 +163,18 @@ describe('全结局可达性与引擎真机回放', () => {
     assert.doesNotMatch(ch3 + '\n' + ch4 + '\n' + ch5, /十一月十五日/);
     assert.doesNotMatch(ch5, /春运前夕/);
 
-    // 4. ch3/ch4 舞台背景多样化（不再把分局/茶铺/防空洞全标成 factory-yard）
+    // 3b. 血肉重构合同：ch1 何峥做死亡时间与路程算术（不在场证明不再被「钉死」）；
+    //     ch3 殡仪馆阻止火化失败（tried_stop）成为北站孤注一掷的唯一动因链
+    assert.match(ch1, /四十分钟/);
+    assert.match(ch3, /殡仪馆|火葬场/);
+    assert.match(ch3, /tried_stop/);
+
+    // 4. ch3/ch4 舞台背景多样化（棚户区/档案楼/殡仪馆各有其址，修复 factory-yard 与 hongguang-works 复用错配）
     assert.match(ch3, /@bg shunxing-teahouse/);
-    assert.match(ch4, /@bg hongguang-works/);
+    assert.match(ch3, /@bg dongjiao-crematorium/);
+    assert.match(ch4, /@bg fangkongdong-slum/);
+    assert.match(ch4, /@bg neiranji-archive/);
+    assert.match(ch5, /@bg huaxi-hospital/);
 
     // 5. END_WRONG 不再出现二十五公斤滑轮瞬移回五金铺，判决逻辑自洽（以杀害韩荣定罪）
     assert.doesNotMatch(ch5, /机修台下，搜出了.*铸铁滑轮/);

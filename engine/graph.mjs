@@ -55,11 +55,13 @@ export function validateGraph(ir) {
   return errs;
 }
 
-/** 枚举全部可玩路径（模拟 flag 守卫），供 e2e 与「结局全可达」断言使用。 */
+/** 枚举全部可玩路径（模拟 flag 守卫），供 e2e 与「结局全可达」断言使用。
+ *  depth 守卫是「防成环绊线」而非内容预算：每个散文段都是一个推进节点，
+ *  剧本加厚会自然抬升最长路径（g01 现值约 520），真成环时会在任何有限界上瞬间撞破。 */
 export function enumerateRoutes(ir) {
   const routes = [];
   const dfs = (run, choices, depth) => {
-    if (depth > 500) throw new Error('enumerateRoutes: 路径过深（守卫疑似成环）');
+    if (depth > 800) throw new Error('enumerateRoutes: 路径过深（守卫疑似成环）');
     const n = ir.nodes[run.nodeId];
     if (!n) { routes.push({ choices: [...choices], ending: '__GAP__' }); return; }
     if (n.type === 'ending') {
